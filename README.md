@@ -12,7 +12,7 @@ agx tui
 
 Click Overview or Hardware, select device rows, and scroll with the mouse wheel. Keyboard: `1`/`2`/`?` select screens, Tab switches, arrows scroll, `r` refreshes, and `q` returns to the shell. For a full-color client terminal over SSH, use `agx tui --color truecolor`; `agx tui --ascii --no-color --no-mouse` provides a basic terminal fallback. `agx status --json` is available for scripts.
 
-Phase 2's TUI foundation is installed and tested on the Pi. The hardware/firmware audit and kernel trimming remain in progress. See [TUI development and verification](docs/phase2.md).
+Phase 2's TUI foundation is installed and tested on the Pi. The hardware/firmware audit and kernel trimming remain outstanding. See [TUI development and verification](docs/phase2.md).
 
 On an Arch Linux workstation with the base development tools installed:
 

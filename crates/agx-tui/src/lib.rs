@@ -338,11 +338,15 @@ impl App {
         );
         let tabs = Layout::horizontal([Constraint::Ratio(1, 3); 3]).split(regions[1]);
         self.tabs = tabs.to_vec();
-        let names = [
-            format!("1 {} Overview", self.icon("◈", ">")),
-            format!("2 {} Hardware", self.icon("■", "#")),
-            "? Help".to_owned(),
-        ];
+        let names = if area.width < 65 {
+            ["1 Overview".into(), "2 Hardware".into(), "? Help".into()]
+        } else {
+            [
+                format!("1 {} Overview", self.icon("◈", ">")),
+                format!("2 {} Hardware", self.icon("■", "#")),
+                "? Help".into(),
+            ]
+        };
         for (index, name) in names.into_iter().enumerate() {
             let selected = self.page == index;
             let color = if selected {
@@ -362,11 +366,13 @@ impl App {
             _ => self.help(frame, regions[2]),
         }
         let footer = if let Some(error) = &self.error {
-            format!(" DATA ERROR: {error} | r retry | q quit")
+            format!(" q quit | r retry | DATA ERROR: {error}")
         } else if self.snapshot.is_none() {
-            " Collecting live Linux system information... | q quit".into()
+            " q quit | Collecting live Linux system information...".into()
+        } else if area.width < 80 {
+            " q quit | ? help | Tab screens | arrows scroll".into()
         } else {
-            " Tab switch  |  Up/Down scroll  |  click select  |  r refresh  |  ? help  |  q quit"
+            " q quit  |  Tab switch  |  Up/Down scroll  |  click select  |  r refresh  |  ? help"
                 .into()
         };
         frame.render_widget(
@@ -939,6 +945,7 @@ mod tests {
                 assert!(text.is_ascii(), "ASCII mode emitted Unicode");
                 if width >= 40 {
                     assert_eq!(app.tabs.len(), 3);
+                    assert!(text.contains("q quit"), "Quit shortcut must remain visible");
                 }
             }
         }
