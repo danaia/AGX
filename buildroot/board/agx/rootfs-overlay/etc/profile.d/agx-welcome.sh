@@ -8,7 +8,7 @@ case "$-" in
         if [ -t 1 ] && [ -r /usr/share/agx/logo.ascii ]; then
             if [ -z "${NO_COLOR+x}" ] && [ "${TERM:-dumb}" != dumb ]; then
                 # Reveal the wordmark row by row, then pulse it. "ANG" is white and
-                # the final "I" (the last 7 columns of every row) is lime.
+                # the final "I" (the last 5 columns of every row) is lime.
                 case "$TERM" in
                     *256color*|*direct*) agx_lime='\033[1;38;5;154m' ;;
                     *) agx_lime='\033[1;92m' ;;
@@ -16,7 +16,7 @@ case "$-" in
                 agx_white='\033[1;97m'
                 agx_dim='\033[2;37m'
                 agx_logo_row() {
-                    agx_ang=${3%???????}
+                    agx_ang=${3%?????}
                     printf '%b%s%b%s\033[0m\n' "$1" "$agx_ang" "$2" "${3#"$agx_ang"}"
                 }
                 printf '\n'
