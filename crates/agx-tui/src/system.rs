@@ -57,7 +57,9 @@ impl Default for Ui {
             phase: "Idle",
             done: 0,
             total: 0,
-            message: "Press C to check GitHub; G sets a token; V verifies a staged package.".into(),
+            message:
+                "Press C to check GitHub; G sets an optional token; V verifies a staged package."
+                    .into(),
             failed: false,
             token_dialog: false,
             token: Zeroizing::new(String::new()),
@@ -293,7 +295,7 @@ impl Ui {
                     .bold(),
             ),
             Line::styled(
-                "G  GitHub token   |   V  Verify staged package",
+                "G  Optional token |   V  Verify staged package",
                 Style::default().fg(p.cyan),
             ),
             Line::styled(
@@ -362,7 +364,7 @@ impl Ui {
             let text = vec![
                 Line::styled("PRIVATE AGX REPOSITORY", Style::default().fg(p.cyan).bold()),
                 Line::raw(""),
-                Line::raw("Fine-grained token: danaia/AGX, Contents: read."),
+                Line::raw("Optional: public release checks need no token."),
                 Line::raw("Token is stored root-only and is never shown or logged."),
                 Line::raw(""),
                 Line::styled(

@@ -16,10 +16,12 @@ The check CTA was tested on the Pi with the staged candidate, including byte pro
 
 ## GitHub release checks
 
-The AGX repository is private. In System, press `g` or click **GitHub token** and enter a fine-grained GitHub personal access token scoped to `danaia/AGX` with **Contents: read** ([GitHub token instructions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)). Do not paste the token into chat or a shell command. The TUI masks it and passes it to the root-owned service; `/etc/agx/github-token` is mode `0600`, and the token is supplied to curl through a private pipe, not command-line arguments. An empty token submitted in the dialog removes it.
+The AGX repository and preview release are public. Press `c` or click **Check GitHub** without configuring a token.
+
+An optional token can raise GitHub's API rate limit. Press `g` or click **Optional token** to save one. The TUI masks it and passes it to the root-owned service; `/etc/agx/github-token` is mode `0600`, and the token is supplied to curl through a private pipe, not command-line arguments. An empty token submitted in the dialog removes it and restores anonymous checks.
 
 Press `c` or click **Check GitHub**. AGX contacts GitHub over HTTPS, selects the highest semantic version among up to 100 published releases including previews, and reports whether the AGX update package is attached. Release metadata is not a system installation, and the device does not yet track an installed system release version, so the result does not claim the installed system is current or outdated. `v` separately verifies the workstation-staged package. Install and install progress remain unavailable until data preservation and rollback are implemented.
 
 The release build command `make release-update` builds and validates the candidate, removes the workstation-specific root SSH recovery key from its root filesystem, checks that no GitHub token or saved Wi-Fi profile is present, and produces a versioned candidate archive and SHA-256 file. A release archive remains a development candidate and must not be flashed over the existing installation.
 
-The Pi needs its own read-only token; the workstation’s broader GitHub CLI credential is not copied to the device. The release candidate is attached to a private GitHub preview release. A saved token can be removed by opening the token dialog and submitting it empty.
+The workstation’s GitHub CLI credential is not copied to the device. The release candidate is attached to the public GitHub preview release.

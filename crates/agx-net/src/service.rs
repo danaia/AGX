@@ -812,11 +812,10 @@ fn github_release_message(data: &[u8]) -> io::Result<String> {
         "GitHub: {tag} ({stage}); {package}. Installed system version is not tracked yet."
     ))
 }
-fn check_github_release() -> io::Result<String> {
-    let token = Zeroizing::new(
-        fs::read_to_string("/etc/agx/github-token")
-            .map_err(|_| err("GitHub token not configured. Press G to add one."))?,
-    );
+fn github_curl_config(token: Option<&str>) -> io::Result<Zeroizing<String>> {
+    let Some(token) = token else {
+        return Ok(Zeroizing::new(String::new()));
+    };
     if token.len() < 20
         || token.len() > 255
         || !token
@@ -824,14 +823,26 @@ fn check_github_release() -> io::Result<String> {
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
     {
         return Err(err(
-            "Stored GitHub token is invalid. Press G to replace it.",
+            "Stored GitHub token is invalid. Press G to replace or remove it.",
         ));
     }
-    // curl reads the Authorization header through its private stdin, never argv or the environment.
-    let config = Zeroizing::new(format!(
+    // curl reads the optional Authorization header through private stdin, never argv or env.
+    Ok(Zeroizing::new(format!(
         "header = \"Authorization: Bearer {}\"\n",
-        token.as_str()
-    ));
+        token
+    )))
+}
+fn check_github_release() -> io::Result<String> {
+    let token = match fs::read_to_string("/etc/agx/github-token") {
+        Ok(token) => Some(Zeroizing::new(token)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(_) => {
+            return Err(err(
+                "Unable to read stored GitHub token. Press G to replace or remove it.",
+            ));
+        }
+    };
+    let config = github_curl_config(token.as_ref().map(|token| token.as_str()))?;
     let mut child = Command::new("/usr/bin/curl")
         .args([
             "--silent",
@@ -875,11 +886,11 @@ fn check_github_release() -> io::Result<String> {
     let (body, code) = (&output.stdout[..index], &output.stdout[index + 1..]);
     match code {
         b"200" => github_release_message(body),
-        b"401" => Err(err("GitHub rejected the token. Press G to replace it.")),
-        b"403" => Err(err("GitHub denied the request or rate limit was reached.")),
-        b"404" => Err(err(
-            "Private repository is inaccessible. Check the token's repository permissions.",
+        b"401" => Err(err(
+            "GitHub rejected the token. Press G to replace or remove it.",
         )),
+        b"403" => Err(err("GitHub denied the request or rate limit was reached.")),
+        b"404" => Err(err("GitHub repository or release endpoint was not found.")),
         _ => Err(err("GitHub release check failed; retry later.")),
     }
 }
@@ -1047,7 +1058,25 @@ pub fn dhcp_hook() -> io::Result<()> {
 
 #[cfg(test)]
 mod github_tests {
-    use super::github_release_message;
+    use super::{github_curl_config, github_release_message};
+    #[test]
+    fn public_checks_need_no_authorization_and_optional_tokens_are_validated() {
+        assert!(github_curl_config(None).unwrap().is_empty());
+        let token = "github_pat_example_read_only_token";
+        assert_eq!(
+            github_curl_config(Some(token)).unwrap().as_str(),
+            format!("header = \"Authorization: Bearer {token}\"\n")
+        );
+        for invalid in [
+            "",
+            "short",
+            "github_pat_example\nurl = https://example.com",
+            "github_pat_example\"injected",
+        ] {
+            assert!(github_curl_config(Some(invalid)).is_err());
+        }
+    }
+
     #[test]
     fn reports_release_assets_and_rejects_untrusted_tags() {
         let data=br#"[{"draft":false,"prerelease":true,"tag_name":"v0.4.0-preview.1","assets":[{"name":"agx-system-update.tar.gz","state":"uploaded"}]}]"#;
