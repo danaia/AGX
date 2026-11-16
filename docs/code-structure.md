@@ -30,6 +30,8 @@ Existing large files should be evaluated when touched, rather than forcing unrel
 
 Some feature/service files remain large and are candidates for later focused passes. This library refactor does not claim to have segmented the entire repository.
 
+`scripts/trace-gui.py` owns workstation-side diagnostic collection, bounded log storage, SSH reconnection, and collector cleanup. It reads the Pi's existing logs and process state without changing GUI or system configuration.
+
 ## Validation
 
 Run the affected crates' existing tests. For moves across these shared library boundaries, use `scripts/cargo.sh test --workspace --locked -- --test-threads=1` and `scripts/cargo.sh test --manifest-path crates/agx-gui/Cargo.toml --locked`. The GUI is a standalone workspace and is not covered by the root workspace command. Review the diff for altered signatures, visibility, initialization order, and discarded working-tree edits. A pure structural refactor should not require deploying new binaries to the Pi to change product behavior.
