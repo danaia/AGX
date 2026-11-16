@@ -1,0 +1,20 @@
+# SSH tunnel to the ANGI Pi's desktop VNC server, kept up by systemd.
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/angi-vnc-tunnel@.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now angi-vnc-tunnel@ethernet angi-vnc-tunnel@wifi
+#
+# Edit ExecStart if the repository is not at ~/dev/AGX. Viewers then connect to
+# 127.0.0.1:5941 (Ethernet) or 127.0.0.1:5942 (Wi-Fi) with their own tunnel off.
+[Unit]
+Description=ANGI VNC tunnel over %i
+
+[Service]
+ExecStart=%h/dev/AGX/scripts/vnc-tunnel.sh run %i
+# A Pi that is off or rebooting just means ssh exits; retry quietly until it is back.
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

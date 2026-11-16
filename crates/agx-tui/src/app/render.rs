@@ -127,9 +127,16 @@ impl App {
                 .draw(frame, regions[2], self.palette, self.options),
             1 => self.overview(frame, regions[2]),
             2 => self.hardware(frame, regions[2]),
-            3 => self
-                .wifi
-                .draw(frame, regions[2], self.palette, self.options),
+            3 => {
+                let area = crate::remote_access::panel(
+                    frame,
+                    regions[2],
+                    self.snapshot.as_ref(),
+                    self.palette,
+                    self.options,
+                );
+                self.wifi.draw(frame, area, self.palette, self.options);
+            }
             4 => {
                 let kernel = self
                     .snapshot
@@ -138,13 +145,21 @@ impl App {
                 self.system
                     .draw(frame, regions[2], self.palette, self.options, kernel);
             }
-            5 | 6 => self.services.draw(
-                frame,
-                regions[2],
-                self.palette,
-                self.options,
-                self.page == 6,
-            ),
+            5 | 6 => {
+                let area = if self.page == 5 {
+                    crate::remote_access::panel(
+                        frame,
+                        regions[2],
+                        self.snapshot.as_ref(),
+                        self.palette,
+                        self.options,
+                    )
+                } else {
+                    regions[2]
+                };
+                self.services
+                    .draw(frame, area, self.palette, self.options, self.page == 6);
+            }
             _ => self.help(frame, regions[2]),
         }
         let action_width = if area.width < 70 { 10 } else { 14 };

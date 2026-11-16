@@ -2,8 +2,9 @@
 mod models;
 mod parsers;
 mod sampler;
+mod vnc;
 
-pub use models::{CpuTicks, Hardware, Memory, Network, Snapshot, Storage};
+pub use models::{CpuTicks, Hardware, Memory, Network, Snapshot, Storage, VncStatus};
 pub use parsers::{cpu_usage, parse_cpu, parse_memory};
 pub use sampler::Sampler;
 

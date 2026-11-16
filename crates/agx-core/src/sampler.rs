@@ -180,6 +180,7 @@ impl Sampler {
             root_storage,
             networks,
             hardware,
+            vnc: crate::vnc::collect(),
             warnings,
         })
     }

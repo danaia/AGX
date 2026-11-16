@@ -56,3 +56,48 @@ fn small_and_resized_layouts_keep_help_and_navigation_available() {
         }
     }
 }
+
+#[test]
+fn network_and_services_show_vnc_connections_and_gui_memory() {
+    for (width, height) in [(80, 24), (120, 36)] {
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        let mut app = App::new(Options {
+            ascii: true,
+            ..Options::default()
+        });
+        let mut snapshot = Sampler::default().collect().unwrap();
+        snapshot.vnc = agx_core::VncStatus {
+            port: 5900,
+            listeners: vec!["127.0.0.1:5900".into()],
+            connections: 2,
+            gui_rss_bytes: Some(64 * 1048576),
+            error: None,
+        };
+        app.snapshot = Some(snapshot);
+        for page in [3, 5] {
+            app.page(page);
+            terminal.draw(|frame| app.draw(frame)).unwrap();
+            let text: String = terminal
+                .backend()
+                .buffer()
+                .content()
+                .iter()
+                .map(|cell| cell.symbol())
+                .collect();
+            assert!(text.contains("127.0.0.1:5900"));
+            assert!(text.contains("2 connection(s)"));
+            assert!(text.contains("64.0 MiB RSS"));
+        }
+        app.snapshot.as_mut().unwrap().vnc.listeners.clear();
+        app.page(3);
+        terminal.draw(|frame| app.draw(frame)).unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+        assert!(text.contains("not listening"));
+    }
+}

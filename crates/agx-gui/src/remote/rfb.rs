@@ -79,6 +79,17 @@ impl PixelFormat {
         out
     }
 
+    /// Stream Raw pixels one row at a time, without allocating a whole encoded frame.
+    pub fn write_pixels<W: Write>(&self, frame: &Frame, rect: Rect, out: &mut W) -> io::Result<()> {
+        let mut row = Vec::with_capacity(rect.w * usize::from(self.bits_per_pixel / 8));
+        for y in rect.y..rect.y + rect.h {
+            row.clear();
+            self.encode(frame, Rect { y, h: 1, ..rect }, &mut row);
+            out.write_all(&row)?;
+        }
+        Ok(())
+    }
+
     /// Append `rect` of `frame` to `out` in this pixel format (Raw encoding).
     pub fn encode(&self, frame: &Frame, rect: Rect, out: &mut Vec<u8>) {
         let bytes_per_pixel = usize::from(self.bits_per_pixel / 8);
@@ -404,6 +415,51 @@ mod tests {
             &mut out,
         );
         assert_eq!(out, [18, 17, 16, 0, 22, 21, 20, 0]);
+    }
+
+    #[test]
+    fn streaming_pixels_bounds_writes_to_a_row_and_propagates_io_errors() {
+        struct Rows {
+            bytes: Vec<u8>,
+            limit: usize,
+        }
+        impl Write for Rows {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                assert!(bytes.len() <= self.limit);
+                self.bytes.extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        let frame = Frame {
+            width: 8,
+            height: 4,
+            rgba: (0..128).collect(),
+        };
+        let rect = Rect {
+            x: 2,
+            y: 1,
+            w: 3,
+            h: 2,
+        };
+        let mut rows = Rows {
+            bytes: Vec::new(),
+            limit: 3 * 4,
+        };
+        PixelFormat::NATIVE
+            .write_pixels(&frame, rect, &mut rows)
+            .unwrap();
+        let mut expected = Vec::new();
+        PixelFormat::NATIVE.encode(&frame, rect, &mut expected);
+        assert_eq!(rows.bytes, expected);
+        let mut too_small = [0u8; 3];
+        assert!(
+            PixelFormat::NATIVE
+                .write_pixels(&frame, rect, &mut too_small.as_mut_slice())
+                .is_err()
+        );
     }
 
     #[test]

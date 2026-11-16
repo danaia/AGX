@@ -2,7 +2,7 @@
 //! the GUI of a Pi whose HDMI output is not in use. Off unless `AGX_GUI_VNC` is set.
 //!
 //! The server listens on loopback only and offers no VNC password: reach it through
-//! an SSH tunnel, which Remmina can open itself. Frames come from Slint's own window
+//! an OpenSSH tunnel (see `scripts/vnc-tunnel.sh`). Frames come from Slint's own window
 //! snapshot, so this works with the KMS and the preview backends alike.
 //!
 //! Signing in replaces the root login process with the user's desktop. The login

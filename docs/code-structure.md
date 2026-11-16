@@ -23,10 +23,10 @@ Existing large files should be evaluated when touched, rather than forcing unrel
 
 | Crate | Responsibilities |
 | --- | --- |
-| `agx-core` | `models.rs` owns snapshots and counters; `parsers.rs` owns pure counter parsing; `sampler.rs` owns Linux collection. |
+| `agx-core` | `models.rs` owns snapshots and counters; `parsers.rs` owns pure counter parsing; `sampler.rs` owns Linux collection; `vnc.rs` observes VNC TCP sockets and GUI resident memory without connecting or controlling services. |
 | `agx-net` | `protocol.rs` owns wire models; `client.rs` owns socket requests; `ssid.rs` owns byte encoding and scan parsing; `credentials.rs` owns validation and PSK derivation; `service.rs` owns the existing service implementation. |
-| `agx-gui` (standalone) | `remote/` owns optional VNC access: `rfb.rs` is the pure wire protocol, `frame.rs` captured pixels and change detection, `input.rs` key/pointer translation into Slint events, `server.rs` sockets and client threads, `handoff.rs` passing the listener and viewers from the login screen to the desktop across the exec, `mod.rs` configuration and the UI-thread capture timer. `main.rs`, `wm.rs` and `login.rs` predate this guide and remain on the size backlog. |
-| `agx-tui` | `app/mod.rs` owns state/navigation; `app/render.rs` owns chrome/composition; `app/screens.rs` owns built-in read-only screens; `runtime.rs` owns the event loop; `terminal.rs` owns terminal cleanup/signals; `worker.rs` owns sampling; `palette.rs` owns shared styling. Feature screens retain their own modules. |
+| `agx-gui` (standalone) | `remote/` owns optional VNC access: `rfb.rs` is the pure wire protocol, `frame.rs` captured pixels and change detection, `input.rs` key/pointer translation into Slint events, `server.rs` sockets and client threads, `server/tests.rs` live socket and request scheduling tests, `handoff.rs` passing the listener and viewers from the login screen to the desktop across the exec, `mod.rs` configuration and the UI-thread capture timer. `main.rs`, `wm.rs` and `login.rs` predate this guide and remain on the size backlog. |
+| `agx-tui` | `app/mod.rs` owns state/navigation; `app/render.rs` owns chrome/composition; `app/screens.rs` owns built-in read-only screens; `runtime.rs` owns the event loop; `terminal.rs` owns terminal cleanup/signals; `worker.rs` owns sampling; `palette.rs` owns shared styling; `remote_access.rs` composes the shared VNC status panel on Network and Services. Feature screens retain their own modules. |
 
 Some feature/service files remain large and are candidates for later focused passes. This library refactor does not claim to have segmented the entire repository.
 

@@ -29,6 +29,16 @@ pub struct Hardware {
     pub detail: String,
 }
 
+/// Observed VNC sockets and the resident memory of the GUI hosting them.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct VncStatus {
+    pub port: u16,
+    pub listeners: Vec<String>,
+    pub connections: usize,
+    pub gui_rss_bytes: Option<u64>,
+    pub error: Option<String>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
     pub hostname: String,
@@ -42,6 +52,7 @@ pub struct Snapshot {
     pub root_storage: Option<Storage>,
     pub networks: Vec<Network>,
     pub hardware: Vec<Hardware>,
+    pub vnc: VncStatus,
     pub warnings: Vec<String>,
 }
 

@@ -2,6 +2,7 @@
 mod app;
 mod palette;
 mod profile;
+mod remote_access;
 mod runtime;
 mod services;
 mod system;
