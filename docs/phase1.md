@@ -97,8 +97,21 @@ If HDMI stays blank, record LED patterns and check power, HDMI0/cable/display, c
 - Full image build: **passed**, November 15, 2026. Vendor kernel `6.12.61-v8-16k` with verified 4 KB pages and built-in USB gadget support.
 - Artifact checks: **passed**, including disk partition contents, packed boot configuration, SSH/network files read from ext4, and root-owned SSH directory/key modes (`0700`/`0600`). Corrupted MBR and boot-partition copies were correctly rejected.
 - SD card write: **passed**, November 15, 2026. The approved 29.1 GiB removable card (serial `000000009451`) was written, synced, and read back with a matching image SHA-256, then unmounted and safely powered off. Local evidence: `.cache/evidence/card-flash.txt`.
-- Physical Pi 5 boot, USB Ethernet SSH, and interactive HDMI/USB recovery shell: pending.
-- Phase 1 acceptance: **not yet passed**; requires the physical Pi test above.
+- Physical Pi 5 boot and USB Ethernet SSH: **passed**, November 15, 2026. The user opened an interactive root shell, and the workstation independently connected with public-key authentication and captured live system information and the kernel boot log.
+- Phase 1 acceptance for the user-selected USB SSH test path: **passed**. No Phase 2 work has started.
+- Interactive HDMI and debug UART recovery login: **unverified**. Both getty processes are running, but the boot log records `bcm2708_fb ... probe ... failed with error -2`; display bring-up requires a separate physical check.
+
+### Hardware observations
+
+- Board: Raspberry Pi 5 Model B Rev 1.1; ARM64 kernel `6.12.61-v8-16k`.
+- Runtime page size: `KernelPageSize: 4 kB`.
+- Memory reported: `MemTotal: 16387812 kB` (about 15.6 GiB).
+- SD card detected as `SD32G`, 29.1 GiB, with partitions `p1` and `p2`.
+- Kernel mounted the ext4 root at about 2.9 seconds, started `/sbin/init`, and remounted root read/write at about 3.0 seconds. This timing describes the kernel log, excluding EEPROM startup and time until SSH login.
+- USB gadget driver bound successfully; live `usb0` is up at `10.77.0.2/24` with the configured device MAC.
+- Dropbear is running with password authentication disabled; a public-key SSH session succeeded.
+- SSH host fingerprint read directly on the Pi matches the user's first-connection prompt: `SHA256:cgKA/OnkSFz5mLIuid7kuuRLhFk7wCP1+foOHNuAstQ`.
+- Local boot evidence: `.cache/evidence/pi5-boot.txt`. The user-visible empty `ls` output comes from the initial root home directory; the shell itself is working.
 
 Generated image: `output/images/sdcard.img`, 402,653,696 bytes. Workstation-specific public-key input is intentionally outside Git. This build's SHA-256:
 

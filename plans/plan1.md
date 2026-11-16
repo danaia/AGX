@@ -42,6 +42,8 @@ Buildroot currently provides a `raspberrypi5_defconfig`, so there is an establis
 
 **Pass:** Pi boots into a working text console.
 
+**Status:** Passed on November 15, 2026 using the user-selected SSH-over-USB path on a physical Pi 5. Kernel boot log, read/write SD root filesystem, runtime page size, USB link, and key-authenticated shell were verified. Interactive HDMI and UART recovery login remain unverified; see the [hardware observations](../docs/phase1.md#hardware-observations).
+
 ### Phase 2 — Kernel and hardware
 
 - Configure the minimum Linux ARM64 kernel.
