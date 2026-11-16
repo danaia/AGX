@@ -96,6 +96,7 @@ If HDMI stays blank, record LED patterns and check power, HDMI0/cable/display, c
 - Host dependency check passed using signed distro `bc` and `wget` binaries extracted under `.cache/host-tools/`; system packages were not changed.
 - Full image build: **passed**, November 15, 2026. Vendor kernel `6.12.61-v8-16k` with verified 4 KB pages and built-in USB gadget support.
 - Artifact checks: **passed**, including disk partition contents, packed boot configuration, SSH/network files read from ext4, and root-owned SSH directory/key modes (`0700`/`0600`). Corrupted MBR and boot-partition copies were correctly rejected.
+- SD card write: **passed**, November 15, 2026. The approved 29.1 GiB removable card (serial `000000009451`) was written, synced, and read back with a matching image SHA-256, then unmounted and safely powered off. Local evidence: `.cache/evidence/card-flash.txt`.
 - Physical Pi 5 boot, USB Ethernet SSH, and interactive HDMI/USB recovery shell: pending.
 - Phase 1 acceptance: **not yet passed**; requires the physical Pi test above.
 
