@@ -14,6 +14,26 @@ make build
 make check-image
 mkdir -p .cache/release-update
 cp --reflink=auto output/images/rootfs.ext4 .cache/release-update/rootfs.ext4
+# Unlinking alone leaves deleted file bytes in the filesystem image. Zero the
+# key's data blocks first so the candidate contains no recoverable key text.
+python3 - <<'PYBLOCK'
+import os, re, subprocess
+from pathlib import Path
+image=Path('.cache/release-update/rootfs.ext4')
+debugfs='output/host/sbin/debugfs'
+blocks=subprocess.check_output([debugfs,'-R','blocks /root/.ssh/authorized_keys',str(image)],stderr=subprocess.DEVNULL,text=True).split()
+stats=subprocess.check_output([debugfs,'-R','stats',str(image)],stderr=subprocess.DEVNULL,text=True)
+match=re.search(r'^Block size:\s+(\d+)',stats,re.MULTILINE)
+if not blocks or not match or not all(block.isdecimal() for block in blocks):
+    raise SystemExit('Could not locate the workstation key blocks for redaction.')
+size=int(match.group(1))
+with image.open('r+b') as target:
+    for block in blocks:
+        target.seek(int(block)*size)
+        target.write(bytes(size))
+    target.flush()
+    os.fsync(target.fileno())
+PYBLOCK
 output/host/sbin/debugfs -w -R 'rm /root/.ssh/authorized_keys' .cache/release-update/rootfs.ext4 >.cache/release-update/key-removal.log 2>&1
 if output/host/sbin/debugfs -R 'stat /root/.ssh/authorized_keys' .cache/release-update/rootfs.ext4 2>/dev/null | grep -q 'Inode:'; then
     echo 'Workstation recovery key still exists in the release filesystem.' >&2
