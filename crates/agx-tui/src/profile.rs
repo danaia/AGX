@@ -577,7 +577,7 @@ impl Ui {
             rows[8],
         );
         let mut lines = vec![
-            Line::styled("AGX ADMINISTRATORS", Style::default().fg(p.purple).bold()),
+            Line::styled("ANGI ADMINISTRATORS", Style::default().fg(p.purple).bold()),
             Line::raw(""),
         ];
         if let Some(status) = &self.status {

@@ -816,7 +816,7 @@ fn github_release_message(data: &[u8]) -> io::Result<String> {
         })
         .max_by(|a, b| a.0.cmp(&b.0));
     let Some((_, release, tag)) = release else {
-        return Ok("No published versioned AGX releases were found.".into());
+        return Ok("No published versioned ANGI releases were found.".into());
     };
     let asset = release["assets"].as_array().is_some_and(|assets| {
         assets.iter().any(|asset| {
@@ -831,7 +831,7 @@ fn github_release_message(data: &[u8]) -> io::Result<String> {
     let package = if asset {
         "update package available"
     } else {
-        "no AGX package attached"
+        "no ANGI package attached"
     };
     Ok(format!(
         "GitHub: {tag} ({stage}); {package}. Installed system version is not tracked yet."

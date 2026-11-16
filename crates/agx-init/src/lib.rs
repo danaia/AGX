@@ -61,7 +61,7 @@ pub struct Reply {
 }
 pub fn request(request: &Request) -> io::Result<Reply> {
     let mut socket = UnixStream::connect(SOCKET)
-        .map_err(|e| io::Error::new(e.kind(), "AGX service manager unavailable"))?;
+        .map_err(|e| io::Error::new(e.kind(), "ANGI service manager unavailable"))?;
     socket.set_read_timeout(Some(Duration::from_secs(3)))?;
     socket.set_write_timeout(Some(Duration::from_secs(2)))?;
     serde_json::to_writer(&mut socket, request)?;

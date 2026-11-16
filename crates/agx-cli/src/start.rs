@@ -108,7 +108,7 @@ pub fn ask(default: Choice, timeout: Duration) -> io::Result<Choice> {
     };
     write!(
         out,
-        "\x1b[2J\x1b[H\n  \x1b[1;36mAGX OS\x1b[0m  choose your interface\n\n\
+        "\x1b[2J\x1b[H\n  \x1b[1;36mANGI OS\x1b[0m  choose your interface\n\n\
          \x20   \x1b[1;32m1\x1b[0m  Desktop  (GUI)\n\
          \x20   \x1b[1;32m2\x1b[0m  Console  (TUI)\n\n"
     )?;

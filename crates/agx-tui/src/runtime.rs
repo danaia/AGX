@@ -319,7 +319,7 @@ pub fn run(options: Options) -> io::Result<Exit> {
         let mut output = io::stdout().lock();
         let _ = writeln!(
             output,
-            "\nAGX is shutting down{}. Your SSH session will close.",
+            "\nANGI is shutting down{}. Your SSH session will close.",
             if rebooting { " for reboot" } else { "" }
         );
         if let Ok(logo) = std::fs::read_to_string("/usr/share/agx/logo.ascii") {
@@ -333,7 +333,7 @@ pub fn run(options: Options) -> io::Result<Exit> {
             output,
             "\n{}",
             if rebooting {
-                "Please log back in once AGX is ready."
+                "Please log back in once ANGI is ready."
             } else {
                 "Wait for the Pi to finish shutting down before unplugging power."
             }

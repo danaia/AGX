@@ -47,7 +47,7 @@ fn small_and_resized_layouts_keep_help_and_navigation_available() {
                 .iter()
                 .map(|cell| cell.symbol())
                 .collect();
-            assert!(text.contains("AGX") || text.contains("Overview"));
+            assert!(text.contains("ANGI") || text.contains("Overview"));
             assert!(text.is_ascii(), "ASCII mode emitted Unicode");
             if width >= 40 {
                 assert_eq!(app.tabs.len(), 8);

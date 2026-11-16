@@ -18,7 +18,7 @@ impl App {
         );
         if area.width < 40 || area.height < 12 {
             let notice = format!(
-                "AGX SYSTEM CONSOLE\n\nTerminal: {} x {}\nResize to at least 40 x 12.\n\nq / Esc: return to shell",
+                "ANGI SYSTEM CONSOLE\n\nTerminal: {} x {}\nResize to at least 40 x 12.\n\nq / Esc: return to shell",
                 area.width, area.height
             );
             frame.render_widget(
@@ -56,7 +56,7 @@ impl App {
             .map_or("connecting", |s| s.hostname.as_str());
         let header = Line::from(vec![
             Span::styled(
-                " AGX ",
+                " ANGI ",
                 Style::default()
                     .fg(self.palette.bg)
                     .bg(self.palette.cyan)

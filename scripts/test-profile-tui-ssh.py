@@ -48,7 +48,7 @@ def login(user, password, *, wrong=False, console=False):
                 if not sent and b'password:' in output.lower():
                     os.write(master, password.encode() + b'\n')
                     sent = True
-                if sent and not wrong and b'Welcome to AGX' in output and not commands:
+                if sent and not wrong and b'Welcome to ANGI' in output and not commands:
                     os.write(master, b'id -un; agx wifi status --json; agx services --json; echo PROFILE_LOGIN_OK; exit\n')
                     commands = True
                 if wrong and b'Permission denied' in output:
@@ -62,8 +62,8 @@ def login(user, password, *, wrong=False, console=False):
         if wrong:
             assert b'Permission denied' in output, 'Incorrect password was not rejected'
         else:
-            assert b'Welcome to AGX' in output, 'Login splash missing: ' + output.decode(errors='replace')
-            assert b'################' in output, 'ASCII brand logo missing'
+            assert b'Welcome to ANGI' in output, 'Login splash missing: ' + output.decode(errors='replace')
+            assert b'###########' in output, 'ASCII brand logo missing'
             assert b'PROFILE_LOGIN_OK\r\n' in output, 'Login shell failed'
             assert b'"interface_present":true' in output, 'New user cannot reach provisioning service'
             assert b'"pid1":true' in output, 'New administrator cannot reach Rust service manager'

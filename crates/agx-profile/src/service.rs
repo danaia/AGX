@@ -73,7 +73,7 @@ pub fn admin_gid() -> io::Result<u32> {
                 .then(|| f[2].parse().ok())
                 .flatten()
         })
-        .ok_or_else(|| err("AGX administration group is missing"))
+        .ok_or_else(|| err("ANGI administration group is missing"))
 }
 pub fn prepare_access(socket: &str) -> io::Result<()> {
     let gid = ensure_group()?;
@@ -285,7 +285,7 @@ pub fn save(save: Save) -> io::Result<String> {
             .iter()
             .any(|a| a.username == save.username)
     {
-        return Err(err("Only AGX administrator accounts can be edited here"));
+        return Err(err("Only ANGI administrator accounts can be edited here"));
     }
     let uid = if let Some(line) = existing {
         line.split(':')

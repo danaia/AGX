@@ -10,3 +10,10 @@ Read [docs/code-structure.md](docs/code-structure.md) before extending or refact
 - Run `python3 scripts/check-file-sizes.py` to identify files needing review. Existing large files are a staged backlog, not a reason to refactor unrelated subsystems during a focused change.
 
 These are repository-scoped instructions. Keep the shared guide current when module responsibilities change.
+
+## Product name: ANGI (technical name: AGX)
+
+The public product name is **ANGI** (pronounced "Angie"). Anything a person sees must say ANGI: README and public docs prose, the TUI and GUI text, window titles, login and shutdown messages, `/etc/issue`, the login splash, and the ASCII logo in `brand/logo-ascii.md` (white "ANG", lime "I").
+
+Keep **AGX** for technical identifiers: the `agx` command and its help text, `agx-*` crates and binaries, service and group names, file paths and environment variables (`/usr/share/agx`, `AGX_*`), Buildroot package names, and the GitHub repository URL until the repository is renamed. Do not rename identifiers when changing visible text, and do not change visible text to an identifier. When adding a user-visible string, write ANGI.
+

@@ -80,7 +80,7 @@ fn exec_session(username: &str) -> io::Error {
         )
     };
     if uid < 1000 {
-        return io::Error::other("An AGX administrator account is required");
+        return io::Error::other("An ANGI administrator account is required");
     }
     let mut session = Command::new("/usr/bin/agx");
     session
