@@ -1,0 +1,4 @@
+# Pi 5 boots a 64-bit Image through its existing EEPROM firmware.
+kernel=Image
+arm_64bit=1
+disable_overscan=1

@@ -26,11 +26,8 @@ Init · Wi-Fi management · CLI
 
 OpenAI · Tool calls · Task execution
 
-Buildroot currently provides a `raspberrypi5_defconfig`, so there is an established board configuration to start from.&#x20;
+Buildroot currently provides a `raspberrypi5_defconfig`, so there is an established board configuration to start from.
 
-[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
-
-GitHub+2
 
 
 
@@ -39,7 +36,7 @@ GitHub+2
 ### Phase 1 — Bootloader and boot image
 
 - Initialize Buildroot using `make raspberrypi5_defconfig`.
-- Configure the Pi 5 EEPROM boot process, `config.txt`, device tree, and ARM64 kernel image.
+- Retain the existing Pi 5 EEPROM bootloader and verify it supports SD boot. Configure `config.txt`, the Pi 5 device trees, and the ARM64 kernel image.
 - Produce a bootable AGX microSD image.
 - Verify kernel boot messages through a console.
 
@@ -105,12 +102,10 @@ GitHub+2
 
 Complete phases sequentially. Each phase requires source code, tests, a Git commit, and verified acceptance criteria before advancing. Do not report physical hardware tests as passed without evidence. Do not introduce a graphical interface or custom kernel during this MVP.
 
-**Full agent-ready implementation plan**
-
-Includes architecture, suggested repository structure, technical references, and verification gates.
-
-Download AGX_OS_MVP_AGENT_PLAN.md
-
 One key architectural choice: **Herdr should orchestrate development from your main workstation, while AGX runs a small Rust agent worker on the Pi.** This avoids trying to port the entire Herdr orchestration system before the operating system itself works.
 
-The result of this MVP will be a real, bootable **AGX Linux-based operating system**, with an independent Rust control plane. Developing a completely Rust-native kernel can be a separate future project.&#x20;
+The result of this MVP will be a real, bootable **AGX Linux-based operating system**, with an independent Rust control plane. Developing a completely Rust-native kernel can be a separate future project.
+
+## Phase 1 implementation review
+
+Buildroot 2026.08.1 is pinned with an AGX external tree derived from its Pi 5 defconfig. BusyBox init provides the initial HDMI/USB and debug UART recovery consoles; Rust init remains Phase 3. At the user's request, Phase 1 also includes key-authenticated SSH over a direct Ethernet cable, ahead of the full networking work. Keep the upstream board kernel until baseline boot is verified. A successful build is separate from physical boot acceptance. See [build instructions and acceptance evidence](../docs/phase1.md).
