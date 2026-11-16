@@ -1,5 +1,5 @@
 //! Root greeter only. A successful login execs a fresh, unprivileged session.
-use crate::{ComponentHandle, LoginWindow, Timer, graphics};
+use crate::{ComponentHandle, LoginWindow, Timer, graphics, remote};
 use std::{
     cell::RefCell, ffi::CString, io, os::unix::process::CommandExt, process::Command, rc::Rc,
     time::Duration,
@@ -12,6 +12,7 @@ pub fn run(preview: bool) -> Result<(), Box<dyn std::error::Error>> {
     }
     let ui = LoginWindow::new()?;
     ui.set_draw_cursor(graphics::draw_cursor());
+    let remote = remote::start(&ui);
     let authenticated = Rc::new(RefCell::new(None::<String>));
     let result = authenticated.clone();
     let weak = ui.as_weak();
@@ -56,12 +57,14 @@ pub fn run(preview: bool) -> Result<(), Box<dyn std::error::Error>> {
     ui.run()?;
     drop(ui);
     if let Some(username) = authenticated.borrow_mut().take() {
-        return Err(exec_session(&username).into());
+        // Viewers connected over VNC follow the sign-in into the desktop.
+        let handoff = remote.as_ref().and_then(remote::Remote::handoff_for_exec);
+        return Err(exec_session(&username, handoff).into());
     }
     Ok(())
 }
 
-fn exec_session(username: &str) -> io::Error {
+fn exec_session(username: &str, handoff: Option<remote::Exec>) -> io::Error {
     let Ok(name) = CString::new(username) else {
         return io::Error::other("Invalid account");
     };
@@ -98,6 +101,12 @@ fn exec_session(username: &str) -> io::Error {
             session.env(key, value);
         }
     }
+    let keep_open = handoff.map_or_else(Vec::new, |exec| {
+        for (name, value) in &exec.env {
+            session.env(name, value);
+        }
+        exec.fds
+    });
     unsafe {
         session.pre_exec(move || {
             // The software framebuffer backend needs access to the active VT.
@@ -111,6 +120,11 @@ fn exec_session(username: &str) -> io::Error {
             // Do not leak the root greeter's display/input descriptors into the session.
             if libc::syscall(libc::SYS_close_range, 3u32, u32::MAX, 4u32) != 0 {
                 return Err(io::Error::last_os_error());
+            }
+            // The VNC listener and viewers must survive into the desktop. Best effort:
+            // a failure only means the viewer has to reconnect.
+            for fd in &keep_open {
+                libc::fcntl(*fd, libc::F_SETFD, 0);
             }
             Ok(())
         });

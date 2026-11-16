@@ -7,12 +7,41 @@ use std::{
     io::{self, Write},
     os::fd::AsRawFd,
     path::Path,
+    process::{Command, ExitStatus},
+    sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
 
 /// `agx-gui` exits with this code when the user picks "Open TUI" inside it.
 pub const GUI_WANTS_TUI: i32 = 10;
 const GUI_PATHS: [&str; 2] = ["/usr/bin/agx-gui", "/usr/local/bin/agx-gui"];
+
+/// Set by the login screen so VNC viewers stay connected when the desktop replaces it.
+const VNC_HANDOFF: [&str; 2] = ["AGX_GUI_VNC_HANDOFF", "AGX_GUI_VNC_FDS"];
+static VNC_HANDOFF_SPENT: AtomicBool = AtomicBool::new(false);
+
+/// Run the desktop and wait for it. The first launch inherits the login screen's VNC
+/// sockets; this process then closes its own copies so only the desktop holds them.
+/// Later launches (after a visit to the console) start without them.
+pub fn run_gui() -> io::Result<ExitStatus> {
+    let mut command = Command::new("/usr/bin/agx-gui");
+    let first = !VNC_HANDOFF_SPENT.swap(true, Ordering::SeqCst);
+    if !first {
+        for name in VNC_HANDOFF {
+            command.env_remove(name);
+        }
+    }
+    let mut child = command.spawn()?;
+    if first && let Ok(fds) = std::env::var(VNC_HANDOFF[1]) {
+        for fd in fds.split(',').filter_map(|fd| fd.parse::<i32>().ok()) {
+            // SAFETY: closing descriptors the login screen named for this hand-over.
+            if fd > 2 {
+                unsafe { libc::close(fd) };
+            }
+        }
+    }
+    child.wait()
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Choice {

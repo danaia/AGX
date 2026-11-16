@@ -327,7 +327,7 @@ fn run_interfaces(initial: start::Choice, options: Options) -> io::Result<()> {
             agx_tui::Exit::Quit => None,
         }),
         start::Choice::Gui => {
-            let status = std::process::Command::new("/usr/bin/agx-gui").status();
+            let status = start::run_gui();
             start::reset_console();
             match status {
                 Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => {

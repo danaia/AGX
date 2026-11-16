@@ -43,6 +43,8 @@ SLINT_DEBUG_PERFORMANCE=refresh_lazy,console
 # Optional: select the connected output and its listed 1080p/60 mode index.
 # SLINT_DRM_OUTPUT=HDMI-A-1
 # SLINT_DRM_MODE=4
+# Remote desktop over VNC; see "Remote access (VNC)" below.
+# AGX_GUI_VNC=on
 ```
 
 Set `SLINT_DRM_MODE=list` to list actual supported modes in the log, then replace `list` with the index for **1920×1080 at 60 Hz**. Mode indices depend on the connected display; `4` above is only an example. Reboot after changing the configuration to restart the protected graphical console cleanly. Greeter and authenticated-session stderr are written to `/run/agx/gui.log`, readable through root recovery SSH. This log is volatile and rotates between sessions after 4 MiB. Remove the performance option after measuring.
@@ -54,6 +56,26 @@ For a headless GPU check, cross-build `scripts/check-gpu.c` against the Buildroo
 On November 16, 2026, the headless check passed as root and `dana`: EGL 1.5, Broadcom V3D 7.1.10.2, OpenGL ES 3.1, Mesa 26.1.8. Both HDMI ports were disconnected, so HDMI startup and frame-rate measurements remain unverified.
 
 The first GPU deployment mistakenly linked `/lib/libgcc_s.so.1` to NVMe, creating a boot dependency cycle; the Pi did not return after reboot. The packager now excludes `/lib` and `/lib64`, and deployment checks that PID 1's resolved dependencies do not require NVMe. To repair that first installation, power off the Pi, mount its SD root partition on the workstation, then run `sudo scripts/repair-gui-boot.sh /path/to/mounted/agx-rootfs`. This restores only the original ARM64 `libgcc_s.so.1` to the SD filesystem. Unmount the card before returning it to the Pi. Boot recovery still needs confirmation after this repair.
+
+## Remote access (VNC)
+
+`agx-gui` can serve its own screen over VNC, so a viewer such as Remmina can see and drive the desktop and the login screen without a monitor on the Pi. It is off by default. Set `AGX_GUI_VNC` to turn it on: put `AGX_GUI_VNC=on` in `/etc/agx/gui.env` on the Pi and reboot (the greeter passes it to the signed-in session), or export it when running a preview. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`; `off` or unset disables it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
+
+The server listens on **loopback only** and offers no VNC password, because the classic VNC password scheme (a DES challenge) is too weak to put on a network. Access control is SSH: a non-loopback address is refused, and you connect through an SSH tunnel. Anyone who can already open a TCP connection to the Pi's loopback port, such as another logged-in user, can type into the desktop, so enable it only on a Pi whose shell users you trust.
+
+In Remmina, create a profile with protocol **VNC**:
+
+1. **Basic** tab: Server `127.0.0.1:5900` (this address is resolved on the Pi, after the tunnel).
+2. **SSH Tunnel** tab: enable it, set Server to `dana@192.168.1.184` (the Pi's address), and choose the key or password. The `root` account is key-only.
+3. Leave the VNC password empty. ANGI sends uncompressed pixels, so on slow Wi-Fi choose a lower colour depth in Remmina to reduce traffic.
+
+Signing in replaces the root login process with your desktop, which would normally drop every connection. The login screen therefore passes its listening socket and connected viewers to the desktop through the exec (`AGX_GUI_VNC_HANDOFF`, with `agx` closing its own copies), and the desktop carries on serving the same connection, sending a full picture as soon as it has one. If anything about the handoff looks wrong the desktop ignores it and opens its own listener, and then the viewer shows a dropped connection and you reconnect (Remmina's reconnect button, or open the profile again).
+
+Without Remmina's tunnel: `ssh -N -L 5900:127.0.0.1:5900 dana@192.168.1.184`, then connect Remmina to `127.0.0.1:5900`.
+
+How it works: the UI thread captures the window with Slint's `take_snapshot` only while a viewer is waiting (about 2 frames/s idle, about 15 frames/s for two seconds after input), sends just the changed rectangle in Raw encoding, and resizes the viewer if the window size changes. Pointer and key events are injected as Slint window events, so the shortcuts below work remotely. The capture does not need a monitor to be watching, but Slint's KMS backend refuses to start unless the kernel reports a connected display. On a Pi with nothing plugged in, add `video=HDMI-A-1:1920x1080@60D` to the end of the single line in `cmdline.txt` on the boot partition (keep a copy first) and reboot; the `D` forces the connector on. Without it the desktop retries with `No connected display connector found` in `/run/agx/gui.log` and VNC never starts. The pointer you see is the viewer's local cursor. On the Pi the Mod key is Super, which many viewer desktops intercept; plain `1`..`5` switch workspaces and `/` opens the menu without it.
+
+Status: the protocol, input mapping and server have unit tests (including a live socket client). On November 16, 2026, Remmina displayed the desktop preview window on the workstation, including a window resize, and a scripted client confirmed keyboard input, incremental updates, and 32-bit and 16-bit pixel formats. On the development Pi (no monitor, forced connector as above, `linuxkms-femtovg`) a client reached the graphical login screen through an SSH tunnel to Dropbear and received a 1920×1080 frame; the first full frame took about 2.8 s over Wi-Fi. After signing in, a reconnect from Remmina's saved profile showed the live desktop. Over Wi-Fi the first full frame took about 2.5 s and later updates 0.5-1 s each, because pixels are sent uncompressed; that is the main thing to improve. The sign-in handoff is covered by unit tests (a new server adopting a listener and a connected viewer, resizing it, and accepting new ones) but was deployed to the Pi only on November 16, 2026 and still needs confirming with a real sign-in over VNC. Not implemented: compressed encodings (ZRLE, Tight), clipboard sharing, a VNC password, and a headless mode that would not need the forced connector.
 
 ## Modifier
 

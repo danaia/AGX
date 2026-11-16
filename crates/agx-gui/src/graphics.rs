@@ -3,11 +3,12 @@
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub const ENVIRONMENT: [&str; 4] = [
+pub const ENVIRONMENT: [&str; 5] = [
     "SLINT_BACKEND",
     "SLINT_DRM_MODE",
     "SLINT_DRM_OUTPUT",
     "SLINT_DEBUG_PERFORMANCE",
+    crate::remote::ENV,
 ];
 static SOFTWARE_CURSOR: AtomicBool = AtomicBool::new(false);
 
@@ -86,9 +87,10 @@ mod tests {
     use super::*;
     #[test]
     fn config_only_accepts_graphics_options_and_never_executes_shell() {
-        let options =
-            parse_config("# Comparison run\nSLINT_BACKEND=linuxkms-software\nSLINT_DRM_MODE=4\n")
-                .unwrap();
+        let options = parse_config(
+            "# Comparison run\nSLINT_BACKEND=linuxkms-software\nSLINT_DRM_MODE=4\nAGX_GUI_VNC=on\n",
+        )
+        .unwrap();
         assert_eq!(
             options[0],
             ("SLINT_BACKEND".into(), "linuxkms-software".into())

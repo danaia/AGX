@@ -8,6 +8,7 @@ mod wm;
 mod scene_model;
 mod login;
 mod graphics;
+mod remote;
 
 use agx_core::{Sampler, Snapshot};
 use keymap::{Cmd, ModKey, Mods, bind};
@@ -546,6 +547,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     ui.set_mod_name(app.borrow().modk.name().into());
     ui.set_draw_cursor(graphics::draw_cursor());
     ui.set_resize_cursor_overlay(cfg!(feature = "kms"));
+    let _remote = remote::start(&ui);
     // Callbacks never nest, but a stray re-entrant event is dropped rather than panicking.
     macro_rules! hook {
         ($on:ident, |$app:ident, $ui:ident $(, $arg:ident)*| $body:expr) => {{
