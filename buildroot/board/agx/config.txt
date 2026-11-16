@@ -1,6 +1,7 @@
 # Pi 5 boots a 64-bit Image through its existing EEPROM firmware.
 kernel=Image
 arm_64bit=1
+disable_splash=1
 disable_overscan=1
 # USB-C presents an Ethernet gadget to the attached Linux workstation.
 dtoverlay=dwc2,dr_mode=peripheral

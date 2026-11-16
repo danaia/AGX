@@ -14,7 +14,7 @@
 
 Install prerequisites and run the commands in the README. `make configure` deliberately resets the output configuration to the tracked AGX defconfig. `make build` resumes an existing build; use `make configure` after changing the defconfig. The Buildroot source is cached under `.cache/src/`, downloads under `.cache/downloads/`, and build outputs under `output/`.
 
-The external tree in `buildroot/` derives its configuration from the pinned upstream `raspberrypi5_defconfig`. It uses the upstream genimage helper with an AGX layout: an MBR disk image, a 128 MB FAT boot partition (including the DWC2 overlay), and a 256 MB ext4 root partition. AGX's `config.txt` selects the ARM64 `Image`; `cmdline.txt` selects SD partition 2 as root and enables both text consoles.
+The external tree in `buildroot/` derives its configuration from the pinned upstream `raspberrypi5_defconfig`. It uses the upstream genimage helper with an AGX layout: an MBR disk image, a 128 MB FAT boot partition (including the DWC2 overlay), and a 256 MB ext4 root partition. AGX's `config.txt` selects the ARM64 `Image`; `cmdline.txt` selects SD partition 2 as root and directs kernel messages to serial while keeping the HDMI login console available.
 
 `make check-image` checks the ARM64 and DTB headers, boot file presence in the FAT image, ext filesystem magic, partition layout, partition contents, generated console entries, and the SSH/network files read back from the ext4 image. These checks do not establish physical boot success.
 

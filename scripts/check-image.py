@@ -69,9 +69,11 @@ def check(images):
     require("kernel=Image" in config, "Firmware does not select Image")
     require("dtoverlay=dwc2,dr_mode=peripheral" in config, "Missing USB device overlay")
     cmdline = (images / "rpi-firmware/cmdline.txt").read_text()
-    for token in ("root=/dev/mmcblk0p2", "rootwait", "init=/usr/sbin/agx-init", "console=tty1", "console=ttyAMA10,115200",
+    for token in ("root=/dev/mmcblk0p2", "rootwait", "init=/usr/sbin/agx-init", "logo.nologo", "console=ttyAMA10,115200",
                   "g_ether.host_addr=02:77:00:00:00:01", "g_ether.dev_addr=02:77:00:00:00:02"):
         require(token in cmdline.split(), f"Missing boot argument: {token}")
+    require("console=tty1" not in cmdline.split(), "Kernel messages must not overwrite the HDMI login")
+    require("disable_splash=1" in config, "Firmware splash must be disabled")
     inittab = (images.parent / "target/etc/inittab").read_text()
     for tty in ("tty1::respawn:", "ttyAMA10::respawn:"):
         require(tty in inittab, f"Missing login console: {tty}")

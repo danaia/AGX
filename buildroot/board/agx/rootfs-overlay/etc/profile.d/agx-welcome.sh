@@ -1,3 +1,7 @@
+# Keep the HDMI login shell concise; retain the existing SSH welcome.
+if [ "$(tty 2>/dev/null)" = /dev/tty1 ]; then
+    case "$-" in *i*) printf '\n  AGX OS  |  type agx --help for commands or agx tui for the dashboard.\n\n' ;; esac
+else
 # Interactive login splash only; keep SSH commands and file transfers clean.
 case "$-" in
     *i*)
@@ -40,3 +44,5 @@ case "$-" in
         fi
         ;;
 esac
+
+fi

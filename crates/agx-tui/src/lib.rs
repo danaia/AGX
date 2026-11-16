@@ -424,8 +424,12 @@ impl App {
             ),
             _ => self.help(frame, regions[2]),
         }
-        let footer_regions =
-            Layout::horizontal([Constraint::Min(1), Constraint::Length(14)]).split(regions[3]);
+        let footer_regions = Layout::horizontal([
+            Constraint::Min(1),
+            Constraint::Length(14),
+            Constraint::Length(14),
+        ])
+        .split(regions[3]);
         let footer = if let Some(error) = &self.error {
             format!(" q quit | r retry | DATA ERROR: {error}")
         } else if let Some(notice) = &self.wifi.notice {
@@ -449,7 +453,9 @@ impl App {
             footer_regions[0],
         );
         self.wifi
-            .draw_reboot(frame, footer_regions[1], self.palette);
+            .draw_shutdown(frame, footer_regions[1], self.palette);
+        self.wifi
+            .draw_reboot(frame, footer_regions[2], self.palette);
         self.wifi.draw_popup(frame, self.palette, self.options);
     }
     fn metric(
@@ -992,6 +998,7 @@ pub fn run(options: Options) -> io::Result<()> {
             continue;
         }
         if matches!(&input, Event::Key(key) if key.code == KeyCode::F(9))
+            || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.wifi.shutdown_area.contains((mouse.column,mouse.row).into()))
             || (app.page == 4
                 && matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.shutdown_button.contains((mouse.column,mouse.row).into())))
         {

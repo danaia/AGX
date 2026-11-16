@@ -128,6 +128,7 @@ pub(super) struct Ui {
     table: TableState,
     saved: bool,
     pub reboot_area: Rect,
+    pub shutdown_area: Rect,
     list_area: Rect,
     buttons: Vec<Rect>,
     popup: Option<Form>,
@@ -363,6 +364,13 @@ impl Ui {
             _ => (),
         }
         Interaction::Consumed
+    }
+    pub fn draw_shutdown(&mut self, frame: &mut Frame, area: Rect, p: Palette) {
+        self.shutdown_area = area;
+        frame.render_widget(
+            Paragraph::new("[Shutdown F9]").style(Style::default().fg(p.cyan)),
+            area,
+        );
     }
     pub fn draw_reboot(&mut self, frame: &mut Frame, area: Rect, p: Palette) {
         self.reboot_area = area;
