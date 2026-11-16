@@ -1,5 +1,6 @@
 use super::*;
-use std::io::Read;
+use crate::remote::rfb::{ENCODING_DESKTOP_SIZE, ENCODING_RAW};
+use std::io::{Read, Write};
 
 fn frame(width: usize, height: usize, value: u8) -> Frame {
     Frame {
@@ -61,6 +62,125 @@ impl Client {
     }
 }
 
+impl Client {
+    fn extended_layout(&mut self) -> (u16, u16, u16, u16) {
+        assert_eq!(self.read::<4>(), [0, 0, 0, 1]);
+        let h = self.read::<12>();
+        assert_eq!(&h[8..], &resize::ENCODING.to_be_bytes());
+        assert_eq!(self.read::<4>(), [1, 0, 0, 0]);
+        let screen = self.read::<16>();
+        assert_eq!(&screen[..8], &[0, 0, 0, 1, 0, 0, 0, 0]);
+        assert_eq!(&screen[8..12], &h[4..8]);
+        let n = |i| u16::from_be_bytes([h[i], h[i + 1]]);
+        (n(0), n(2), n(4), n(6))
+    }
+
+    fn negotiate_resize(&mut self) {
+        let mut out = vec![2, 0, 0, 2];
+        out.extend_from_slice(&resize::ENCODING.to_be_bytes());
+        out.extend_from_slice(&ENCODING_DESKTOP_SIZE.to_be_bytes());
+        self.0.write_all(&out).unwrap();
+        self.request(false);
+        self.extended_layout();
+        self.update();
+    }
+
+    fn resize(&mut self, width: u16, height: u16) {
+        let mut out = vec![251, 0];
+        out.extend_from_slice(&width.to_be_bytes());
+        out.extend_from_slice(&height.to_be_bytes());
+        out.extend_from_slice(&[1, 0]);
+        out.extend_from_slice(&[0, 0, 0, 1, 0, 0, 0, 0]);
+        out.extend_from_slice(&width.to_be_bytes());
+        out.extend_from_slice(&height.to_be_bytes());
+        out.extend_from_slice(&[0; 4]);
+        self.0.write_all(&out).unwrap();
+    }
+}
+
+#[test]
+fn resize_replies_and_pixels_stay_separate_and_other_viewers_are_notified() {
+    let shared = Shared::new(|_| {});
+    shared.set_resize_handler(|w, h| Some(frame(usize::from(w), usize::from(h), 10)));
+    shared.publish(frame(640, 480, 10));
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    serve_listener(listener, shared.clone()).unwrap();
+    let mut a = Client::connect(addr);
+    assert_eq!(a.handshake(), (640, 480));
+    a.negotiate_resize();
+    let mut b = Client::connect(addr);
+    b.handshake();
+    b.negotiate_resize();
+    // Replies are unsolicited and must not depend on an update request.
+    a.resize(800, 600);
+    assert_eq!(a.extended_layout(), (1, 0, 800, 600));
+    assert_eq!(b.extended_layout(), (2, 0, 800, 600));
+    a.request(true);
+    assert_eq!(a.update().2, 800);
+    a.resize(319, 200);
+    assert_eq!(a.extended_layout(), (1, 3, 800, 600));
+    assert_eq!(shared.hub().frame.as_ref().unwrap().width, 800);
+    // Repeated requests retain reply order, including no-op size changes.
+    a.resize(1024, 768);
+    a.resize(1024, 768);
+    assert_eq!(a.extended_layout(), (1, 0, 1024, 768));
+    assert_eq!(a.extended_layout(), (1, 0, 1024, 768));
+}
+
+#[test]
+fn fixed_display_refuses_resize_without_dropping_the_viewer() {
+    let shared = Shared::new(|_| {});
+    shared.publish(frame(640, 480, 10));
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    serve_listener(listener, shared).unwrap();
+    let mut client = Client::connect(addr);
+    client.handshake();
+    client.negotiate_resize();
+    client.resize(1920, 1080);
+    assert_eq!(client.extended_layout(), (1, 1, 640, 480));
+    client.request(false);
+    assert_eq!(client.extended_layout(), (0, 0, 640, 480));
+    assert_eq!(client.update().2, 640);
+}
+
+#[test]
+fn extended_resize_capability_survives_login_handoff() {
+    use std::os::fd::{AsRawFd, RawFd};
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let viewer = TcpStream::connect(addr).unwrap();
+    let (served, _) = listener.accept().unwrap();
+    let dup = |fd: RawFd| unsafe { libc::dup(fd) };
+    let handoff = Handoff {
+        listener: dup(listener.as_raw_fd()),
+        viewers: vec![Viewer {
+            fd: dup(served.as_raw_fd()),
+            size: (640, 480),
+            desktop_size: true,
+            extended_desktop_size: true,
+            format: PixelFormat::NATIVE,
+        }],
+    };
+    let shared = Shared::new(|_| {});
+    shared.set_resize_handler(|w, h| Some(frame(usize::from(w), usize::from(h), 10)));
+    shared.publish(frame(640, 480, 10));
+    assert!(adopt(&handoff, addr, &shared));
+    let mut client = Client(viewer);
+    client
+        .0
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    assert_eq!(client.extended_layout(), (0, 0, 640, 480));
+    client.update();
+    client.resize(800, 600);
+    assert_eq!(client.extended_layout(), (1, 0, 800, 600));
+    client.request(true);
+    assert_eq!(client.update().2, 800);
+    assert!(shared.handoff().unwrap().viewers[0].extended_desktop_size);
+}
+
 #[test]
 fn a_client_sees_the_frame_then_only_what_changes_and_can_send_input() {
     let (sender, received) = std::sync::mpsc::channel();
@@ -114,6 +234,7 @@ fn a_new_server_adopts_the_listener_and_viewers_of_the_one_it_replaces() {
             fd: dup(served.as_raw_fd()),
             size: (8, 4),
             desktop_size: true,
+            extended_desktop_size: false,
             format: PixelFormat::NATIVE,
         }],
     };

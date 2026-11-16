@@ -3,6 +3,8 @@
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+mod virtual_display;
+
 pub const ENVIRONMENT: [&str; 5] = [
     "SLINT_BACKEND",
     "SLINT_DRM_MODE",
@@ -41,6 +43,15 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
         }
         .into()
     });
+    if backend == "vnc-software" {
+        if !matches!(std::env::var(crate::remote::ENV).as_deref(), Ok(value) if !matches!(value, "" | "off" | "0"))
+        {
+            return Err("vnc-software requires AGX_GUI_VNC to be enabled".into());
+        }
+        virtual_display::initialize()?;
+        eprintln!("agx-gui: backend=vnc-software (resizable remote display)");
+        return Ok(());
+    }
     // Explicit selection prevents silent software fallback from masquerading as a GPU result.
     if !matches!(
         backend.as_str(),

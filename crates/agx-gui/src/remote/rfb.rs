@@ -1,5 +1,5 @@
-//! RFB 3.3/3.7/3.8 wire protocol for the server side, with the Raw and DesktopSize
-//! encodings only. Pure: it reads and writes byte streams and knows nothing about
+//! RFB 3.3/3.7/3.8 wire protocol for the server side, with Raw and desktop-size
+//! extensions. Pure: it reads and writes byte streams and knows nothing about
 //! Slint, threads or sockets.
 use super::frame::{Frame, Rect};
 use std::io::{self, Read, Write};
@@ -144,6 +144,7 @@ pub enum ClientMessage {
     },
     /// Clipboard text from the client; read and discarded.
     CutText,
+    SetDesktopSize(super::resize::Request),
 }
 
 fn read_array<const N: usize, R: Read>(reader: &mut R) -> io::Result<[u8; N]> {
@@ -203,6 +204,9 @@ pub fn read_message<R: Read>(reader: &mut R) -> io::Result<ClientMessage> {
             io::copy(&mut reader.take(length as u64), &mut io::sink())?;
             Ok(ClientMessage::CutText)
         }
+        251 => Ok(ClientMessage::SetDesktopSize(super::resize::Request::read(
+            reader,
+        )?)),
         _ => Err(invalid("unknown client message")),
     }
 }

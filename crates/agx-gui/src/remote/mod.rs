@@ -11,6 +11,7 @@
 mod frame;
 mod handoff;
 mod input;
+mod resize;
 mod rfb;
 mod server;
 
@@ -97,6 +98,43 @@ pub fn start<C: ComponentHandle + 'static>(ui: &C) -> Option<Remote> {
             .clone();
         let _ = weak.upgrade_in_event_loop(move |ui| input::dispatch(ui.window(), input));
     });
+    if std::env::var("SLINT_BACKEND").as_deref() == Ok("vnc-software") {
+        let resize_weak = std::sync::Mutex::new(weak.clone());
+        shared.set_resize_handler(move |width, height| {
+            let weak = resize_weak
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .clone();
+            let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+            weak.upgrade_in_event_loop(move |ui| {
+                ui.window().set_size(slint::PhysicalSize::new(
+                    u32::from(width),
+                    u32::from(height),
+                ));
+                let frame = ui.window().take_snapshot().ok().map(|snapshot| Frame {
+                    width: snapshot.width() as usize,
+                    height: snapshot.height() as usize,
+                    rgba: snapshot.as_bytes().to_vec(),
+                });
+                eprintln!("agx-gui: vnc desktop resized to {width}x{height}");
+                let _ = sender.send(frame);
+            })
+            .ok()?;
+            receiver.recv().ok().flatten()
+        });
+        if let Some((width, height)) = std::env::var(handoff::ENV)
+            .ok()
+            .and_then(|text| handoff::Handoff::parse(&text))
+            .and_then(|handoff| handoff.viewers.first().map(|viewer| viewer.size))
+            && let (Ok(width), Ok(height)) = (u16::try_from(width), u16::try_from(height))
+            && resize::supported_size(width, height)
+        {
+            ui.window().set_size(slint::PhysicalSize::new(
+                u32::from(width),
+                u32::from(height),
+            ));
+        }
+    }
     let inherited = std::env::var(handoff::ENV)
         .ok()
         .and_then(|text| handoff::Handoff::parse(&text))

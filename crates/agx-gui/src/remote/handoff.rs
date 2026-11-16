@@ -21,6 +21,7 @@ pub struct Viewer {
     /// Size of the picture the viewer currently has.
     pub size: (usize, usize),
     pub desktop_size: bool,
+    pub extended_desktop_size: bool,
     pub format: PixelFormat,
 }
 
@@ -42,7 +43,8 @@ impl Handoff {
         fds.join(",")
     }
 
-    /// `<listener>;<fd>,<width>,<height>,<desktop-size 0|1>,<pixel format hex>;...`
+    /// `<listener>;<fd>,<width>,<height>,<resize flags>,<pixel format hex>;...`
+    /// Bit 0 is DesktopSize, bit 1 is ExtendedDesktopSize; older 0/1 values still work.
     pub fn encode(&self) -> String {
         let mut text = self.listener.to_string();
         for viewer in &self.viewers {
@@ -57,7 +59,7 @@ impl Handoff {
                 viewer.fd,
                 viewer.size.0,
                 viewer.size.1,
-                u8::from(viewer.desktop_size)
+                u8::from(viewer.desktop_size) | (u8::from(viewer.extended_desktop_size) << 1)
             );
         }
         text
@@ -84,9 +86,11 @@ fn parse_viewer(text: &str) -> Option<Viewer> {
     let fd = descriptor(fields.next()?)?;
     let width = fields.next()?.parse().ok()?;
     let height = fields.next()?.parse().ok()?;
-    let desktop_size = match fields.next()? {
-        "0" => false,
-        "1" => true,
+    let flags: u8 = match fields.next()? {
+        "0" => 0,
+        "1" => 1,
+        "2" => 2,
+        "3" => 3,
         _ => return None,
     };
     let hex = fields.next()?;
@@ -100,7 +104,8 @@ fn parse_viewer(text: &str) -> Option<Viewer> {
     Some(Viewer {
         fd,
         size: (width, height),
-        desktop_size,
+        desktop_size: flags & 1 != 0,
+        extended_desktop_size: flags & 2 != 0,
         format: PixelFormat::parse(&bytes).ok()?,
     })
 }
@@ -161,6 +166,7 @@ mod tests {
             fd,
             size: (1920, 1080),
             desktop_size: true,
+            extended_desktop_size: true,
             format: PixelFormat {
                 bits_per_pixel: 16,
                 depth: 16,
@@ -210,7 +216,7 @@ mod tests {
             "3;4",                                        // truncated viewer
             "3;4,1,1,1,00",                               // short pixel format
             "3;3,1,1,1,00000000000000000000000000000000", // listener reused as a viewer
-            &good.replace(",1,", ",2,"),                  // desktop-size flag out of range
+            &good.replace(",3,", ",4,"),                  // desktop-size flags out of range
             &format!("{good};5,1,1,0,{}", "zz".repeat(16)),
         ] {
             assert_eq!(Handoff::parse(bad), None, "{bad:?}");

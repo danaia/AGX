@@ -2,14 +2,15 @@
 //! streams changed areas to each client from its own thread. Nothing here touches Slint;
 //! the UI thread publishes frames and receives input through [`Shared`].
 use super::{
-    frame::{Frame, changed_bounds},
+    frame::Frame,
     handoff::{self, Handoff, Viewer},
-    input::{Input, pointer_inputs},
-    rfb::{self, ClientMessage, ENCODING_DESKTOP_SIZE, ENCODING_RAW, PixelFormat},
+    input::Input,
+    resize::{self, Reply},
+    rfb::{self, PixelFormat},
 };
 use std::{
-    collections::HashMap,
-    io::{self, BufWriter, Write},
+    collections::{HashMap, VecDeque},
+    io,
     net::{Shutdown, SocketAddr, TcpListener, TcpStream},
     os::fd::AsRawFd,
     sync::{
@@ -19,6 +20,9 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+
+mod session;
+use session::stream_updates;
 
 const MAX_CLIENTS: usize = 4;
 const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(5);
@@ -32,6 +36,8 @@ struct ClientState {
     full: bool,
     format: PixelFormat,
     desktop_size: bool,
+    extended_desktop_size: bool,
+    layouts: VecDeque<Reply>,
     closed: bool,
     /// The connection and the picture size the viewer has, once connected; kept so a
     /// new process can adopt the viewer (see `handoff`).
@@ -55,6 +61,7 @@ pub struct Shared {
     started: Instant,
     last_input_ms: AtomicU64,
     listener: Mutex<Option<TcpListener>>,
+    resize: Mutex<Option<Box<dyn Fn(u16, u16) -> Option<Frame> + Send + Sync>>>,
 }
 
 impl Shared {
@@ -66,6 +73,7 @@ impl Shared {
             started: Instant::now(),
             last_input_ms: AtomicU64::new(0),
             listener: Mutex::new(None),
+            resize: Mutex::new(None),
         })
     }
 
@@ -73,6 +81,71 @@ impl Shared {
         self.hub
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub fn set_resize_handler(
+        &self,
+        handler: impl Fn(u16, u16) -> Option<Frame> + Send + Sync + 'static,
+    ) {
+        *self.resize.lock().unwrap_or_else(|p| p.into_inner()) = Some(Box::new(handler));
+    }
+
+    fn resize_desktop(&self, id: u64, request: resize::Request) -> io::Result<()> {
+        // Serialize resize operations across viewers, never holding the hub while waiting for UI work.
+        let handler = self.resize.lock().unwrap_or_else(|p| p.into_inner());
+        {
+            let hub = self.hub();
+            let client = hub
+                .clients
+                .get(&id)
+                .ok_or_else(|| io::Error::other("viewer ended"))?;
+            if !client.extended_desktop_size || client.layouts.len() >= 16 {
+                return Err(io::Error::other(
+                    "unnegotiated or excessive desktop resize requests",
+                ));
+            }
+        }
+        let (status, frame) = if !request.valid() {
+            (3, None)
+        } else if let Some(handler) = handler.as_ref() {
+            match handler(request.width, request.height) {
+                Some(frame)
+                    if (frame.width, frame.height)
+                        == (usize::from(request.width), usize::from(request.height)) =>
+                {
+                    (0, Some(frame))
+                }
+                _ => (2, None),
+            }
+        } else {
+            (1, None)
+        };
+        let mut hub = self.hub();
+        if let Some(frame) = frame {
+            hub.frame = Some(Arc::new(frame));
+            hub.sequence += 1;
+        }
+        let (width, height) = hub
+            .frame
+            .as_ref()
+            .map(|f| (f.width as u16, f.height as u16))
+            .unwrap_or((1280, 720));
+        for (&viewer, client) in &mut hub.clients {
+            if client.extended_desktop_size && (viewer == id || status == 0) {
+                if client.layouts.len() >= 16 {
+                    client.closed = true;
+                    continue;
+                }
+                client.layouts.push_back(Reply {
+                    reason: if viewer == id { 1 } else { 2 },
+                    status,
+                    width,
+                    height,
+                });
+            }
+        }
+        self.changed.notify_all();
+        Ok(())
     }
 
     /// Whether some client is waiting for a frame, so the UI thread should capture one.
@@ -128,6 +201,8 @@ impl Shared {
                 full: true,
                 format,
                 desktop_size,
+                extended_desktop_size: false,
+                layouts: VecDeque::new(),
                 closed: false,
                 stream: None,
                 size,
@@ -155,6 +230,7 @@ impl Shared {
                     fd: client.stream.as_ref()?.as_raw_fd(),
                     size: client.size,
                     desktop_size: client.desktop_size,
+                    extended_desktop_size: client.extended_desktop_size,
                     format: client.format,
                 })
             })
@@ -207,6 +283,9 @@ impl Shared {
             let frame = hub.frame.clone();
             let sequence = hub.sequence;
             let client = hub.clients.get_mut(&id).filter(|client| !client.closed)?;
+            if let Some(layout) = client.layouts.pop_front() {
+                return Some(Job::Layout(layout));
+            }
             if let (true, Some(frame)) = (client.pending, frame)
                 && (client.full || sequence != seen)
             {
@@ -214,12 +293,13 @@ impl Shared {
                 // Claim this request before sending. The reader may receive the
                 // next one while the socket write is still in progress.
                 client.pending = false;
-                return Some(Job {
+                return Some(Job::Pixels {
                     frame,
                     sequence,
                     full,
                     format: client.format,
                     desktop_size: client.desktop_size,
+                    extended_desktop_size: client.extended_desktop_size,
                 });
             }
             hub = self
@@ -238,12 +318,16 @@ impl Shared {
     }
 }
 
-struct Job {
-    frame: Arc<Frame>,
-    sequence: u64,
-    full: bool,
-    format: PixelFormat,
-    desktop_size: bool,
+enum Job {
+    Layout(Reply),
+    Pixels {
+        frame: Arc<Frame>,
+        sequence: u64,
+        full: bool,
+        format: PixelFormat,
+        desktop_size: bool,
+        extended_desktop_size: bool,
+    },
 }
 
 /// Bind `addr` and serve clients on background threads.
@@ -307,6 +391,9 @@ pub fn adopt(handoff: &Handoff, addr: SocketAddr, shared: &Arc<Shared>) -> bool 
                 else {
                     return;
                 };
+                shared.update_client(id, |client| {
+                    client.extended_desktop_size = viewer.extended_desktop_size
+                });
                 let result = stream
                     .set_nodelay(true)
                     .and_then(|()| stream.set_write_timeout(Some(IO_TIMEOUT)))
@@ -339,112 +426,6 @@ fn session(stream: &TcpStream, shared: &Arc<Shared>, id: u64) -> io::Result<()> 
     stream.set_read_timeout(None)?;
     shared.update_client(id, |client| client.pending = false);
     stream_updates(stream, shared, id, known_size)
-}
-
-/// Serve an established connection: read its input on one thread and send it updates
-/// from this one, until either side ends. `known_size` is the picture the viewer has.
-fn stream_updates(
-    stream: &TcpStream,
-    shared: &Arc<Shared>,
-    id: u64,
-    known_size: (usize, usize),
-) -> io::Result<()> {
-    let size = |frame: &Frame| -> io::Result<(u16, u16)> {
-        Ok((
-            u16::try_from(frame.width).map_err(io::Error::other)?,
-            u16::try_from(frame.height).map_err(io::Error::other)?,
-        ))
-    };
-    let kept = stream.try_clone()?;
-    shared.update_client(id, |client| {
-        client.stream = Some(kept);
-        client.size = known_size;
-    });
-    let reader = stream.try_clone()?;
-    let reader_shared = shared.clone();
-    thread::Builder::new()
-        .name("vnc-input".into())
-        .spawn(move || {
-            let _ = read_loop(reader, &reader_shared, id);
-            reader_shared.update_client(id, |client| client.closed = true);
-        })?;
-
-    // Bound encoded output to 64 KiB instead of another full RGBA frame per viewer.
-    let mut writer = BufWriter::with_capacity(64 * 1024, stream);
-    let mut known_size = known_size;
-    let mut sent: Option<Arc<Frame>> = None;
-    let mut seen = 0;
-    while let Some(job) = shared.next_job(id, seen) {
-        seen = job.sequence;
-        let resized = (job.frame.width, job.frame.height) != known_size;
-        let area = match (&sent, job.full || resized) {
-            (Some(previous), false) => changed_bounds(previous, &job.frame),
-            _ => Some(job.frame.bounds()),
-        };
-        let Some(area) = area else {
-            sent = Some(job.frame); // Nothing visible changed: keep the request pending.
-            shared.update_client(id, |client| client.pending = true);
-            continue;
-        };
-        let mut message = Vec::new();
-        if resized {
-            if !job.desktop_size {
-                return Err(io::Error::other(
-                    "window size changed and the client cannot resize",
-                ));
-            }
-            known_size = (job.frame.width, job.frame.height);
-            size(&job.frame)?;
-            rfb::begin_update(&mut message, 2);
-            rfb::rectangle_header(&mut message, job.frame.bounds(), ENCODING_DESKTOP_SIZE);
-        } else {
-            rfb::begin_update(&mut message, 1);
-        }
-        rfb::rectangle_header(&mut message, area, ENCODING_RAW);
-        writer.write_all(&message)?;
-        job.format.write_pixels(&job.frame, area, &mut writer)?;
-        writer.flush()?;
-        sent = Some(job.frame);
-        shared.update_client(id, |client| {
-            client.size = known_size;
-        });
-    }
-    Ok(())
-}
-
-fn read_loop(stream: TcpStream, shared: &Arc<Shared>, id: u64) -> io::Result<()> {
-    // Unbuffered on purpose: if the process is replaced mid-way, no half-read
-    // message is lost to a read-ahead buffer.
-    let mut reader = &stream;
-    let mut buttons = 0;
-    loop {
-        match rfb::read_message(&mut reader)? {
-            ClientMessage::SetPixelFormat(format) => {
-                shared.update_client(id, |client| client.format = format)
-            }
-            ClientMessage::SetEncodings(encodings) => {
-                shared.update_client(id, |client| {
-                    client.desktop_size = encodings.contains(&ENCODING_DESKTOP_SIZE)
-                });
-            }
-            ClientMessage::UpdateRequest { incremental } => shared.update_client(id, |client| {
-                client.pending = true;
-                client.full |= !incremental;
-            }),
-            ClientMessage::Key { down, keysym } => {
-                shared.note_input();
-                (shared.input)(Input::Key { down, keysym });
-            }
-            ClientMessage::Pointer { buttons: now, x, y } => {
-                shared.note_input();
-                for input in pointer_inputs(buttons, now, x, y) {
-                    (shared.input)(input);
-                }
-                buttons = now;
-            }
-            ClientMessage::CutText => {}
-        }
-    }
 }
 
 #[cfg(test)]
