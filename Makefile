@@ -30,3 +30,7 @@ system-update-package: build check-image
 .PHONY: stage-system-update
 stage-system-update:
 	./scripts/stage-system-update.sh
+
+.PHONY: release-update
+release-update:
+	./scripts/create-release-update.sh

@@ -930,11 +930,29 @@ pub fn run(options: Options) -> io::Result<()> {
                 continue;
             }
         }
+        if app.page == 4 && app.system.dialog_open() {
+            app.system.dialog_input(&input);
+            continue;
+        }
+        if app.page == 4
+            && (matches!(&input, Event::Key(key) if key.code == KeyCode::Char('g'))
+                || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.token_button.contains((mouse.column,mouse.row).into())))
+        {
+            app.system.token_dialog();
+            continue;
+        }
+        if app.page == 4
+            && (matches!(&input, Event::Key(key) if key.code == KeyCode::Char('v'))
+                || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.staged_button.contains((mouse.column,mouse.row).into())))
+        {
+            app.system.start_staged();
+            continue;
+        }
         if app.page == 4
             && (matches!(&input, Event::Key(key) if key.code == KeyCode::Char('c'))
                 || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.button.contains((mouse.column, mouse.row).into())))
         {
-            app.system.start();
+            app.system.start_github();
             continue;
         }
         if matches!(&input, Event::Key(key) if key.code == KeyCode::F(10)) {

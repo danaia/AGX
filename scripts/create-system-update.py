@@ -11,9 +11,10 @@ root = Path(__file__).resolve().parent.parent
 images = root / 'output/images'
 package_dir = root / 'output/updates'
 package_dir.mkdir(parents=True, exist_ok=True)
-files = {'Image': images / 'Image', 'rootfs.ext4': images / 'rootfs.ext4'}
+files = {'Image': images / 'Image', 'rootfs.ext4': Path(os.environ.get('AGX_UPDATE_ROOTFS', images / 'rootfs.ext4'))}
 manifest = {'format': 'agx-system-update-v1', 'architecture': 'aarch64',
-            'board': 'raspberry-pi-5', 'components': {}}
+            'board': 'raspberry-pi-5', 'version': os.environ.get('AGX_RELEASE_VERSION', 'unversioned'),
+            'source_commit': os.environ.get('AGX_RELEASE_COMMIT', 'unrecorded'), 'components': {}}
 for name, path in files.items():
     digest = hashlib.sha256()
     with path.open('rb') as stream:

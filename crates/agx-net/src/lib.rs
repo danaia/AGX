@@ -91,6 +91,10 @@ impl Default for Status {
 #[derive(Deserialize, Serialize)]
 pub enum Request {
     ProfileStatus,
+    SetGitHubToken {
+        token: Zeroizing<String>,
+    },
+    CheckGitHubRelease,
     SaveProfile(agx_profile::Save),
     Status,
     Scan,

@@ -367,6 +367,29 @@ impl Manager {
     }
     fn handle(&mut self, request: Request) -> io::Result<String> {
         match request {
+            Request::SetGitHubToken { token } => {
+                if token.is_empty() {
+                    fs::remove_file("/etc/agx/github-token").or_else(|e| {
+                        if e.kind() == io::ErrorKind::NotFound {
+                            Ok(())
+                        } else {
+                            Err(e)
+                        }
+                    })?;
+                    return Ok("GitHub token removed.".into());
+                }
+                if token.len() < 20
+                    || token.len() > 255
+                    || !token
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                {
+                    return Err(err("Invalid GitHub token format."));
+                }
+                atomic_private(Path::new("/etc/agx/github-token"), token.as_bytes())?;
+                return Ok("GitHub token saved. Press C to check releases.".into());
+            }
+            Request::CheckGitHubRelease => return check_github_release(),
             Request::ProfileStatus => return Ok("Profile ready".into()),
             Request::SaveProfile(save) => return agx_profile::service::save(save),
             Request::Status => return Ok(self.state.message.clone()),
@@ -745,6 +768,122 @@ impl Drop for Manager {
         }
     }
 }
+fn github_release_message(data: &[u8]) -> io::Result<String> {
+    let releases: serde_json::Value =
+        serde_json::from_slice(data).map_err(|_| err("GitHub returned invalid release data."))?;
+    let releases = releases
+        .as_array()
+        .ok_or_else(|| err("GitHub returned invalid release data."))?;
+    let release = releases
+        .iter()
+        .filter(|v| v["draft"] == false)
+        .filter_map(|v| {
+            let tag = v["tag_name"].as_str()?;
+            if tag.len() > 64
+                || !tag
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || b"._-".contains(&c))
+            {
+                return None;
+            }
+            let version = semver::Version::parse(tag.strip_prefix('v').unwrap_or(tag)).ok()?;
+            Some((version, v, tag))
+        })
+        .max_by(|a, b| a.0.cmp(&b.0));
+    let Some((_, release, tag)) = release else {
+        return Ok("No published versioned AGX releases were found.".into());
+    };
+    let asset = release["assets"].as_array().is_some_and(|assets| {
+        assets.iter().any(|asset| {
+            asset["name"] == "agx-system-update.tar.gz" && asset["state"] == "uploaded"
+        })
+    });
+    let stage = if release["prerelease"] == true {
+        "preview"
+    } else {
+        "release"
+    };
+    let package = if asset {
+        "update package available"
+    } else {
+        "no AGX package attached"
+    };
+    Ok(format!(
+        "GitHub: {tag} ({stage}); {package}. Installed system version is not tracked yet."
+    ))
+}
+fn check_github_release() -> io::Result<String> {
+    let token = Zeroizing::new(
+        fs::read_to_string("/etc/agx/github-token")
+            .map_err(|_| err("GitHub token not configured. Press G to add one."))?,
+    );
+    if token.len() < 20
+        || token.len() > 255
+        || !token
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+    {
+        return Err(err(
+            "Stored GitHub token is invalid. Press G to replace it.",
+        ));
+    }
+    // curl reads the Authorization header through its private stdin, never argv or the environment.
+    let config = Zeroizing::new(format!(
+        "header = \"Authorization: Bearer {}\"\n",
+        token.as_str()
+    ));
+    let mut child = Command::new("/usr/bin/curl")
+        .args([
+            "--silent",
+            "--show-error",
+            "--max-time",
+            "6",
+            "--max-filesize",
+            "1048576",
+            "--user-agent",
+            "AGX-OS",
+            "--header",
+            "Accept: application/vnd.github+json",
+            "--header",
+            "X-GitHub-Api-Version: 2022-11-28",
+            "--write-out",
+            "\n%{http_code}",
+            "--config",
+            "-",
+            "https://api.github.com/repos/danaia/AGX/releases?per_page=100",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| err("Unable to start GitHub check."))?
+        .write_all(config.as_bytes())?;
+    let output = child.wait_with_output()?;
+    if !output.status.success() || output.stdout.len() > 1048576 {
+        return Err(err(
+            "GitHub check failed. Check Wi-Fi, DNS, clock, and HTTPS connectivity.",
+        ));
+    }
+    let index = output
+        .stdout
+        .iter()
+        .rposition(|b| *b == b'\n')
+        .ok_or_else(|| err("Invalid response from GitHub."))?;
+    let (body, code) = (&output.stdout[..index], &output.stdout[index + 1..]);
+    match code {
+        b"200" => github_release_message(body),
+        b"401" => Err(err("GitHub rejected the token. Press G to replace it.")),
+        b"403" => Err(err("GitHub denied the request or rate limit was reached.")),
+        b"404" => Err(err(
+            "Private repository is inaccessible. Check the token's repository permissions.",
+        )),
+        _ => Err(err("GitHub release check failed; retry later.")),
+    }
+}
+
 fn valid_country(country: &str) -> bool {
     country.len() == 2 && country.bytes().all(|b| b.is_ascii_uppercase())
 }
@@ -904,4 +1043,32 @@ pub fn dhcp_hook() -> io::Result<()> {
         _ => (),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod github_tests {
+    use super::github_release_message;
+    #[test]
+    fn reports_release_assets_and_rejects_untrusted_tags() {
+        let data=br#"[{"draft":false,"prerelease":true,"tag_name":"v0.4.0-preview.1","assets":[{"name":"agx-system-update.tar.gz","state":"uploaded"}]}]"#;
+        let message = github_release_message(data).unwrap();
+        assert!(
+            message.contains("v0.4.0-preview.1")
+                && message.contains("preview")
+                && message.contains("package available")
+        );
+        assert!(
+            github_release_message(br#"[]"#)
+                .unwrap()
+                .contains("No published")
+        );
+        assert!(
+            github_release_message(br#"[{"draft":false,"tag_name":"bad\u001b[2J","assets":[]}]"#)
+                .unwrap()
+                .contains("No published")
+        );
+        assert!(github_release_message(b"not json").is_err());
+        let ordered = br#"[{"draft":false,"tag_name":"v0.4.0","assets":[]},{"draft":false,"tag_name":"v0.6.0","assets":[]},{"draft":false,"tag_name":"v0.5.0","assets":[]}]"#;
+        assert!(github_release_message(ordered).unwrap().contains("v0.6.0"));
+    }
 }
