@@ -47,5 +47,14 @@ fi
 case "$ACTION" in
     configure) ;;
     dependencies) brmake dependencies ;;
-    build) brmake "BR2_JLEVEL=${JOBS:-8}" all ;;
+    build)
+        if grep -q '^BR2_PACKAGE_AGX=y$' "$OUTPUT/.config"; then
+            # Supply Cargo for vendoring even on hosts without a Rust installation.
+            brmake "BR2_JLEVEL=${JOBS:-8}" host-rustc
+            "$ROOT/scripts/prepare-rust-package.sh"
+            # Local source packages need an explicit rebuild to pick up edits.
+            brmake "BR2_JLEVEL=${JOBS:-8}" agx-rebuild
+        fi
+        brmake "BR2_JLEVEL=${JOBS:-8}" all
+        ;;
 esac

@@ -1,0 +1,12 @@
+[package]
+name = "agx-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+agx-core.workspace = true
+ratatui.workspace = true
+signal-hook.workspace = true
+crossterm.workspace = true
+libc.workspace = true

@@ -4,7 +4,7 @@ Version 0.2 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
 
-**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 is next; its first deliverable is the Rust TUI foundation. The TUI is planned and has not been implemented yet.
+**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 is in progress. Its Rust TUI foundation is implemented, packaged into the image, installed on the Pi, and tested over USB SSH. Overview and Hardware screens are available through `agx tui`; the hardware/firmware audit and kernel trimming remain outstanding. See the [Phase 2 verification record](../docs/phase2.md).
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -58,6 +58,8 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 ### Phase 2 — Rust TUI foundation, kernel, and hardware
 
 **First deliverable: a usable Rust TUI on the running Pi.**
+
+**Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Full Phase 2 hardware acceptance remains pending.
 
 - Add a Rust workspace and `agx-tui`, with the initial `agx tui` launcher and a shared system-information layer. Select and pin the terminal rendering/input dependencies during implementation.
 - Build the navigation shell, palette, icon fallbacks, keyboard shortcuts, and mouse event handling. Deliver Overview and Hardware screens with live uptime, CPU/memory information, storage, and USB network status.

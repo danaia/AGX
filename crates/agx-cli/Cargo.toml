@@ -1,0 +1,14 @@
+[package]
+name = "agx-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "agx"
+path = "src/main.rs"
+
+[dependencies]
+agx-core.workspace = true
+agx-tui.workspace = true
+serde_json.workspace = true

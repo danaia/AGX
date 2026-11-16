@@ -113,7 +113,9 @@ If HDMI stays blank, record LED patterns and check power, HDMI0/cable/display, c
 - SSH host fingerprint read directly on the Pi matches the user's first-connection prompt: `SHA256:cgKA/OnkSFz5mLIuid7kuuRLhFk7wCP1+foOHNuAstQ`.
 - Local boot evidence: `.cache/evidence/pi5-boot.txt`. The user-visible empty `ls` output comes from the initial root home directory; the shell itself is working.
 
-Generated image: `output/images/sdcard.img`, 402,653,696 bytes. Workstation-specific public-key input is intentionally outside Git. This build's SHA-256:
+This is the historical Phase 1 build record. Later builds replace `output/images/sdcard.img`; see [Phase 2](phase2.md) for its current build record.
+
+Phase 1 generated image: `output/images/sdcard.img`, 402,653,696 bytes. Workstation-specific public-key input is intentionally outside Git. This build's SHA-256:
 
 ```text
 2eeecad2952da59f522d547a6dd98077d6841324b633ae53547cc49ffda79b41

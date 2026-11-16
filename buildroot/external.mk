@@ -1,1 +1,1 @@
-# AGX package makefiles will be introduced in later phases.
+include $(sort $(wildcard $(BR2_EXTERNAL_AGX_PATH)/package/*/*.mk))

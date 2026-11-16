@@ -100,6 +100,15 @@ def check(images):
         packed = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
                                 capture_output=True, check=True).stdout
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
+    if 'BR2_PACKAGE_AGX=y' in (images.parent / '.config').read_text().splitlines():
+        binary = (target / 'usr/bin/agx').read_bytes()
+        require(len(binary) >= 20 and binary[:4] == b'\x7fELF' and binary[4] == 2 and binary[5] == 1,
+                'AGX executable must be a 64-bit little-endian ELF')
+        require(struct.unpack_from('<H', binary, 18)[0] == 183, 'AGX executable must target ARM64')
+        packed = subprocess.run([str(debugfs), '-R', 'cat /usr/bin/agx', str(images / 'rootfs.ext4')],
+                                capture_output=True, check=True).stdout
+        require(packed == binary, 'Packed AGX executable differs from the build output')
+        print('PASS: ARM64 AGX executable read back from root filesystem')
     print("PASS: ARM64 kernel, Pi 5 DTBs, boot files, consoles, SSH setup and disk partitions")
     print("Hardware boot remains unverified until tested on a Raspberry Pi 5.")
 

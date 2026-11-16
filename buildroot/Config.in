@@ -1,1 +1,1 @@
-# AGX packages will be introduced in later phases.
+source "$BR2_EXTERNAL_AGX_PATH/package/agx/Config.in"
