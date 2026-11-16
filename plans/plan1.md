@@ -1,6 +1,8 @@
-# **AGX OS — MVP Development Plan**
+# **ANGI OS — MVP Development Plan**
 
 Version 0.5 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
+
+**Naming:** the public product name is **ANGI**; **AGX** remains the technical name for commands, crates, services and paths (see `AGENTS.md`). Older passages below use AGX for both.
 
 **Last updated:** November 16, 2026, from the `p1` branch (31 commits since `main`, November 15–16, 2026; preview tag `v0.4.0-preview.1`), plus the library refactor (commit `b080816`) deployed to the development Pi.
 
