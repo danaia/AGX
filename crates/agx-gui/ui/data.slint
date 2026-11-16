@@ -1,0 +1,61 @@
+// Shared theme and live system data. Colors default to Omarchy's Tokyo Night;
+// main.rs overrides them from Omarchy's current theme when it is installed.
+import "fonts/JetBrainsMonoNerdFont-Regular.ttf";
+import "fonts/JetBrainsMonoNerdFont-Bold.ttf";
+
+export struct NetRow { name: string, state: string, mac: string, ipv4: string }
+export struct HwRow { kind: string, name: string, state: string, detail: string }
+export struct MenuRow { label: string, hint: string }
+// One window on the current workspace, already placed by the tiling engine.
+export struct Win {
+    kind: int,
+    title: string,
+    x: length,
+    y: length,
+    w: length,
+    h: length,
+    focused: bool,
+    floating: bool,
+    target: bool,
+}
+
+export global Theme {
+    in-out property <color> bg: #1a1b26;
+    in-out property <color> bg-dark: #13141c;
+    in-out property <color> bg-light: #24283b;
+    in-out property <color> fg: #a9b1d6;
+    in-out property <color> fg-bright: #c0caf5;
+    in-out property <color> fg-dim: #565f89;
+    in-out property <color> muted: #414868;
+    in-out property <color> accent: #7aa2f7;
+    in-out property <color> green: #9ece6a;
+    in-out property <color> yellow: #e0af68;
+    in-out property <color> red: #f7768e;
+    in-out property <color> cyan: #0db9d7;
+    in-out property <color> magenta: #bb9af7;
+    // Hyprland defaults in Omarchy: gaps_out 10, gaps_in 5, border 2, rounding 0.
+    out property <length> gap-out: 10px;
+    out property <length> border: 2px;
+    out property <length> text: 14px;
+}
+
+export global Sys {
+    in property <string> hostname: "agx";
+    in property <string> board;
+    in property <string> kernel;
+    in property <string> uptime;
+    in property <string> logo;
+    in property <string> warnings;
+    in property <string> mode-note;
+    in property <string> screen-size;
+    in property <string> primary-ip: "no network";
+    in property <float> cpu-percent;
+    in property <string> cpu-detail;
+    in property <string> load-text;
+    in property <float> mem-percent;
+    in property <string> mem-detail;
+    in property <float> disk-percent;
+    in property <string> disk-detail;
+    in property <[NetRow]> networks;
+    in property <[HwRow]> hardware;
+}

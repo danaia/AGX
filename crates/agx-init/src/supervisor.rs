@@ -24,6 +24,11 @@ impl Definition {
         }
     }
 }
+/// Keeps display and input devices usable by agx-admin; see the script header.
+pub const DISPLAY_ACCESS: &str = "/usr/libexec/agx-display-access";
+fn display_access() -> Definition {
+    Definition::new("display-access", "/bin/sh", &[DISPLAY_ACCESS], false)
+}
 pub fn definitions(pid1: bool) -> Vec<Definition> {
     let mut services = Vec::new();
     if pid1 {
@@ -55,6 +60,10 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
             ),
             Definition::new("cron", "/usr/sbin/crond", &["-f"], true),
         ]);
+        // Only images that ship the script (the desktop) run this service.
+        if std::path::Path::new(DISPLAY_ACCESS).is_file() {
+            services.push(display_access());
+        }
     }
     services.push(Definition::new("network", "/usr/sbin/agx-netd", &[], true));
     services
@@ -478,6 +487,15 @@ mod tests {
         assert_eq!(manager.services[0].starts, 2);
         assert!(!manager.services[0].desired);
     }
+    #[test]
+    fn display_access_is_a_protected_shell_service() {
+        let d = display_access();
+        assert_eq!(d.name, "display-access");
+        assert_eq!(d.program, "/bin/sh");
+        assert_eq!(d.args, [DISPLAY_ACCESS]);
+        assert!(!d.controllable, "a stray stop would lock the desktop out");
+    }
+
     #[test]
     fn protected_services_and_bounded_filtered_journal() {
         let mut manager = Supervisor::new(

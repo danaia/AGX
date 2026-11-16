@@ -1,3 +1,4 @@
+mod start;
 use agx_core::Sampler;
 use agx_tui::{ColorMode, Options};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -20,6 +21,15 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
+    /// Ask whether to open the desktop (GUI) or the console (TUI)
+    Start {
+        /// Interface used on Enter or timeout
+        #[arg(long, value_enum, default_value = "tui")]
+        default: StartDefault,
+        /// Seconds to wait before using the default
+        #[arg(long, default_value_t = 10)]
+        timeout: u64,
+    },
     /// Open the interactive console (use ssh -t)
     Tui {
         #[arg(long)]
@@ -300,8 +310,49 @@ fn print_reply(reply: &agx_init::Reply, json: bool, services: bool) -> io::Resul
     }
     Ok(())
 }
+#[derive(Clone, Copy, ValueEnum)]
+enum StartDefault {
+    Gui,
+    Tui,
+}
+fn run_tui() -> io::Result<()> {
+    agx_tui::run(Options::default())
+}
 fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
+        Commands::Start { default, timeout } => {
+            use std::io::IsTerminal;
+            if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+                return Err("agx start needs an interactive terminal".into());
+            }
+            if !start::gui_installed() {
+                // Nothing to choose between yet; keep the existing console flow.
+                return Ok(run_tui()?);
+            }
+            let default = match default {
+                StartDefault::Gui => start::Choice::Gui,
+                StartDefault::Tui => start::Choice::Tui,
+            };
+            let choice = start::ask(default, Duration::from_secs(timeout))?;
+            if choice == start::Choice::Gui {
+                let gui = std::process::Command::new("agx-gui").status();
+                start::reset_console();
+                match gui {
+                    Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => run_tui()?,
+                    Ok(status) if status.success() => {}
+                    Ok(status) => {
+                        eprintln!("agx-gui exited with {status}; opening the console.");
+                        run_tui()?;
+                    }
+                    Err(error) => {
+                        eprintln!("Could not start agx-gui ({error}); opening the console.");
+                        run_tui()?;
+                    }
+                }
+            } else {
+                run_tui()?;
+            }
+        }
         Commands::Tui {
             ascii,
             no_color,

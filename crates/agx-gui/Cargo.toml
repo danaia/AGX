@@ -1,0 +1,31 @@
+[package]
+name = "agx-gui"
+version = "0.4.0"
+edition = "2024"
+rust-version = "1.97"
+build = "build.rs"
+
+# Standalone on purpose: the Buildroot package builds `--workspace`, and the
+# GUI needs extra native libraries (libinput, xkbcommon, DRM). It joins the
+# image build once those packages are enabled.
+[workspace]
+
+[[bin]]
+name = "agx-gui"
+path = "src/main.rs"
+
+[features]
+# Preview on a desktop (Wayland/X11) window.
+default = ["desktop"]
+desktop = ["slint/backend-winit", "slint/renderer-software"]
+# Appliance mode: draw straight to DRM/KMS with libinput. No display server.
+kms = ["slint/backend-linuxkms-noseat", "slint/renderer-software"]
+
+[dependencies]
+agx-core = { path = "../agx-core" }
+libc = "0.2"
+signal-hook = "0.3"
+slint = { version = "1.18.1", default-features = false, features = ["std", "compat-1-2"] }
+
+[build-dependencies]
+slint-build = "1.18.1"

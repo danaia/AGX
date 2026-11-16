@@ -5,3 +5,5 @@ disable_splash=1
 disable_overscan=1
 # USB-C presents an Ethernet gadget to the attached Linux workstation.
 dtoverlay=dwc2,dr_mode=peripheral
+# HDMI display through DRM/KMS for the desktop (agx-gui draws to it directly).
+dtoverlay=vc4-kms-v3d

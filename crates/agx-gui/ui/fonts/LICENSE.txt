@@ -1,0 +1,2 @@
+JetBrains Mono Nerd Font is licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org). Copied unmodified from the Omarchy desktop fonts.

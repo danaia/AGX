@@ -62,3 +62,12 @@ BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_AGX_PATH)/board/agx/bu
 
 # Filesystem tools for AGX data volumes.
 BR2_PACKAGE_E2FSPROGS=y
+
+# Desktop (agx-gui on DRM/KMS, no display server). libudev-zero provides
+# libudev without a udev daemon, which libinput uses to find input devices.
+BR2_PACKAGE_LIBUDEV_ZERO=y
+BR2_PACKAGE_LIBINPUT=y
+BR2_PACKAGE_LIBXKBCOMMON=y
+BR2_PACKAGE_XKEYBOARD_CONFIG=y
+# Slint's text stack links fontconfig; the GUI itself uses its bundled font.
+BR2_PACKAGE_FONTCONFIG=y

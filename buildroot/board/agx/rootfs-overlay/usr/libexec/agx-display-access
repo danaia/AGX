@@ -1,0 +1,12 @@
+#!/bin/sh
+# Supervised by agx-init (service "display-access"). This image has no udev,
+# so device nodes appear root-only. Let the agx-admin group use the display
+# and input devices, including keyboards and mice plugged in later, so the
+# desktop (agx-gui) runs without root.
+GROUP=agx-admin
+while :; do
+    find /dev/dri /dev/input /dev/fb0 /dev/console -type c \
+        \( ! -group "$GROUP" -o ! -perm 660 \) \
+        -exec chgrp "$GROUP" {} + -exec chmod 660 {} + 2>/dev/null
+    sleep 1
+done
