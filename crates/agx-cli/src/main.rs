@@ -21,6 +21,8 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
+    /// Open the desktop directly; its Open TUI action switches to the console
+    Desktop,
     /// Ask whether to open the desktop (GUI) or the console (TUI)
     Start {
         /// Interface used on Enter or timeout
@@ -320,6 +322,16 @@ fn run_tui() -> io::Result<()> {
 }
 fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
+        Commands::Desktop => {
+            let status = std::process::Command::new("/usr/bin/agx-gui").status();
+            start::reset_console();
+            match status {
+                Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => run_tui()?,
+                Ok(status) if status.success() => {}
+                Ok(status) => return Err(format!("Desktop exited with {status}").into()),
+                Err(error) => return Err(error.into()),
+            }
+        }
         Commands::Start { default, timeout } => {
             use std::io::IsTerminal;
             if !io::stdin().is_terminal() || !io::stdout().is_terminal() {

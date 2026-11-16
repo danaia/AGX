@@ -72,6 +72,7 @@ pub enum Cmd {
     Menu,
     Open(Kind),
     Tui,
+    Logout,
     Reboot,
     Shutdown,
 }

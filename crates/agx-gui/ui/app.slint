@@ -2,6 +2,7 @@
 // draws what it places and forwards raw keyboard and pointer input to it.
 import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
+import { LineEdit, Button } from "std-widgets.slint";
 export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
 
 // Frame metrics mirror wm.rs: header 28px, buttons 26px wide, border 2px.
@@ -97,6 +98,66 @@ component Cursor inherits Rectangle {
         commands: "M 10 0 L 14 4 L 11.5 4 L 11.5 8.5 L 16 8.5 L 16 6 L 20 10 L 16 14 L 16 11.5 L 11.5 11.5 L 11.5 16 L 14 16 L 10 20 L 6 16 L 8.5 16 L 8.5 11.5 L 4 11.5 L 4 14 L 0 10 L 4 6 L 4 8.5 L 8.5 8.5 L 8.5 4 L 6 4 Z";
         fill: #ffffff; stroke: #000000; stroke-width: 1px;
     }
+}
+
+export component LoginWindow inherits Window {
+    title: "AGX · Sign in";
+    background: Theme.bg-dark;
+    default-font-family: "JetBrainsMono Nerd Font";
+    default-font-size: 16px;
+    preferred-width: 1280px;
+    preferred-height: 720px;
+    min-width: 640px;
+    min-height: 400px;
+    forward-focus: username;
+    in property <bool> busy: false;
+    in property <bool> draw-cursor: false;
+    in property <string> error-text;
+    callback sign-in(string, string);
+    callback authenticated(string);
+    function submit() {
+        if (!root.busy) {
+            root.sign-in(username.text, password.text);
+            password.text = "";
+        }
+    }
+    tracker := TouchArea {
+        width: parent.width;
+        height: parent.height;
+        Rectangle {
+            width: min(440px, parent.width - 48px);
+            height: 366px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: Theme.bg;
+            border-width: 1px;
+            border-color: Theme.accent;
+            VerticalLayout {
+                padding: 30px;
+                spacing: 14px;
+                Text { text: "AGX"; color: Theme.accent; font-size: 38px; font-weight: 700; }
+                Text { text: "Sign in to your desktop"; color: Theme.fg; }
+                username := LineEdit {
+                    placeholder-text: "Username";
+                    enabled: !root.busy;
+                    accepted => { password.focus(); }
+                }
+                password := LineEdit {
+                    placeholder-text: "Password";
+                    input-type: InputType.password;
+                    enabled: !root.busy;
+                    accepted => { root.submit(); }
+                }
+                Button {
+                    text: root.busy ? "Signing in…" : "Sign in";
+                    enabled: !root.busy;
+                    clicked => { root.submit(); }
+                }
+                Text { text: root.error-text; color: Theme.red; wrap: word-wrap; font-size: 12px; min-height: 32px; }
+            }
+        }
+    }
+    if root.draw-cursor: Cursor { x: tracker.mouse-x; y: tracker.mouse-y; shape: 0; }
 }
 
 export component AppWindow inherits Window {

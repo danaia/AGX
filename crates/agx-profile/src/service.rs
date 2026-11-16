@@ -149,6 +149,117 @@ fn hash(password: &str) -> io::Result<Zeroizing<String>> {
     }
     Ok(result)
 }
+
+/// Authenticate an existing AGX administrator for the local graphical session.
+/// Root, locked accounts, expired credentials and passwordless accounts are rejected.
+pub fn authenticate(username: &str, password: &str) -> io::Result<()> {
+    let denied = || err("Username or password is incorrect, or the account is unavailable");
+    if password.is_empty() || password.len() > 512 || password.contains('\0') {
+        return Err(denied());
+    }
+    if !status()?.accounts.iter().any(|a| a.username == username) {
+        return Err(denied());
+    }
+    let shadow = Zeroizing::new(fs::read_to_string("/etc/shadow")?);
+    let fields: Vec<_> = shadow
+        .lines()
+        .find(|line| line.split(':').next() == Some(username))
+        .ok_or_else(denied)?
+        .split(':')
+        .collect();
+    let today = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| denied())?
+        .as_secs()
+        / 86400) as i64;
+    if !shadow_allows_login(&fields, today) {
+        return Err(denied());
+    }
+    if !password_matches(password, fields[1])? {
+        return Err(denied());
+    }
+    Ok(())
+}
+
+fn password_matches(password: &str, hashed: &str) -> io::Result<bool> {
+    if password.contains('\0') || !hashed.starts_with('$') {
+        return Ok(false);
+    }
+    let salt = CString::new(hashed)?;
+    let mut input = Zeroizing::new(password.as_bytes().to_vec());
+    input.push(0);
+    let _guard = CRYPT
+        .lock()
+        .map_err(|_| err("Password hasher unavailable"))?;
+    let output = unsafe { crypt(input.as_ptr().cast(), salt.as_ptr()) };
+    if output.is_null() {
+        return Ok(false);
+    }
+    let actual = unsafe { CStr::from_ptr(output) }.to_bytes();
+    let expected = hashed.as_bytes();
+    Ok(actual.len() == expected.len()
+        && actual
+            .iter()
+            .zip(expected)
+            .fold(0u8, |v, (a, b)| v | (a ^ b))
+            == 0)
+}
+
+fn shadow_allows_login(fields: &[&str], today: i64) -> bool {
+    if fields.len() != 9 || !fields[1].starts_with('$') {
+        return false;
+    }
+    let day = |i: usize| -> Result<Option<i64>, ()> {
+        match fields[i] {
+            "" | "-1" => Ok(None),
+            value => value
+                .parse::<i64>()
+                .ok()
+                .filter(|v| *v >= 0)
+                .map(Some)
+                .ok_or(()),
+        }
+    };
+    let (Ok(last), Ok(max), Ok(expire)) = (day(2), day(4), day(7)) else {
+        return false;
+    };
+    last != Some(0)
+        && !expire.is_some_and(|date| today >= date)
+        && !last
+            .zip(max)
+            .is_some_and(|(last, max)| today > last.saturating_add(max))
+}
+
+#[cfg(test)]
+mod login_tests {
+    use super::*;
+    #[test]
+    fn existing_password_hash_accepts_only_the_correct_password() {
+        let hashed = hash("test login password").unwrap();
+        assert!(password_matches("test login password", &hashed).unwrap());
+        assert!(!password_matches("incorrect password", &hashed).unwrap());
+        assert!(!password_matches("test login password\0suffix", &hashed).unwrap());
+        assert!(!password_matches("test login password", "!locked").unwrap());
+    }
+    #[test]
+    fn shadow_policy_rejects_locked_and_expired_accounts() {
+        for (record, allowed) in [
+            ("user:$6$salt$hash:20000:0:99999:7:::", true),
+            ("user:!$6$salt$hash:20000:0:99999:7:::", false),
+            ("user::20000:0:99999:7:::", false),
+            ("user:$6$salt$hash:0:0:99999:7:::", false),
+            ("user:$6$salt$hash:20000:0:30:7:::", false),
+            ("user:$6$salt$hash:20000:0:99999:7::20001:", false),
+            ("user:$6$salt$hash:bad:0:99999:7:::", false),
+        ] {
+            assert_eq!(
+                shadow_allows_login(&record.split(':').collect::<Vec<_>>(), 20040),
+                allowed,
+                "{record}"
+            );
+        }
+    }
+}
 pub fn save(save: Save) -> io::Result<String> {
     validate(&save).map_err(io::Error::other)?;
     let gid = admin_gid()?;

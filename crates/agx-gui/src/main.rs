@@ -5,6 +5,7 @@
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod keymap;
 mod wm;
+mod login;
 
 use agx_core::{Sampler, Snapshot};
 use keymap::{Cmd, ModKey, Mods, bind};
@@ -177,6 +178,7 @@ impl App {
             Cmd::Menu => self.open_menu(ui),
             Cmd::Open(k) => self.desk.open(k),
             Cmd::Tui => quit(EXIT_TUI),
+            Cmd::Logout => quit(0),
             Cmd::Reboot | Cmd::Shutdown => {
                 ui.set_confirm_text(
                     if cmd == Cmd::Reboot {
@@ -217,6 +219,7 @@ impl App {
             Cmd::CycleLayout,
         ));
         items.push(("Open TUI".into(), "terminal console".into(), Cmd::Tui));
+        items.push(("Sign out".into(), "return to login".into(), Cmd::Logout));
         items.push(("Reboot".into(), "asks first".into(), Cmd::Reboot));
         items.push(("Shut down".into(), "asks first".into(), Cmd::Shutdown));
         items
@@ -424,7 +427,11 @@ fn mods(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Mods {
 
 fn main() -> ExitCode {
     quit_on_signals();
-    let result = run();
+    let result = match std::env::args().nth(1).as_deref() {
+        Some("--login") => login::run(false),
+        Some("--login-preview") => login::run(true),
+        _ => run(),
+    };
     // Keys typed into the GUI also reach the terminal; do not replay them into the shell.
     // SAFETY: tcflush on stdin is harmless when it is not a terminal.
     unsafe { libc::tcflush(0, libc::TCIFLUSH) };

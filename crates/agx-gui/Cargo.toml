@@ -23,6 +23,8 @@ kms = ["slint/backend-linuxkms-noseat", "slint/renderer-software"]
 
 [dependencies]
 agx-core = { path = "../agx-core" }
+agx-profile = { path = "../agx-profile" }
+zeroize = "1"
 libc = "0.2"
 signal-hook = "0.3"
 slint = { version = "1.18.1", default-features = false, features = ["std", "compat-1-2"] }

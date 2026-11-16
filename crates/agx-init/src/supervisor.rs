@@ -2,7 +2,8 @@
 use crate::{Action, Log, Reply, Request, Service};
 use std::{
     collections::{BTreeMap, VecDeque},
-    fs,
+    fs, io,
+    os::unix::process::CommandExt,
     process::{Child, Command, Stdio},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -29,6 +30,60 @@ pub const DISPLAY_ACCESS: &str = "/usr/libexec/agx-display-access";
 fn display_access() -> Definition {
     Definition::new("display-access", "/bin/sh", &[DISPLAY_ACCESS], false)
 }
+fn console_definition(gui: bool) -> Definition {
+    if gui {
+        Definition::new("console", "/usr/bin/agx-gui", &["--login"], false)
+    } else {
+        Definition::new(
+            "console",
+            "/sbin/getty",
+            &["-L", "tty1", "0", "vt100"],
+            false,
+        )
+    }
+}
+
+/// Give the greeter its own controlling terminal, without a text login first.
+/// Serial and SSH recovery are independent supervised services.
+fn attach_graphical_console() -> io::Result<()> {
+    unsafe {
+        if libc::setsid() < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if libc::chown(c"/dev/tty1".as_ptr(), 0, 0) != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let fd = libc::open(c"/dev/tty1".as_ptr(), libc::O_RDWR | libc::O_NOCTTY);
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if libc::ioctl(fd, libc::TIOCSCTTY, 0) < 0 || libc::ioctl(fd, 0x5606, 1) < 0 {
+            // VT_ACTIVATE
+            libc::close(fd);
+            return Err(io::Error::last_os_error());
+        }
+        for target in [0, 1] {
+            if libc::dup2(fd, target) < 0 {
+                libc::close(fd);
+                return Err(io::Error::last_os_error());
+            }
+        }
+        if fd > 2 {
+            libc::close(fd);
+        }
+        let mut terminal: libc::termios = std::mem::zeroed();
+        if libc::tcgetattr(0, &mut terminal) != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        libc::cfmakeraw(&mut terminal);
+        if libc::tcsetattr(0, libc::TCSAFLUSH, &terminal) != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        // Recover a VT left in graphics mode after a forced termination.
+        libc::ioctl(0, 0x4B3A, 0); // KDSETMODE, KD_TEXT
+    }
+    Ok(())
+}
 pub fn definitions(pid1: bool) -> Vec<Definition> {
     let mut services = Vec::new();
     if pid1 {
@@ -46,12 +101,7 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
                 &["-F", "-E", "-g", "-p", "22", "-R"],
                 false,
             ),
-            Definition::new(
-                "console",
-                "/sbin/getty",
-                &["-L", "tty1", "0", "vt100"],
-                false,
-            ),
+            console_definition(std::path::Path::new("/usr/bin/agx-gui").is_file()),
             Definition::new(
                 "serial-console",
                 "/sbin/getty",
@@ -270,14 +320,19 @@ impl Supervisor {
                 && Instant::now() >= service.retry
                 && self.power.is_none()
             {
-                match Command::new(&service.definition.program)
+                let mut command = Command::new(&service.definition.program);
+                command
                     .args(&service.definition.args)
                     .env("PATH", "/sbin:/usr/sbin:/bin:/usr/bin")
                     .stdin(Stdio::null())
                     .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .spawn()
-                {
+                    .stderr(Stdio::null());
+                if service.definition.name == "console" && service.definition.args == ["--login"] {
+                    unsafe {
+                        command.pre_exec(attach_graphical_console);
+                    }
+                }
+                match command.spawn() {
                     Ok(child) => {
                         let pid = child.id();
                         service.child = Some(child);
@@ -450,6 +505,17 @@ mod tests {
             );
             std::thread::sleep(Duration::from_millis(20));
         }
+    }
+    #[test]
+    fn desktop_console_enters_greeter_and_headless_keeps_getty() {
+        let gui = console_definition(true);
+        assert_eq!(gui.name, "console");
+        assert_eq!(gui.program, "/usr/bin/agx-gui");
+        assert_eq!(gui.args, ["--login"]);
+        assert!(!gui.controllable);
+        let text = console_definition(false);
+        assert_eq!(text.program, "/sbin/getty");
+        assert_eq!(text.args, ["-L", "tty1", "0", "vt100"]);
     }
     #[test]
     fn real_process_crash_restarts_and_stop_does_not_restart() {
