@@ -454,7 +454,12 @@ impl Desktop {
     }
 
     pub fn rect_of(&self, k: Kind) -> Option<Rect> {
-        self.scene().windows.iter().find(|p| p.kind == k).map(|p| p.rect)
+        if self.fullscreen_of().is_none() && self.is_floating(k)
+            && let Some(rect) = self.float_rect.get(&k)
+        {
+            return Some(*rect);
+        }
+        self.scene().rect_of(k)
     }
 
     // --- focus ---------------------------------------------------------
@@ -762,28 +767,43 @@ impl Desktop {
         self.float_rect.insert(k, r);
     }
     /// Split ratio that would put the gap under the pointer.
+    #[cfg(test)]
     pub fn handle_ratio(&self, split: u32, pointer_x: f32, pointer_y: f32) -> Option<f32> {
-        let h = self.scene().handles.into_iter().find(|h| h.split == split)?;
+        self.scene().handle_ratio(split, pointer_x, pointer_y)
+    }
+
+    // --- hit testing ----------------------------------------------------------
+    #[cfg(test)]
+    pub fn hit(&self, x: f32, y: f32) -> Hit {
+        self.scene().hit(x, y)
+    }
+}
+
+impl Scene {
+    pub fn handle_ratio(&self, split: u32, pointer_x: f32, pointer_y: f32) -> Option<f32> {
+        let h = self.handles.iter().find(|h| h.split == split)?;
         Some(match h.axis {
             Axis::Horizontal => (pointer_x - h.region.x) / h.region.w.max(1.0),
             Axis::Vertical => (pointer_y - h.region.y) / h.region.h.max(1.0),
         })
     }
 
-    // --- hit testing ----------------------------------------------------------
+    pub fn rect_of(&self, k: Kind) -> Option<Rect> {
+        self.windows.iter().find(|p| p.kind == k).map(|p| p.rect)
+    }
+
     pub fn hit(&self, x: f32, y: f32) -> Hit {
-        let scene = self.scene();
-        for p in scene.windows.iter().rev().filter(|p| p.floating) {
+        for p in self.windows.iter().rev().filter(|p| p.floating) {
             if let Some(h) = hit_window(p, x, y, true) {
                 return h;
             }
         }
-        for h in &scene.handles {
+        for h in &self.handles {
             if let Some(hit) = handle_hit(h, x, y) {
                 return hit;
             }
         }
-        for p in scene.windows.iter().rev() {
+        for p in self.windows.iter().rev() {
             if let Some(h) = hit_window(p, x, y, false) {
                 return h;
             }
@@ -792,7 +812,7 @@ impl Desktop {
     }
     /// The tiled window under a point, for drop targets.
     pub fn tile_at(&self, x: f32, y: f32) -> Option<Kind> {
-        self.scene().windows.iter().find(|p| !p.floating && p.rect.contains(x, y)).map(|p| p.kind)
+        self.windows.iter().find(|p| !p.floating && p.rect.contains(x, y)).map(|p| p.kind)
     }
 }
 

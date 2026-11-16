@@ -5,11 +5,13 @@
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod keymap;
 mod wm;
+mod scene_model;
 mod login;
 
 use agx_core::{Sampler, Snapshot};
 use keymap::{Cmd, ModKey, Mods, bind};
-use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, Timer, TimerMode, VecModel};
+use scene_model::SceneModel;
 use std::{
     cell::RefCell,
     fs,
@@ -37,8 +39,13 @@ enum Drag {
     Split { split: u32 },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Motion { Cursor, Overlay, Geometry }
+
 struct App {
     desk: Desktop,
+    view: SceneModel,
+    occupied: Rc<VecModel<bool>>,
     modk: ModKey,
     drag: Drag,
     mods: Mods,
@@ -62,8 +69,13 @@ fn owner(hit: Hit) -> Option<Kind> {
 impl App {
     fn new() -> Self {
         let screen = Rect::new(0.0, 0.0, 1280.0, 720.0);
+        let desk = Desktop::new(screen, Rect::new(0.0, TOP, 1280.0, 720.0 - TOP - BOTTOM));
+        let view = SceneModel::default();
+        view.sync(desk.scene(), None);
         Self {
-            desk: Desktop::new(screen, Rect::new(0.0, TOP, 1280.0, 720.0 - TOP - BOTTOM)),
+            desk,
+            view,
+            occupied: Rc::new(VecModel::from(vec![false; wm::WORKSPACES])),
             modk: ModKey::from_env(),
             drag: Drag::None,
             mods: Mods::default(),
@@ -91,25 +103,13 @@ impl App {
     }
 
     fn refresh(&self, ui: &AppWindow) {
-        let scene = self.desk.scene();
-        let wins: Vec<Win> = scene
-            .windows
-            .iter()
-            .map(|p| Win {
-                kind: p.kind.index() as i32,
-                title: p.kind.title().into(),
-                x: p.rect.x,
-                y: p.rect.y,
-                w: p.rect.w,
-                h: p.rect.h,
-                focused: p.focused,
-                floating: p.floating,
-                target: self.target == Some(p.kind),
-            })
-            .collect();
-        ui.set_wins(ModelRc::new(VecModel::from(wins)));
-        let occupied: Vec<bool> = (0..wm::WORKSPACES).map(|i| self.desk.occupied(i)).collect();
-        ui.set_ws_occupied(ModelRc::new(VecModel::from(occupied)));
+        self.view.sync(self.desk.scene(), self.target);
+        for i in 0..wm::WORKSPACES {
+            let occupied = self.desk.occupied(i);
+            if self.occupied.row_data(i) != Some(occupied) {
+                self.occupied.set_row_data(i, occupied);
+            }
+        }
         ui.set_workspace(self.desk.current() as i32);
         ui.set_layout_name(
             match (self.desk.fullscreen_of(), self.desk.mode()) {
@@ -121,9 +121,11 @@ impl App {
             .into(),
         );
         ui.set_focus_title(self.desk.focused().map_or("", Kind::title).into());
-        ui.set_screen_full(scene.screen_full);
-        ui.set_mod_name(self.modk.name().into());
-        ui.set_draw_cursor(cfg!(feature = "kms") || std::env::var_os("AGX_GUI_CURSOR").is_some());
+        ui.set_screen_full(self.view.scene.borrow().screen_full);
+        self.refresh_drag(ui);
+    }
+
+    fn refresh_drag(&self, ui: &AppWindow) {
         ui.set_dragging(!matches!(self.drag, Drag::None));
         ui.set_cursor(self.cursor);
         match self.ghost {
@@ -278,12 +280,28 @@ impl App {
     // --- pointer ------------------------------------------------------------
     fn pointer(&mut self, ui: &AppWindow, kind: i32, button: i32, x: f32, y: f32, mods: Mods) {
         match kind {
-            0 => self.down(ui, button, x, y, mods),
-            1 => self.up(x, y, true),
-            3 => self.up(x, y, false),
-            _ => self.moved(x, y),
+            0 => {
+                self.down(ui, button, x, y, mods);
+                self.refresh(ui);
+            }
+            1 | 3 => {
+                // A release can carry a newer position than the last move event.
+                if kind == 1 { self.moved(x, y); }
+                self.up(x, y, kind == 1);
+                self.refresh(ui);
+            }
+            _ => match self.moved(x, y) {
+                Motion::Cursor => ui.set_cursor(self.cursor),
+                Motion::Overlay => {
+                    self.view.target(self.target);
+                    self.refresh_drag(ui);
+                }
+                Motion::Geometry => {
+                    self.view.sync(self.desk.scene(), self.target);
+                    self.refresh_drag(ui);
+                }
+            },
         }
-        self.refresh(ui);
     }
 
     fn begin_move(&mut self, k: Kind, x: f32, y: f32) {
@@ -300,7 +318,7 @@ impl App {
         self.drag = if self.desk.is_floating(k) {
             Drag::ResizeFloat { kind: k, edges: Edges { right: true, bottom: true, ..Default::default() } }
         } else {
-            let (cx, cy) = self.desk.rect_of(k).map_or((x, y), |r| r.center());
+            let (cx, cy) = self.view.scene.borrow().rect_of(k).map_or((x, y), |r| r.center());
             Drag::ResizeTiled { kind: k, sx: if x < cx { -1.0 } else { 1.0 }, sy: if y < cy { -1.0 } else { 1.0 } }
         };
     }
@@ -316,7 +334,7 @@ impl App {
             }
             return;
         }
-        let hit = self.desk.hit(x, y);
+        let hit = self.view.scene.borrow().hit(x, y);
         let held = self.modk.held(mods);
         match button {
             0 => {
@@ -363,30 +381,35 @@ impl App {
         }
     }
 
-    fn moved(&mut self, x: f32, y: f32) {
+    fn moved(&mut self, x: f32, y: f32) -> Motion {
         let (dx, dy) = (x - self.last.0, y - self.last.1);
         self.last = (x, y);
         match self.drag {
             Drag::None => self.cursor = self.hover(x, y),
             Drag::Move { kind, tiled: false, .. } => self.desk.move_floating(kind, dx, dy),
             Drag::Move { kind, tiled: true, start } => {
-                self.ghost = self.desk.rect_of(kind).map(|r| Rect::new(r.x + x - start.0, r.y + y - start.1, r.w, r.h));
-                self.target = self.desk.tile_at(x, y).filter(|t| *t != kind);
+                self.ghost = self.view.scene.borrow().rect_of(kind).map(|r| Rect::new(r.x + x - start.0, r.y + y - start.1, r.w, r.h));
+                self.target = self.view.scene.borrow().tile_at(x, y).filter(|t| *t != kind);
             }
             Drag::ResizeTiled { kind, sx, sy } => self.desk.resize_window(kind, sx * dx, sy * dy),
             Drag::ResizeFloat { kind, edges } => self.desk.resize_floating_edges(kind, edges, dx, dy),
             Drag::Split { split } => {
-                if let Some(r) = self.desk.handle_ratio(split, x, y) {
+                if let Some(r) = self.view.scene.borrow().handle_ratio(split, x, y) {
                     self.desk.set_split(split, r);
                 }
             }
+        }
+        match self.drag {
+            Drag::None => Motion::Cursor,
+            Drag::Move { tiled: true, .. } => Motion::Overlay,
+            _ => Motion::Geometry,
         }
     }
 
     fn up(&mut self, x: f32, y: f32, commit: bool) {
         if commit
             && let Drag::Move { kind, tiled: true, .. } = self.drag
-            && let Some(t) = self.desk.tile_at(x, y).filter(|t| *t != kind)
+            && let Some(t) = self.view.scene.borrow().tile_at(x, y).filter(|t| *t != kind)
         {
             self.desk.swap(kind, t);
         }
@@ -400,7 +423,7 @@ impl App {
         if y < TOP {
             return 6;
         }
-        match self.desk.hit(x, y) {
+        match self.view.scene.borrow().hit(x, y) {
             Hit::Header(_) => 1,
             Hit::Button(..) => 6,
             Hit::Handle(h) => if h.axis == wm::Axis::Horizontal { 2 } else { 3 },
@@ -503,6 +526,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let app = Rc::new(RefCell::new(App::new()));
+    ui.set_wins(ModelRc::from(app.borrow().view.windows.clone()));
+    ui.set_ws_occupied(ModelRc::from(app.borrow().occupied.clone()));
+    ui.set_mod_name(app.borrow().modk.name().into());
+    ui.set_draw_cursor(cfg!(feature = "kms") || std::env::var_os("AGX_GUI_CURSOR").is_some());
     // Callbacks never nest, but a stray re-entrant event is dropped rather than panicking.
     macro_rules! hook {
         ($on:ident, |$app:ident, $ui:ident $(, $arg:ident)*| $body:expr) => {{
@@ -747,3 +774,36 @@ fn apply_omarchy_theme(ui: &AppWindow) {
     set!(set_magenta, "bright_magenta");
 }
 
+
+#[cfg(test)]
+mod pointer_tests {
+    use super::*;
+
+    #[test]
+    fn hover_uses_cached_scene_and_never_requests_model_updates() {
+        let mut app = App::new();
+        let before: Vec<_> = app.view.windows.iter().collect();
+        let windows = app.view.scene.borrow().windows.as_ptr();
+        for i in 0..10_000 {
+            assert_eq!(app.moved((i % 1280) as f32, (i % 720) as f32), Motion::Cursor);
+        }
+        assert_eq!(app.view.scene.borrow().windows.as_ptr(), windows);
+        assert_eq!(app.view.windows.iter().collect::<Vec<_>>(), before);
+    }
+
+    #[test]
+    fn tiled_drag_is_overlay_only_and_drop_commits_the_swap() {
+        let mut app = App::new();
+        let source = app.view.scene.borrow().rect_of(Kind::Overview).unwrap();
+        let target = app.view.scene.borrow().rect_of(Kind::Cpu).unwrap();
+        app.begin_move(Kind::Overview, source.x + 40.0, source.y + 10.0);
+        let (x, y) = target.center();
+        assert_eq!(app.moved(x, y), Motion::Overlay);
+        assert_eq!(app.target, Some(Kind::Cpu));
+        assert_eq!(app.desk.rect_of(Kind::Overview), Some(source));
+        app.up(x, y, true);
+        assert_eq!(app.desk.rect_of(Kind::Overview), Some(target));
+        assert!(app.ghost.is_none());
+        assert!(app.target.is_none());
+    }
+}
