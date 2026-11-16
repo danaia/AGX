@@ -1,10 +1,10 @@
 # **AGX OS — MVP Development Plan**
 
-Version 0.2 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
+Version 0.3 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
 
-**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 is in progress. Its Rust TUI foundation is implemented, packaged into the image, installed on the Pi, and tested over USB SSH. Overview and Hardware screens are available through `agx tui`; the hardware/firmware audit and kernel trimming remain outstanding. See the [Phase 2 verification record](../docs/phase2.md).
+**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 remains in progress, with Overview, Hardware, and Network screens running on the Pi. At the user's request, personal Wi-Fi provisioning and reboot were brought forward from Phases 3–4. Authentication entered through the TUI, DHCP, DNS, HTTPS, clock synchronization, Wi-Fi SSH, and automatic Wi-Fi reconnection after a real TUI-initiated reboot passed on November 15, 2026. The remaining hardware audit and kernel trimming are still outstanding. See the [TUI foundation record](../docs/phase2.md) and [Wi-Fi provisioning record](../docs/wifi-provisioning.md).
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -32,14 +32,15 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 ## Headless interaction and TUI requirements
 
-- Make SSH the primary administration path, preserving the working USB SSH connection while adding Wi-Fi later. A local monitor, local keyboard, or graphical session must not be required for normal operation or MVP acceptance. Track physical HDMI/UART recovery checks separately from the headless acceptance gates.
+- Make SSH the primary administration path, preserving USB SSH recovery alongside Wi-Fi SSH. A local monitor, local keyboard, or graphical session must not be required for normal operation or MVP acceptance. Track physical HDMI/UART recovery checks separately from the headless acceptance gates.
 - Introduce `agx-tui` in Rust at the start of Phase 2, launched explicitly through `agx tui` in an interactive SSH terminal. Keep direct shell access available. Never start the TUI automatically for noninteractive SSH commands, scripts, or service processes.
+- Make the TUI the complete provisioning interface for this Pi. Add authentication, configuration, credential management, and power controls within the TUI as their services arrive; ordinary setup must not require hand-editing files or entering secrets in shell commands. Keep the CLI available for automation.
 - Build a colorful, icon-rich interface with clear navigation, colored status badges, readable panels, progress indicators, and live system information. Use a consistent palette and spacing throughout all phases. Show status through text and symbols as well as color.
 - Support keyboard navigation and mouse input from the first release: click tabs and controls, select list rows, and scroll lists and logs. Every action must remain accessible from the keyboard when mouse reporting is unavailable.
 - Support terminal resizing, small terminal layouts, and scrolling. Use Unicode icons with a text/ASCII fallback; optional Nerd Font glyphs must have fallbacks when the workstation font lacks them. Detect terminal color capabilities and provide reduced-color and `NO_COLOR` modes. Terminal fonts are supplied by the SSH client workstation.
 - Restore terminal state and disable mouse capture on exit, errors, or interruption. Handle unavailable services, stale data, and service reconnection without freezing the interface. A lost SSH connection must leave services running, and reopening the TUI must load current service state. Confirm disruptive actions such as reboot or shutdown.
 - Keep TUI rendering separate from system services. The TUI and CLI must use shared Rust interfaces and the same service operations; business logic and credentials belong in services, not screen widgets. A TUI failure must leave the OS and recovery shell usable. These interfaces should also support the later GUI.
-- Add real screens as their underlying features arrive: Overview and Hardware in Phase 2, Services and Logs in Phase 3, Network in Phase 4, a complete administration workspace in Phase 5, and Agent in Phase 6. Label unavailable features clearly and never simulate successful operations.
+- Add real screens as their underlying features arrive: Overview and Hardware in Phase 2, Services and Logs in Phase 3, Network brought forward during Phase 2 and extended in Phase 4, a complete administration workspace in Phase 5, and Agent in Phase 6. Label unavailable features clearly and never simulate successful operations.
 - Validate on the physical Pi over SSH, including keyboard-only use, mouse clicks and scrolling, resizing, terminal cleanup, and operation without a graphical session. Keep the CLI and JSON output available for automation.
 
 ## **Phased task list for Herdr**
@@ -59,7 +60,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 **First deliverable: a usable Rust TUI on the running Pi.**
 
-**Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Full Phase 2 hardware acceptance remains pending.
+**Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Personal Wi-Fi provisioning and confirmed reboot were subsequently implemented and physically verified, including saved authentication and automatic reconnection after reboot. Broadcom firmware and driver support are working. Full Phase 2 hardware acceptance remains pending.
 
 - Add a Rust workspace and `agx-tui`, with the initial `agx tui` launcher and a shared system-information layer. Select and pin the terminal rendering/input dependencies during implementation.
 - Build the navigation shell, palette, icon fallbacks, keyboard shortcuts, and mouse event handling. Deliver Overview and Hardware screens with live uptime, CPU/memory information, storage, and USB network status.
@@ -76,7 +77,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 - Create `agx-init` in Rust to manage startup and system processes.
 - Create a minimal filesystem and service manager.
-- Add logging, process supervision, shutdown, and reboot.
+- Add logging, process supervision, and shutdown. Migrate the existing confirmed TUI reboot operation and supervised `agx-netd` from BusyBox init into the Rust service manager without losing saved network authentication.
 - Keep a recovery shell available and preserve SSH access during the init transition.
 - Extend the TUI with Services and Logs screens: service health, start/stop/restart controls, and live logs with scrolling and filtering. Show operation results and service failures clearly.
 - Verify that service supervision continues when the TUI exits, crashes, or loses its SSH connection.
@@ -85,11 +86,13 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 ### Phase 4 — Wi-Fi and networking
 
-- Create `agx-net` in Rust.
+**Status:** The initial networking acceptance gate passed ahead of schedule on November 15, 2026: TUI provisioning, saved personal Wi-Fi authentication, DHCP/DNS/NTP, OpenAI HTTPS reachability, USB and Wi-Fi SSH, and automatic reconnection after a TUI reboot. Continue the remaining Phase 2 and Phase 3 work before extending networking.
+
+- Extend the existing Rust `agx-net` library, `agx-netd` service, and Network screen; preserve the verified provisioning flow.
 - Implement Wi-Fi scanning, connection, reconnection, and status commands.
 - Use the existing Linux driver and a minimal WPA authentication service initially.
 - Add DHCP, DNS, clock synchronization, and HTTPS connectivity.
-- Securely store network credentials.
+- Retain root-only credential storage, masked TUI input, saved-profile controls, and secret-free logs/command arguments. Extend authentication methods only with explicit UI support and validation.
 - Add a TUI Network screen for Wi-Fi scanning, selection, masked credential entry, connection progress, reconnect, and network diagnostics. Keep secrets out of logs and status messages.
 - Preserve USB SSH as a recovery path while changing Wi-Fi settings; show connection loss and reconnection state in the TUI.
 
@@ -137,7 +140,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 ### Instructions for Herdr
 
-Complete phases sequentially. Each phase requires source code, tests, a Git commit, and verified acceptance criteria before advancing. Do not report physical hardware tests as passed without evidence. Begin Phase 2 with the TUI vertical slice, then extend it in each later phase alongside the corresponding services. Each phase must meet the shared TUI interaction requirements for the screens it introduces. Do not introduce a graphical interface or custom kernel during the headless MVP; the GUI is a later project.
+Complete the remaining phases sequentially, preserving the user's explicit decision to bring Wi-Fi provisioning and reboot forward into Phase 2. A completed feature from a later phase does not imply the intervening phases are complete. Each phase requires source code, tests, a Git commit, and verified acceptance criteria before advancing. Do not report physical hardware tests as passed without evidence. Begin Phase 2 with the TUI vertical slice, then extend it in each later phase alongside the corresponding services. Each phase must meet the shared TUI interaction requirements for the screens it introduces. Do not introduce a graphical interface or custom kernel during the headless MVP; the GUI is a later project.
 
 One key architectural choice: **Herdr should orchestrate development from your main workstation, while AGX runs a small Rust agent worker on the Pi.** This avoids trying to port the entire Herdr orchestration system before the operating system itself works.
 

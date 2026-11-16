@@ -1,6 +1,6 @@
 # Phase 2 — Rust TUI foundation
 
-The first Phase 2 deliverable is implemented and running on the physical Pi 5. The remaining kernel and hardware work in [the plan](../plans/plan1.md) is still pending.
+The first Phase 2 deliverable is implemented and running on the physical Pi 5. The remaining kernel and hardware work in [the plan](../plans/plan1.md) is still pending. Wi-Fi provisioning and reboot have since been added and verified; see the [Wi-Fi guide and acceptance record](wifi-provisioning.md).
 
 ## Use it
 
@@ -19,7 +19,7 @@ ssh -t -i ~/.ssh/id_ed25519 root@10.77.0.2 agx tui
 Overview shows live CPU usage, memory, root filesystem space, board/kernel identity, uptime, load, and network interfaces. Hardware lists detected block devices, interfaces, and loaded modules. Selecting a row shows its details. Help explains all controls.
 
 - Click the tabs or device rows; use the mouse wheel to scroll/select.
-- Press `1`, `2`, or `?` for Overview, Hardware, or Help.
+- Press `1`, `2`, `3`, or `?` for Overview, Hardware, Network, or Help. `F10` opens the reboot confirmation.
 - Tab/Shift-Tab and Left/Right change screens. Up/Down or `j`/`k` scroll/select; PageUp/PageDown move by a page, and Home/End select hardware entries.
 - `r` requests a new sample. `q`, Esc, or Ctrl-C returns to the shell.
 - Smaller terminals get a compact overview; below 40 columns or 12 rows, a resize notice replaces the dashboard.
@@ -87,7 +87,7 @@ python3 -m venv .cache/qa-venv
 
 Generated evidence lives in `.cache/evidence/`: `phase2-status.json`, `phase2-pty.json`, terminal captures (`phase2-overview`, `phase2-hardware`, `phase2-80x24`, `phase2-40x12`), `phase2-image-validation.txt`, and `phase2-sdcard.sha256`.
 
-Current image: `output/images/sdcard.img`. SHA-256:
+Historical TUI foundation image at this verification checkpoint: `output/images/sdcard.img`. SHA-256 (superseded by the Wi-Fi image):
 
 ```text
 3327cc47e0ae78ef7953e6a661a1b7799e4104bd0133495b0dc8a0d70a9c3e11
@@ -97,4 +97,4 @@ The new image has passed artifact validation. A fresh cold boot from this update
 
 ## Remaining Phase 2 work
 
-Audit required kernel drivers and firmware on the Pi, bring up missing hardware support including Broadcom Wi-Fi, and trim the kernel while preserving USB SSH. Verify the required devices physically. Interactive HDMI/UART recovery remains a separate outstanding check; headless operation is the primary acceptance path. Service controls, Wi-Fi management, and the agent screen arrive with their corresponding later phases.
+Complete the remaining kernel driver and firmware audit, and trim the kernel while preserving USB SSH and working Broadcom Wi-Fi. Verify the required devices physically. Interactive HDMI/UART recovery remains a separate outstanding check; headless operation is the primary acceptance path. Wi-Fi management and reboot are already available. Broader service controls and the agent screen arrive with their corresponding later phases.
