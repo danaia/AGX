@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agx-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "agx-core",
  "agx-net",
@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "agx-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libc",
  "serde",
@@ -22,9 +22,10 @@ dependencies = [
 
 [[package]]
 name = "agx-net"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "agx-core",
+ "agx-profile",
  "libc",
  "pbkdf2",
  "serde",
@@ -35,11 +36,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "agx-profile"
+version = "0.4.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "zeroize",
+]
+
+[[package]]
 name = "agx-tui"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "agx-core",
  "agx-net",
+ "agx-profile",
  "crossterm",
  "libc",
  "ratatui",

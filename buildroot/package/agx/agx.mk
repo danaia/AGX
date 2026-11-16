@@ -1,9 +1,10 @@
 ################################################################################
 # AGX local Rust workspace; scripts/prepare-rust-package.sh vendors locked crates.
 ################################################################################
-AGX_VERSION = 0.3.0
+AGX_VERSION = 0.4.0
 AGX_SITE = $(BR2_EXTERNAL_AGX_PATH)/../.cache/agx-package
 AGX_SITE_METHOD = local
+AGX_DEPENDENCIES += libxcrypt
 AGX_CARGO_BUILD_OPTS = --workspace
 
 define AGX_INSTALL_TARGET_CMDS

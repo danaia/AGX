@@ -135,6 +135,7 @@ def main():
     measurements = {}
     try:
         console.expect('LIVE')
+        console.send(b'2')
         console.expect('THIS MACHINE')
         console.read(1.3)
         assert 'Sampling CPU' not in '\n'.join(console.screen.display), 'CPU sampler did not refresh'
@@ -151,7 +152,7 @@ def main():
         measurements['rss_bytes'] = after[2]
         measurements['idle_cpu_percent_one_core'] = round((after[0]-before[0]) / max(1, after[1]-before[1]) * status['cpu_count'] * 100, 2)
         assert b'\x1b[?1006h' in console.raw, 'Mouse capture not enabled'
-        console.click(50, 5)
+        console.click(60, 5)
         console.expect('HARDWARE INVENTORY')
         console.click(22, 11)
         console.expect('Selected device')
@@ -163,7 +164,7 @@ def main():
         console.capture('phase2-hardware')
         console.send(b'?')
         console.expect('HEADLESS BY DESIGN')
-        console.send(b'1')
+        console.send(b'2')
         console.expect('THIS MACHINE')
         console.resize(80, 24)
         console.expect('THIS MACHINE')

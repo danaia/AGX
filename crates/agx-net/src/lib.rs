@@ -90,6 +90,8 @@ impl Default for Status {
 // Deliberately no Debug implementation: requests can contain a password.
 #[derive(Deserialize, Serialize)]
 pub enum Request {
+    ProfileStatus,
+    SaveProfile(agx_profile::Save),
     Status,
     Scan,
     Country {
@@ -118,6 +120,8 @@ pub struct Reply {
     pub ok: bool,
     pub message: String,
     pub status: Status,
+    #[serde(default)]
+    pub profile: Option<agx_profile::Status>,
 }
 
 pub fn request(command: &Request) -> io::Result<Reply> {

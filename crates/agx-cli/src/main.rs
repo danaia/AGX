@@ -108,6 +108,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 fn help() {
     println!(
-        "AGX system console\n\n  agx tui [--ascii] [--no-color] [--no-mouse]\n          [--color auto|truecolor|256|16|never]\n  agx status [--json]\n  agx wifi [status|scan|check] [--json]\n  agx --version\n\nTUI: click tabs and hardware rows; scroll with the mouse wheel.\nKeyboard: 1/2/3/? screens, Tab switch, arrows scroll, r refresh, F10 reboot, q quit.\nRun over an interactive SSH terminal. NO_COLOR is respected in auto mode."
+        "AGX system console\n\n  agx tui [--ascii] [--no-color] [--no-mouse]\n          [--color auto|truecolor|256|16|never]\n  agx status [--json]\n  agx wifi [status|scan|check] [--json]\n  agx --version\n\nTUI: click tabs and hardware rows; scroll with the mouse wheel.\nKeyboard: 1 Profile, 2 Overview, 3 Hardware, 4 Network, ? Help, Tab switch, arrows scroll, r refresh, F10 reboot, q quit.\nRun over an interactive SSH terminal. NO_COLOR is respected in auto mode."
     );
 }

@@ -18,3 +18,7 @@ network-build:
 deploy-network: network-build
 	./scripts/deploy-tui.sh
 	./scripts/deploy-network.sh
+
+.PHONY: deploy-profile
+deploy-profile: network-build
+	./scripts/deploy-profile.sh

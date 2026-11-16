@@ -159,7 +159,6 @@ struct Manager {
 impl Manager {
     fn new() -> io::Result<Self> {
         private_dir(ROOT)?;
-        private_dir(RUN)?;
         private_dir(&format!("{RUN}/wpa"))?;
         let settings = fs::read(SETTINGS)
             .ok()
@@ -368,6 +367,8 @@ impl Manager {
     }
     fn handle(&mut self, request: Request) -> io::Result<String> {
         match request {
+            Request::ProfileStatus => return Ok("Profile ready".into()),
+            Request::SaveProfile(save) => return agx_profile::service::save(save),
             Request::Status => return Ok(self.state.message.clone()),
             Request::Reboot { confirmed } => {
                 if !confirmed {
@@ -770,7 +771,7 @@ pub fn run() -> io::Result<()> {
         fs::remove_file(SOCKET)?;
     }
     let listener = UnixListener::bind(SOCKET)?;
-    fs::set_permissions(SOCKET, fs::Permissions::from_mode(0o600))?;
+    agx_profile::service::prepare_access(SOCKET)?;
     listener.set_nonblocking(true)?;
     let stop = Arc::new(AtomicBool::new(false));
     for signal in [signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT] {
@@ -814,6 +815,7 @@ fn serve(manager: &mut Manager, connection: &mut UnixStream) -> io::Result<()> {
         ok,
         message,
         status: manager.state.clone(),
+        profile: agx_profile::service::status().ok(),
     };
     serde_json::to_writer(&mut *connection, &reply)?;
     connection.write_all(b"\n")

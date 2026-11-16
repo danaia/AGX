@@ -1,2 +1,2 @@
-# Password authentication disabled; only the build-time public key is authorised.
-DROPBEAR_ARGS="-s -p 22"
+# Named users may authenticate with a password; root remains key-only (-g).
+DROPBEAR_ARGS="-g -p 22"

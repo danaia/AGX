@@ -16,7 +16,7 @@ def main():
     console=base.Console()
     try:
         console.expect('LIVE')
-        console.send(b'3')
+        console.send(b'4')
         console.expect('NETWORK PROVISIONING')
         console.send(b's')
         deadline=time.monotonic()+15
@@ -78,8 +78,9 @@ def main():
     final=json.loads(base.remote('agx wifi status --json'))
     assert not any(n['ssid']=='AGX-Test-Never-Connect' for n in final['saved'])
     metadata=base.remote('ls -ld /etc/agx /etc/agx/network.json /etc/agx/wpa_supplicant.conf /run/agx/network.sock').splitlines()
-    assert [line.split()[0] for line in metadata]==['drwx------','-rw-------','-rw-------','srw-------'], metadata
-    assert all(line.split()[2:4]==['root','root'] for line in metadata), metadata
+    assert [line.split()[0] for line in metadata]==['drwx------','-rw-------','-rw-------','srw-rw----'], metadata
+    assert all(line.split()[2:4]==['root','root'] for line in metadata[:-1]), metadata
+    assert metadata[-1].split()[2:4]==['root','agx-admin'], metadata
     report={'physical_scan':'passed','masked_password':'passed','invalid_password_stays_local':'passed',
             'hidden_network_form_cancel':'passed','country_edit_save':'passed','disconnect_cancel':'passed',
             'reboot_defaults_cancel':'passed','small_terminal_guard':'passed','private_permissions':'passed',

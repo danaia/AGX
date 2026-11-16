@@ -43,7 +43,7 @@ mv /usr/sbin/agx-netd.new /usr/sbin/agx-netd
 mv /usr/sbin/agx-dhcp.new /usr/sbin/agx-dhcp
 ln -sf ../libexec/agx/busybox /usr/sbin/ntpd
 /sbin/depmod -a
-if ! grep -q 'DROPBEAR_ARGS="-s -p 22"' /etc/default/dropbear; then
+if ! grep -q 'DROPBEAR_ARGS="-g -p 22"' /etc/default/dropbear; then
     cp /etc/default/dropbear /etc/default/dropbear.agx-prev
     mv /etc/default/dropbear.agx-new /etc/default/dropbear
     /etc/init.d/S50dropbear restart

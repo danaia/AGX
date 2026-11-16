@@ -1,2 +1,14 @@
-AGX OS - Phase 1 development image
-HDMI/USB or Pi 5 debug UART console. Login: root (no password).
+           ##
+          ####       ################          #####
+         ######    ####################      #####
+        ######## #####             ######  ######
+       ####  #######                 ##########
+      ####    ######      #########    ######
+     ####      #####      ##########   #######
+    ########### ####           ##### ##########
+   ############  #####         #########    #####
+  ####             ####################      ######
+#####                ################          #####
+
+AGX / Sign in with your username and password.
+New device: provision a profile through USB SSH using your recovery key.

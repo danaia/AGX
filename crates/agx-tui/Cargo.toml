@@ -12,3 +12,4 @@ crossterm.workspace = true
 libc.workspace = true
 agx-net.workspace = true
 zeroize.workspace = true
+agx-profile.workspace = true

@@ -78,7 +78,7 @@ def check(images):
     target = images.parent / "target"
     require((target / "usr/sbin/dropbear").is_file(), "Missing SSH server")
     dropbear = (target / "etc/default/dropbear").read_text()
-    require('-s -p 22' in dropbear, "SSH must use key authentication on USB and Wi-Fi")
+    require('-g -p 22' in dropbear and '-s' not in dropbear.split('DROPBEAR_ARGS=')[-1], "SSH must allow named-user passwords and retain key-only root")
     interfaces = (target / "etc/network/interfaces").read_text()
     require("auto usb0" in interfaces and "address 10.77.0.2" in interfaces,
             "Missing USB Ethernet address")
@@ -96,7 +96,7 @@ def check(images):
                 f"Incorrect packed SSH permissions: {name}")
         require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
                 f"Incorrect packed SSH ownership: {name}")
-    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "root/.ssh/authorized_keys"):
+    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue", "etc/profile.d/agx-welcome.sh", "usr/share/agx/logo.ascii", "root/.ssh/authorized_keys"):
         packed = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
                                 capture_output=True, check=True).stdout
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")

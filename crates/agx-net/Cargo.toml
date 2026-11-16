@@ -13,3 +13,4 @@ signal-hook.workspace = true
 zeroize.workspace = true
 pbkdf2.workspace = true
 sha1.workspace = true
+agx-profile.workspace = true
