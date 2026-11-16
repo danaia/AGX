@@ -67,6 +67,10 @@ fn owner(hit: Hit) -> Option<Kind> {
     }
 }
 
+fn session_action(index: i32) -> Option<Cmd> {
+    [Cmd::Logout, Cmd::Tui, Cmd::Reboot, Cmd::Shutdown].get(index as usize).copied()
+}
+
 impl App {
     fn new() -> Self {
         let screen = Rect::new(0.0, 0.0, 1280.0, 720.0);
@@ -242,6 +246,7 @@ impl App {
     }
 
     fn open_menu(&mut self, ui: &AppWindow) {
+        ui.set_session_open(false);
         self.set_menu_rows(ui, "");
         ui.set_menu_index(0);
         ui.set_menu_open(true);
@@ -567,6 +572,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     hook!(on_menu_query, |a, ui, query| a.set_menu_rows(&ui, &query));
     hook!(on_menu_accept, |a, ui, index| a.menu_accept(&ui, index));
     hook!(on_confirm, |a, ui, yes| a.confirm(&ui, yes));
+    hook!(on_session_action, |a, ui, index| {
+        if let Some(cmd) = session_action(index) { a.run(&ui, cmd); }
+    });
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change
@@ -789,6 +797,61 @@ fn apply_omarchy_theme(ui: &AppWindow) {
 #[cfg(test)]
 mod pointer_tests {
     use super::*;
+
+    #[test]
+    fn session_dropdown_routes_only_the_four_session_actions() {
+        assert_eq!(session_action(0), Some(Cmd::Logout));
+        assert_eq!(session_action(1), Some(Cmd::Tui));
+        assert_eq!(session_action(2), Some(Cmd::Reboot));
+        assert_eq!(session_action(3), Some(Cmd::Shutdown));
+        assert_eq!(session_action(-1), None);
+        assert_eq!(session_action(4), None);
+    }
+
+    #[test]
+    fn session_button_opens_dropdown_and_mouse_selects_tui() {
+        use slint::platform::{Platform, PlatformError, WindowAdapter, WindowEvent, PointerEventButton};
+        use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType};
+        struct TestPlatform(Rc<MinimalSoftwareWindow>);
+        impl Platform for TestPlatform {
+            fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> { Ok(self.0.clone()) }
+        }
+        let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+        slint::platform::set_platform(Box::new(TestPlatform(window.clone()))).unwrap();
+        let ui = AppWindow::new().unwrap();
+        ui.window().set_size(slint::PhysicalSize::new(1280, 720));
+        ui.show().unwrap();
+        let selected = Rc::new(RefCell::new(Vec::new()));
+        let result = selected.clone();
+        ui.on_session_action(move |index| result.borrow_mut().push(index));
+        let render = || {
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut vec![slint::Rgb8Pixel::default(); 1280 * 720], 1280);
+            });
+        };
+        let click = |x, y| {
+            let position = slint::LogicalPosition::new(x, y);
+            ui.window().dispatch_event(WindowEvent::PointerPressed { position, button: PointerEventButton::Left });
+            ui.window().dispatch_event(WindowEvent::PointerReleased { position, button: PointerEventButton::Left });
+        };
+        render();
+        click(1246.0, 17.0);
+        assert!(ui.get_session_open(), "header button must open the dropdown");
+        ui.set_draw_cursor(true);
+        render();
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(1150.0, 115.0) });
+        assert_eq!(ui.get_cursor_x(), 1150.0);
+        assert_eq!(ui.get_cursor_y(), 115.0);
+        click(1150.0, 115.0);
+        assert!(!ui.get_session_open());
+        assert_eq!(*selected.borrow(), vec![1], "second row enters the TUI");
+        render();
+        click(1246.0, 17.0);
+        assert!(ui.get_session_open());
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: slint::platform::Key::Escape.into() });
+        assert!(!ui.get_session_open(), "Escape dismisses without choosing an action");
+        assert_eq!(*selected.borrow(), vec![1]);
+    }
 
     #[test]
     fn floating_edges_and_corners_select_directional_resize_cursors() {

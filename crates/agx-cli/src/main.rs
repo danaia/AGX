@@ -13,7 +13,7 @@ use std::{
     version,
     about = "AGX headless system administration",
     arg_required_else_help = true,
-    after_help = "TUI: 1 Profile, 2 Overview, 3 Hardware, 4 Network, 5 System, 6 Services, 7 Logs, ? Help.\nTab switches screens; arrows and mouse scroll; F10 confirms reboot; q quits.\nService controls require AGX administrator access. NO_COLOR is respected."
+    after_help = "TUI: 1 Profile, 2 Overview, 3 Hardware, 4 Network, 5 System, 6 Services, 7 Logs, ? Help.\nTab switches screens; arrows and mouse scroll; F8 returns to GUI on HDMI; F9 shuts down; F10 reboots; q quits.\nPower actions require confirmation. Service controls require AGX administrator access. NO_COLOR is respected."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -318,19 +318,32 @@ enum StartDefault {
     Tui,
 }
 fn run_tui() -> io::Result<()> {
-    agx_tui::run(Options::default())
+    run_interfaces(start::Choice::Tui, Options::default())
+}
+fn run_interfaces(initial: start::Choice, options: Options) -> io::Result<()> {
+    start::session_loop(initial, |choice| match choice {
+        start::Choice::Tui => Ok(match agx_tui::run(options)? {
+            agx_tui::Exit::Gui => Some(start::Choice::Gui),
+            agx_tui::Exit::Quit => None,
+        }),
+        start::Choice::Gui => {
+            let status = std::process::Command::new("/usr/bin/agx-gui").status();
+            start::reset_console();
+            match status {
+                Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => {
+                    Ok(Some(start::Choice::Tui))
+                }
+                Ok(status) if status.success() => Ok(None),
+                Ok(status) => Err(io::Error::other(format!("Desktop exited with {status}"))),
+                Err(error) => Err(error),
+            }
+        }
+    })
 }
 fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
     match command {
         Commands::Desktop => {
-            let status = std::process::Command::new("/usr/bin/agx-gui").status();
-            start::reset_console();
-            match status {
-                Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => run_tui()?,
-                Ok(status) if status.success() => {}
-                Ok(status) => return Err(format!("Desktop exited with {status}").into()),
-                Err(error) => return Err(error.into()),
-            }
+            run_interfaces(start::Choice::Gui, Options::default())?;
         }
         Commands::Start { default, timeout } => {
             use std::io::IsTerminal;
@@ -347,19 +360,9 @@ fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
             };
             let choice = start::ask(default, Duration::from_secs(timeout))?;
             if choice == start::Choice::Gui {
-                let gui = std::process::Command::new("agx-gui").status();
-                start::reset_console();
-                match gui {
-                    Ok(status) if status.code() == Some(start::GUI_WANTS_TUI) => run_tui()?,
-                    Ok(status) if status.success() => {}
-                    Ok(status) => {
-                        eprintln!("agx-gui exited with {status}; opening the console.");
-                        run_tui()?;
-                    }
-                    Err(error) => {
-                        eprintln!("Could not start agx-gui ({error}); opening the console.");
-                        run_tui()?;
-                    }
+                if let Err(error) = run_interfaces(start::Choice::Gui, Options::default()) {
+                    eprintln!("Could not run the desktop ({error}); opening the console.");
+                    run_tui()?;
                 }
             } else {
                 run_tui()?;
@@ -382,11 +385,14 @@ fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
                     Color::Never => ColorMode::Never,
                 }
             };
-            agx_tui::run(Options {
-                ascii,
-                mouse: !no_mouse,
-                color,
-            })?;
+            run_interfaces(
+                start::Choice::Tui,
+                Options {
+                    ascii,
+                    mouse: !no_mouse,
+                    color,
+                },
+            )?;
         }
         Commands::Status { json } => {
             let mut sampler = Sampler::default();

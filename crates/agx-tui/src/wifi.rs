@@ -368,16 +368,25 @@ impl Ui {
     pub fn draw_shutdown(&mut self, frame: &mut Frame, area: Rect, p: Palette) {
         self.shutdown_area = area;
         frame.render_widget(
-            Paragraph::new("[Shutdown F9]").style(Style::default().fg(p.cyan)),
+            Paragraph::new(if area.width < 13 {
+                "Off F9"
+            } else {
+                "[Shutdown F9]"
+            })
+            .style(Style::default().fg(p.cyan)),
             area,
         );
     }
     pub fn draw_reboot(&mut self, frame: &mut Frame, area: Rect, p: Palette) {
         self.reboot_area = area;
         frame.render_widget(
-            Paragraph::new("[Reboot F10]")
-                .centered()
-                .style(Style::default().fg(p.amber).bold()),
+            Paragraph::new(if area.width < 12 {
+                "Reboot F10"
+            } else {
+                "[Reboot F10]"
+            })
+            .centered()
+            .style(Style::default().fg(p.amber).bold()),
             area,
         );
     }

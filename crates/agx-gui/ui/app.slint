@@ -168,8 +168,10 @@ export component AppWindow inherits Window {
     in-out property <int> menu-index: 0;
     in property <[MenuRow]> menu-rows: [];
     in-out property <string> confirm-text: "";
+    in-out property <bool> session-open: false;
+    in-out property <int> session-index: 0;
     property <bool> custom-resize-cursor: root.resize-cursor-overlay
-        && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && root.confirm-text == "";
+        && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
     callback pointer(int, int, length, length, bool, bool, bool, bool);
@@ -178,6 +180,13 @@ export component AppWindow inherits Window {
     callback menu-query(string);
     callback menu-accept(int);
     callback confirm(bool);
+    callback session-action(int);
+
+    function track-cursor(x: length, y: length) {
+        root.cursor-x = x;
+        root.cursor-y = y;
+        root.cursor-seen = true;
+    }
 
     pure function key-name(t: string) -> string {
         t == Key.LeftArrow ? "left" : t == Key.RightArrow ? "right" : t == Key.UpArrow ? "up"
@@ -187,6 +196,13 @@ export component AppWindow inherits Window {
 
     root-keys := FocusScope {
         key-pressed(e) => {
+            if (root.session-open) {
+                if (e.text == Key.Escape) { root.session-open = false; }
+                if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 4); }
+                if (e.text == Key.UpArrow) { root.session-index = mod(root.session-index + 3, 4); }
+                if (e.text == Key.Return) { root.session-open = false; root.session-action(root.session-index); }
+                return accept;
+            }
             if (root.confirm-text != "") {
                 if (e.text == Key.Return) { root.confirm(true); }
                 if (e.text == Key.Escape) { root.confirm(false); }
@@ -273,7 +289,25 @@ export component AppWindow inherits Window {
                 Text { text: "  " + root.focus-title; color: Theme.fg-dim; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 Text { text: "󰍛 \{Math.round(Sys.cpu-percent)}%"; color: Theme.cyan; vertical-alignment: center; }
                 Text { text: "  󰘚 \{Math.round(Sys.mem-percent)}%"; color: Theme.magenta; vertical-alignment: center; }
-                Text { text: "  󰛳 " + Sys.primary-ip; color: Theme.green; vertical-alignment: center; }
+                Text { text: "  󰛳 " + Sys.primary-ip; color: Theme.green; vertical-alignment: center; max-width: 180px; overflow: elide; }
+                Rectangle {
+                    width: 48px;
+                    background: session-button.has-hover || root.session-open ? Theme.bg-light : transparent;
+                    accessible-role: button;
+                    accessible-label: "Session menu";
+                    Text { text: " ⌄"; color: Theme.fg-bright; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+                    session-button := TouchArea {
+                        mouse-cursor: MouseCursor.pointer;
+                        pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        clicked => {
+                            root.session-open = !root.session-open;
+                            root.session-index = 0;
+                            root.menu-open = false;
+                            root-keys.focus();
+                        }
+                    }
+                }
             }
             Text {
                 text: root.clock;
@@ -380,6 +414,42 @@ export component AppWindow inherits Window {
             }
         }
 
+        // Session dropdown stays separate from the searchable window menu.
+        if root.session-open: Rectangle {
+            TouchArea {
+                pointer-event(e) => { root.track-cursor(self.mouse-x, self.mouse-y); }
+                moved => { root.track-cursor(self.mouse-x, self.mouse-y); }
+                clicked => { root.session-open = false; root-keys.focus(); }
+            }
+            Rectangle {
+                x: parent.width - self.width - 10px;
+                y: 42px;
+                width: 238px;
+                height: 192px;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.muted;
+                background: Theme.bg;
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 2px;
+                    for label[i] in ["Log out", "Enter TUI", "Reboot…", "Shut down…"]: Rectangle {
+                        background: row-touch.has-hover || root.session-index == i ? Theme.bg-light : transparent;
+                        border-radius: 4px;
+                        accessible-role: button;
+                        accessible-label: label;
+                        Text { x: 12px; text: label; color: i >= 2 ? Theme.red : Theme.fg-bright; font-size: 14px; vertical-alignment: center; }
+                        row-touch := TouchArea {
+                            mouse-cursor: MouseCursor.pointer;
+                            pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                            moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                            clicked => { root.session-open = false; root-keys.focus(); root.session-action(i); }
+                        }
+                    }
+                }
+            }
+        }
+
         // Confirmation overlay for disruptive actions.
         if root.confirm-text != "": Rectangle {
             background: #000000bb;
@@ -392,7 +462,9 @@ export component AppWindow inherits Window {
             }
             Rectangle {
                 width: min(460px, parent.width - 40px);
-                height: 120px;
+                height: 180px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
                 background: Theme.red;
                 Rectangle {
                     x: Theme.border;
@@ -405,6 +477,11 @@ export component AppWindow inherits Window {
                         spacing: 12px;
                         Text { text: root.confirm-text; color: Theme.fg-bright; wrap: word-wrap; font-weight: 700; }
                         Text { text: "Enter confirms. Esc cancels."; color: Theme.fg-dim; }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Button { text: "Cancel"; clicked => { root.confirm(false); } }
+                            Button { text: "Confirm"; clicked => { root.confirm(true); } }
+                        }
                     }
                 }
             }

@@ -57,6 +57,18 @@ impl Default for Options {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Exit {
+    Quit,
+    Gui,
+}
+
+fn gui_available() -> bool {
+    std::fs::read_link("/proc/self/fd/0")
+        .is_ok_and(|path| path == std::path::Path::new("/dev/tty1"))
+        && std::path::Path::new("/usr/bin/agx-gui").is_file()
+}
+
 #[derive(Clone, Copy)]
 struct Palette {
     bg: Color,
@@ -201,6 +213,8 @@ impl Worker {
 }
 
 struct App {
+    gui_available: bool,
+    gui_footer: Rect,
     page: usize,
     snapshot: Option<Snapshot>,
     error: Option<String>,
@@ -218,7 +232,12 @@ struct App {
 }
 impl App {
     fn new(options: Options) -> Self {
+        let gui_available = gui_available();
+        let mut profile = profile::Ui::default();
+        profile.gui_available = gui_available;
         Self {
+            gui_available,
+            gui_footer: Rect::default(),
             page: 0,
             snapshot: None,
             error: None,
@@ -230,7 +249,7 @@ impl App {
             palette: Palette::new(options.color),
             options,
             wifi: wifi::Ui::default(),
-            profile: profile::Ui::default(),
+            profile,
             system: system::Ui::default(),
             services: services::Ui::default(),
         }
@@ -424,10 +443,12 @@ impl App {
             ),
             _ => self.help(frame, regions[2]),
         }
+        let action_width = if area.width < 70 { 10 } else { 14 };
         let footer_regions = Layout::horizontal([
             Constraint::Min(1),
-            Constraint::Length(14),
-            Constraint::Length(14),
+            Constraint::Length(action_width),
+            Constraint::Length(action_width),
+            Constraint::Length(action_width),
         ])
         .split(regions[3]);
         let footer = if let Some(error) = &self.error {
@@ -452,10 +473,21 @@ impl App {
                 })),
             footer_regions[0],
         );
+        self.gui_footer = footer_regions[1];
+        frame.render_widget(
+            Paragraph::new("[GUI F8]")
+                .centered()
+                .style(Style::default().fg(if self.gui_available {
+                    self.palette.cyan
+                } else {
+                    self.palette.muted
+                })),
+            self.gui_footer,
+        );
         self.wifi
-            .draw_shutdown(frame, footer_regions[1], self.palette);
+            .draw_shutdown(frame, footer_regions[2], self.palette);
         self.wifi
-            .draw_reboot(frame, footer_regions[2], self.palette);
+            .draw_reboot(frame, footer_regions[3], self.palette);
         self.wifi.draw_popup(frame, self.palette, self.options);
     }
     fn metric(
@@ -815,6 +847,7 @@ impl App {
             Line::raw("Network: v saved, f forget, d disconnect, i check Internet"),
             Line::raw("Services: s start, x stop, t restart (confirmation required)"),
             Line::raw("Logs: f service filter, / search, End follow live events"),
+            Line::raw("F8              Back to GUI (HDMI console)"),
             Line::raw("F9 / F10        Power off / reboot (confirmation required)"),
             Line::raw("q / Esc / Ctrl-C Return to the shell"),
             Line::raw(""),
@@ -860,7 +893,7 @@ fn terminal_closed() -> io::Result<bool> {
     Ok(descriptor.revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL) != 0)
 }
 
-pub fn run(options: Options) -> io::Result<()> {
+pub fn run(options: Options) -> io::Result<Exit> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         return Err(io::Error::other(
             "The TUI requires an interactive terminal. Use ssh -t HOST agx tui, or agx status --json for scripts.",
@@ -877,11 +910,14 @@ pub fn run(options: Options) -> io::Result<()> {
             .0
             .push(signal_hook::flag::register(signal, Arc::clone(&stop))?);
     }
-    let previous_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        restore();
-        previous_hook(info);
-    }));
+    static PANIC_HOOK: std::sync::Once = std::sync::Once::new();
+    PANIC_HOOK.call_once(|| {
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            restore();
+            previous_hook(info);
+        }));
+    });
     let worker = Worker::start()?;
     let wifi_worker = wifi::Worker::start()?;
     let profile_worker = profile::Worker::start()?;
@@ -893,6 +929,7 @@ pub fn run(options: Options) -> io::Result<()> {
     let mut dirty = true;
     let mut last_frame = Instant::now();
     let mut power_operation = None;
+    let mut exit = Exit::Quit;
     while !stop.load(Ordering::Relaxed) && !terminal_closed()? {
         while let Ok(result) = worker.results.try_recv() {
             match result {
@@ -949,6 +986,26 @@ pub fn run(options: Options) -> io::Result<()> {
         if app.wifi.has_popup() {
             if let Interaction::Send(command) = app.wifi.popup_event(&input) {
                 wifi_worker.send(command, &mut app.wifi);
+            }
+            continue;
+        }
+        let wants_gui = matches!(&input, Event::Key(key) if key.code == KeyCode::F(8))
+            || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left)
+                && (app.gui_footer.contains((mouse.column, mouse.row).into())
+                    || (app.page == 0 && app.profile.gui_button.contains((mouse.column, mouse.row).into()))));
+        if wants_gui {
+            if !app.gui_available {
+                app.wifi.notice = Some("GUI is available on the HDMI console (tty1).".into());
+            } else if app.profile.editing() {
+                app.wifi.notice =
+                    Some("Save or discard Profile edits before returning to GUI.".into());
+            } else if (app.page == 5 || app.page == 6) && app.services.popup()
+                || app.page == 4 && app.system.dialog_open()
+            {
+                // Let the existing dialog finish before leaving its event loop.
+            } else {
+                exit = Exit::Gui;
+                break;
             }
             continue;
         }
@@ -1157,7 +1214,7 @@ pub fn run(options: Options) -> io::Result<()> {
         );
         let _ = output.flush();
     }
-    Ok(())
+    Ok(exit)
 }
 
 fn bytes(value: u64) -> String {
@@ -1181,6 +1238,28 @@ fn uptime(seconds: u64) -> String {
 mod tests {
     use super::*;
     use ratatui::backend::TestBackend;
+
+    #[test]
+    fn gui_return_is_visible_in_profile_and_beside_power_actions() {
+        let mut terminal = Terminal::new(TestBackend::new(100, 32)).unwrap();
+        let mut app = App::new(Options::default());
+        app.gui_available = true;
+        app.profile.gui_available = true;
+        terminal.draw(|frame| app.draw(frame)).unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+        assert!(text.contains("Back to GUI  F8"));
+        assert!(text.contains("[GUI F8]"));
+        assert!(text.contains("Shutdown F9"));
+        assert!(text.contains("Reboot F10"));
+        assert!(app.gui_footer.width > 0);
+        assert!(app.profile.gui_button.height > 0);
+    }
     #[test]
     fn small_and_resized_layouts_keep_help_and_navigation_available() {
         let options = Options {

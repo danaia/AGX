@@ -20,6 +20,19 @@ pub enum Choice {
     Tui,
 }
 
+/// Switch interfaces in one authenticated CLI process, without nested launchers.
+pub fn session_loop(
+    mut choice: Choice,
+    mut run: impl FnMut(Choice) -> io::Result<Option<Choice>>,
+) -> io::Result<()> {
+    loop {
+        match run(choice)? {
+            Some(next) => choice = next,
+            None => return Ok(()),
+        }
+    }
+}
+
 pub fn gui_installed() -> bool {
     GUI_PATHS.iter().any(|p| Path::new(p).is_file())
 }
@@ -86,7 +99,13 @@ pub fn ask(default: Choice, timeout: Duration) -> io::Result<Choice> {
     let fd = stdin.as_raw_fd();
     let _raw = RawTerminal::enter(fd)?;
     let mut out = io::stdout();
-    let name = |c| if c == Choice::Gui { "Desktop" } else { "Console" };
+    let name = |c| {
+        if c == Choice::Gui {
+            "Desktop"
+        } else {
+            "Console"
+        }
+    };
     write!(
         out,
         "\x1b[2J\x1b[H\n  \x1b[1;36mAGX OS\x1b[0m  choose your interface\n\n\
@@ -135,6 +154,26 @@ pub fn reset_console() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn repeated_gui_tui_switches_end_with_logout_without_nested_sessions() {
+        let mut seen = Vec::new();
+        session_loop(Choice::Gui, |choice| {
+            seen.push(choice);
+            Ok(if seen.len() == 1001 {
+                None
+            } else {
+                Some(if choice == Choice::Gui {
+                    Choice::Tui
+                } else {
+                    Choice::Gui
+                })
+            })
+        })
+        .unwrap();
+        assert_eq!(seen.len(), 1001);
+        assert_eq!(seen.last(), Some(&Choice::Gui));
+        assert!(seen.windows(2).all(|pair| pair[0] != pair[1]));
+    }
     #[test]
     fn keys_choose_interfaces() {
         assert_eq!(parse_key(b'1', Choice::Tui), Some(Choice::Gui));

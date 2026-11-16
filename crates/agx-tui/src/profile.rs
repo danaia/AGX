@@ -71,6 +71,8 @@ fn border(options: Options) -> Block<'static> {
 }
 #[derive(Default)]
 pub(super) struct Ui {
+    pub gui_button: Rect,
+    pub gui_available: bool,
     status: Option<Status>,
     selected: usize,
     name: String,
@@ -93,6 +95,9 @@ pub(super) struct Ui {
     usable: bool,
 }
 impl Ui {
+    pub fn editing(&self) -> bool {
+        self.editing || self.confirmation || self.pending
+    }
     pub fn update(&mut self, (saving, result): (bool, Result<Reply, String>)) {
         match result {
             Ok(reply) => {
@@ -367,6 +372,7 @@ impl Ui {
         (true, None)
     }
     pub fn draw(&mut self, frame: &mut Frame, area: Rect, p: Palette, options: Options) {
+        self.gui_button = Rect::default();
         self.fields.clear();
         self.actions.clear();
         self.account_rows.clear();
@@ -618,7 +624,25 @@ impl Ui {
             Line::raw("Tab / mouse navigation"),
             Line::raw("Esc discards edits"),
         ]);
-        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), panes[1]);
+        let side = Layout::vertical([Constraint::Min(1), Constraint::Length(3)]).split(panes[1]);
+        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), side[0]);
+        self.gui_button = side[1];
+        let color = if self.gui_available && !self.editing() {
+            p.cyan
+        } else {
+            p.muted
+        };
+        frame.render_widget(
+            Paragraph::new("Back to GUI  F8")
+                .centered()
+                .style(Style::default().fg(color))
+                .block(
+                    border(options)
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(color)),
+                ),
+            side[1],
+        );
         if self.confirmation {
             self.draw_confirm(frame, p, options);
         }
