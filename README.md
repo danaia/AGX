@@ -2,7 +2,7 @@
 
 A text-only Raspberry Pi 5 operating environment built with Buildroot, with Rust system services planned for later phases.
 
-Phase 1 is in progress. The development image supports SSH over a direct Ethernet cable at `10.77.0.2`, with HDMI/USB recovery. The repository contains a pinned Buildroot setup, Pi 5 boot configuration, and an image validation command. No hardware boot has been verified yet.
+Phase 1 image build and artifact validation have passed. Hardware boot testing is pending. The development image supports SSH over USB (workstation USB-A to Pi USB-C) at `10.77.0.2`, with HDMI/USB recovery. The repository contains a pinned Buildroot setup, Pi 5 boot configuration, and an image validation command. No hardware boot has been verified yet.
 
 On an Arch Linux workstation with the base development tools installed:
 

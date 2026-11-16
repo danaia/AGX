@@ -2,3 +2,5 @@
 kernel=Image
 arm_64bit=1
 disable_overscan=1
+# USB-C presents an Ethernet gadget to the attached Linux workstation.
+dtoverlay=dwc2,dr_mode=peripheral

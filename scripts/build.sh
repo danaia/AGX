@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+# Optional signed distro tools extracted locally on the development workstation.
+if [[ -d "$ROOT/.cache/host-tools/usr/bin" ]]; then
+    export PATH="$ROOT/.cache/host-tools/usr/bin:$PATH"
+fi
 VERSION=2026.08.1
 SHA256=34fb7bea8a213ffde39cc02e61703391560f26e0850f03138c722d0b09880f2b
 ARCHIVE="$ROOT/.cache/downloads/buildroot-$VERSION.tar.xz"

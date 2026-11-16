@@ -2,6 +2,7 @@
 """Validate Pi 5 image artifacts without mounting or accessing block devices."""
 import hashlib
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -57,13 +58,19 @@ def check(images):
                         f"Partition contents differ: {name}")
     mtype = images.parent / "host/bin/mtype"
     for name in ("Image", "bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb",
-                 "config.txt", "cmdline.txt"):
+                 "config.txt", "cmdline.txt", "overlays/dwc2.dtbo"):
         subprocess.run([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"],
                        stdout=subprocess.DEVNULL, check=True)
+    for name in ("config.txt", "cmdline.txt"):
+        packed = subprocess.check_output([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"])
+        require(packed == (images / "rpi-firmware" / name).read_bytes(),
+                f"Packed boot file differs: {name}")
     config = (images / "rpi-firmware/config.txt").read_text()
     require("kernel=Image" in config, "Firmware does not select Image")
+    require("dtoverlay=dwc2,dr_mode=peripheral" in config, "Missing USB device overlay")
     cmdline = (images / "rpi-firmware/cmdline.txt").read_text()
-    for token in ("root=/dev/mmcblk0p2", "rootwait", "console=tty1", "console=ttyAMA10,115200"):
+    for token in ("root=/dev/mmcblk0p2", "rootwait", "console=tty1", "console=ttyAMA10,115200",
+                  "g_ether.host_addr=02:77:00:00:00:01", "g_ether.dev_addr=02:77:00:00:00:02"):
         require(token in cmdline.split(), f"Missing boot argument: {token}")
     inittab = (images.parent / "target/etc/inittab").read_text()
     for tty in ("tty1::respawn:", "ttyAMA10::respawn:"):
@@ -73,10 +80,26 @@ def check(images):
     dropbear = (target / "etc/default/dropbear").read_text()
     require('-s -p 10.77.0.2:22' in dropbear, "SSH must use key auth on cable address")
     interfaces = (target / "etc/network/interfaces").read_text()
-    require("address 10.77.0.2" in interfaces, "Missing Ethernet address")
+    require("auto usb0" in interfaces and "address 10.77.0.2" in interfaces,
+            "Missing USB Ethernet address")
+    kernel_config = next((images.parent / "build").glob("linux-*/.config")).read_text()
+    for option in ("CONFIG_USB_GADGET=y", "CONFIG_USB_DWC2=y", "CONFIG_USB_DWC2_PERIPHERAL=y", "CONFIG_USB_ETH=y"):
+        require(option in kernel_config.splitlines(), f"Missing built-in kernel option: {option}")
     keys = target / "root/.ssh/authorized_keys"
     require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
-    require(keys.stat().st_mode & 0o077 == 0, "SSH public key file permissions too open")
+    debugfs = images.parent / "host/sbin/debugfs"
+    for name, mode in (("root/.ssh", 0o700), ("root/.ssh/authorized_keys", 0o600)):
+        metadata = subprocess.run([str(debugfs), "-R", f"stat /{name}", str(images / "rootfs.ext4")],
+                                  capture_output=True, check=True).stdout.decode()
+        actual = re.search(r"\bMode:\s+([0-7]+)\b", metadata)
+        require(actual is not None and int(actual.group(1), 8) == mode,
+                f"Incorrect packed SSH permissions: {name}")
+        require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
+                f"Incorrect packed SSH ownership: {name}")
+    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "root/.ssh/authorized_keys"):
+        packed = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
+                                capture_output=True, check=True).stdout
+        require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
     print("PASS: ARM64 kernel, Pi 5 DTBs, boot files, consoles, SSH setup and disk partitions")
     print("Hardware boot remains unverified until tested on a Raspberry Pi 5.")
 

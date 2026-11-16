@@ -1,7 +1,7 @@
 auto lo
 iface lo inet loopback
 
-auto eth0
-iface eth0 inet static
+auto usb0
+iface usb0 inet static
     address 10.77.0.2
     netmask 255.255.255.0
