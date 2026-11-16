@@ -1,6 +1,6 @@
 # AGX OS
 
-A text-only Raspberry Pi 5 operating environment built with Buildroot, with Rust system services planned for later phases.
+A headless Raspberry Pi 5 operating environment built with Buildroot. A colorful Rust TUI with icons, keyboard navigation, and mouse support is planned from Phase 2 onward, alongside Rust system services and a scriptable CLI. A GUI is planned after the headless MVP.
 
 Phase 1 image build, artifact validation, and a physical Pi 5 boot with SSH over USB have passed. The development image supports SSH over USB (workstation USB-A to Pi USB-C) at `10.77.0.2`, with HDMI/USB recovery. The repository contains a pinned Buildroot setup, Pi 5 boot configuration, and an image validation command. Interactive HDMI and serial recovery login remain unverified.
 
