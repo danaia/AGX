@@ -1,10 +1,36 @@
 # **AGX OS — MVP Development Plan**
 
-Version 0.4 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
+Version 0.5 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
-**Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
+**Last updated:** November 16, 2026, from the `p1` branch (31 commits since `main`, November 15–16, 2026; preview tag `v0.4.0-preview.1`).
 
-**Current position:** Rust startup and service administration are now implemented on the physical Pi. Phase 1 and the Phase 2 headless TUI/hardware path are verified; the optional wired Ethernet, physical HDMI/UART login, and wider radio audit remain recorded follow-ups. Phase 3 adds `agx-init` as Rust PID 1, supervised processes, restart backoff, protected recovery services, Services and Logs screens, shared CLI/JSON controls, and confirmed reboot/shutdown. The existing Phase 4 personal Wi-Fi workflow is preserved and rechecked. Phase 5 administration commands use `clap`, including saved Wi-Fi controls, masked/standard-input credentials, service operations and logs; the agent command remains tied to Phase 6. User accounts, passwords, hostname, Wi-Fi configuration, SSH host keys and root recovery key were checked unchanged across the init migration and real reboot. See the [Phase 3 guide](../docs/phase3.md). Update downloading, installation and card migration are explicitly on hold. Herdr agent integration remains Phase 6 work. The Pi now has a dedicated NVMe data volume and the Codex CLI installed for ChatGPT subscription sign-in; API keys are not part of the selected authentication flow.
+**Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. The MVP does not require a desktop, GNOME, X11, Wayland, or browser. At the user's request a graphical desktop (`agx-gui`) was started ahead of Phases 6 and 7; it is additive and must never become a requirement for booting, administering, or accepting the headless MVP. See [GUI system](#gui-system--started-early-in-progress).
+
+**Current position:** Phases 1–4 are implemented and were verified on the physical Pi over SSH; Phase 5 is mostly complete (the `agx agent` command and Agent screen wait on Phase 6); Phases 6 and 7 are not started. Rust `agx-init` is PID 1 with supervised services, Services/Logs screens, shared CLI/JSON controls and confirmed reboot/shutdown. Accounts, passwords, hostname, Wi-Fi configuration, SSH host keys and the root recovery key were checked unchanged across the init migration and a real reboot. See the [Phase 3 guide](../docs/phase3.md). Update downloading, installation and card migration are explicitly on hold. Herdr agent integration remains Phase 6 work. The Pi has a dedicated NVMe data volume and the Codex CLI installed for ChatGPT subscription sign-in; API keys are not part of the selected authentication flow.
+
+The newest work on this branch (November 16) is the graphical desktop: a Slint/DRM-KMS tiling shell, graphical login on HDMI, V3D GPU rendering, and GUI/TUI session switching. Its GPU initialization was checked headlessly on the Pi, but **no HDMI display was connected, so on-screen operation, frame rate, and recovery after a boot-dependency incident are still unverified** (details below).
+
+### Progress at a glance
+
+| Phase | State | Evidence / what is left |
+| --- | --- | --- |
+| 1 — Bootloader and boot image | **Passed** (Nov 15) | SSH over USB on a physical Pi 5. HDMI/UART recovery login unverified. |
+| 2 — Rust TUI, kernel, hardware | **Passed** (headless path, Nov 15) | TUI, trimmed kernel (RAM disks off), Wi-Fi firmware verified. Wired Ethernet, HDMI/UART login, wider radio audit open. |
+| 3 — Rust system initialization | **Implemented and verified** (Nov 15) | Rust PID 1 on the Pi. Physical power-off cycle and HDMI/UART login untested. |
+| 4 — Wi-Fi and networking | **Gate passed early** (Nov 15) | Rechecked under Rust init. Radio and wired-network audits remain. |
+| 5 — CLI and TUI administration | **Mostly done** | `agx agent` and the Agent screen depend on Phase 6. |
+| 6 — Herdr agent integration | **Not started** | Interim only: Codex CLI on the NVMe volume for subscription sign-in. |
+| 7 — MVP release | **Not started** | Groundwork: `v0.4.0-preview.1` candidate, boot timing, `make check-image`. |
+| GUI (outside original scope) | **In progress** (Nov 16) | Built and deployed; GPU context verified headlessly; HDMI, login, FPS and boot recovery unverified. |
+
+### Work completed outside the original phase boundaries
+
+- **Profile provisioning (Phase 2):** account, hostname, username, masked password with advisory meter, explicit apply review; branded animated login splash. Password login verified. See the [profile guide](../docs/profile-provisioning.md).
+- **Wi-Fi provisioning and reboot (brought forward from Phase 4/3):** TUI scan/select/masked credentials, saved profiles, automatic reconnect after reboot, root-only credential storage. See the [Wi-Fi guide](../docs/wifi-provisioning.md).
+- **Kernel trim and hardware audit:** RAM block devices disabled, USB gadget/SDIO retained; trimmed kernel booted on the Pi with backups kept. Fresh image not flashed. See the [hardware audit](../docs/phase2-hardware-audit.md).
+- **System tab, boot timing and update candidates:** kernel and SSH-recovery boot time (2.54 s measured on Nov 15), `make system-update-package`, workstation staging and SHA-256 verification with ASCII progress, anonymous public GitHub release checks with an optional token, and `make release-update`, which strips the root recovery key and checks for secrets. The `v0.4.0-preview.1` release is public. **Installation and rollback remain unavailable**, and the archive must not be flashed over a running installation. See [System tab](../docs/system.md).
+- **Persistent NVMe data volume:** dedicated ext4 `AGX_DATA` on `/dev/nvme0n1p1` mounted by Rust init at `/var/lib/agx-data` (boot continues if it is missing). The earlier Windows data on that drive was erased at the user's request. Low read speed still needs investigation. See [sign-in and storage](../docs/agent-sign-in.md).
+- **ChatGPT sign-in groundwork:** official Codex CLI 0.169.0 installed on the NVMe volume (checksum verified) for device-code sign-in. This is not the AGX agent.
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -70,7 +96,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 - Configure the minimum Linux ARM64 kernel.
 - Enable SD storage, USB, keyboard, serial, networking, and Broadcom Wi-Fi drivers.
 - Include required hardware firmware.
-- Remove unused desktop and graphical packages.
+- Remove unused desktop and graphical packages. *(Amended November 16, 2026: the minimal graphical runtime for `agx-gui` — Mesa V3D/EGL/GLES/GBM, libinput, xkbcommon, fontconfig, and the `vc4-kms-v3d` overlay — was added deliberately. No display server, GNOME, X11, Wayland, or browser is installed.)*
 
 **Pass:** The Pi boots headlessly, mounts its filesystem, detects the required hardware, and preserves USB SSH access. `agx tui` displays real system data on the Pi over SSH with working keyboard navigation, mouse selection/scrolling, resize handling, and clean terminal restoration. No local display is required.
 
@@ -118,6 +144,8 @@ The System tab also provides SSH recovery timing and public GitHub release metad
 
 ### Phase 6 — Herdr agent integration
 
+**Status:** Not started. Only groundwork exists: the official Codex CLI is installed on the development Pi for ChatGPT device-code sign-in (see [sign-in and storage](../docs/agent-sign-in.md)). `agx-agent`, the permission-controlled tool interface, Herdr connection, `agx agent`, and the TUI Agent screen are all unbuilt. The GUI's agent integration, if any, follows these.
+
 - Build `agx-agent`, a minimal Rust agent worker using Tokio and an HTTPS client.
 - Integrate ChatGPT subscription sign-in and requests using a supported OpenAI flow, without requiring API keys.
 - Create a permission-controlled tool execution interface.
@@ -130,6 +158,8 @@ The System tab also provides SSH recovery timing and public GitHub release metad
 
 ### Phase 7 — MVP release
 
+**Status:** Not started; depends on Phase 6. Existing groundwork: a validated image build (`make check-image`), a public `v0.4.0-preview.1` update candidate (not an installable release), the SSH-recovery boot-time metric (2.54 s on Nov 15; not a release benchmark), and short RSS/CPU samples for init and the TUI in the [Phase 3 record](../docs/phase3.md). The complete fresh image has been built and validated but **not flashed**; a cold boot from it, the terminal acceptance matrix, and image-size/resource records are still to do. If the GUI ships in the release image it also needs its own boot, recovery and performance acceptance (below).
+
 - Produce a reproducible `agx-v0.1.0` image.
 - Verify headless cold boot, USB SSH recovery, Wi-Fi recovery, TUI, CLI, and agent execution.
 - Run terminal acceptance checks for keyboard-only operation, mouse clicks/scrolling, resize and narrow layouts, icon/color fallbacks, interruption, and reconnect. Test from the supported SSH client terminals.
@@ -139,15 +169,37 @@ The System tab also provides SSH recovery timing and public GitHub release metad
 
 **Pass:** Power on Pi → boot AGX headlessly → connect over SSH → use the Rust TUI or CLI → configure networking → execute an approved agent task.
 
-### After the headless MVP — GUI system
+### GUI system — started early (in progress)
 
-- Add a graphical interface as a later project after the headless MVP is accepted. Choose its framework and display stack at that time.
-- Reuse the Rust service interfaces, permission model, operations, and visual language established by the TUI.
-- Keep the TUI, CLI, and SSH administration available alongside the GUI. The OS must continue to boot and operate headlessly.
+The graphical desktop was originally scheduled after the headless MVP. At the user's request it was started on November 16, 2026, alongside Phase 5/6 work. The headless MVP gates above are unchanged and are still judged without any display. Full detail is in the [desktop guide](../docs/desktop.md).
+
+**Built (commits `89c2444`, `8de9724`, `893ef53`, `c024fef`, `7887013`, `2ccefab`):**
+
+- `agx-gui` crate (Slint, `linuxkms` backend drawing directly to DRM/KMS — no X11/Wayland): Omarchy/Hyprland-style dwindle tiling window manager (`wm.rs`, `keymap.rs`, unit-tested), five workspaces, float/tile/fullscreen/maximize, keyboard chords and mouse move/resize, a menu, system-data panels (Overview, CPU, Memory and others), and a bundled JetBrains Mono Nerd Font.
+- Graphical login: Rust init starts `agx-gui --login` on HDMI `tty1`. It authenticates the existing AGX administrator accounts, rejecting root, empty, locked and expired credentials with a two-second retry delay, then runs the desktop as that user. Images without the GUI keep the HDMI text login; SSH and serial logins are unchanged.
+- Session management: `agx desktop`, power dropdown (Log out, Enter TUI, Reboot, Shut down, with confirmations), and the **F8** shortcut / **Back to GUI** action from the HDMI TUI. SSH and serial TUI sessions show it disabled.
+- GPU rendering: FemtoVG on the Pi's V3D through Mesa/EGL/GBM, with explicit renderer selection (no silent software fallback) and `/etc/agx/gui.env` options for output and mode. Pointer hover and drag avoid layout rebuilds via persistent scene models. Custom directional cursors with a `--cursor-preview` mode.
+- Deployment and safety tooling: `make deploy-gui` (SSH, NVMe-backed runtime so the 256 MiB SD root is not filled), `package-gui-runtime.py`, `install-gui-login-sd.sh`, `repair-gui-boot.sh`, `check-gpu.c`, `test-gui-runtime.py`; Buildroot options for the graphical runtime and display overlay.
+
+**Verified on the Pi:** a headless GPU check (as root and as `dana`, November 16, 2026) created an EGL 1.5 / OpenGL ES 3.1 context on Broadcom V3D 7.1.10.2 with Mesa 26.1.8. Window-manager and key-map logic have unit tests. This verifies driver and context initialization only.
+
+**Not verified — do not report as passed:**
+
+- Any HDMI output: both ports were disconnected during testing. Graphical login, the desktop, F8/GUI↔TUI switching, the power menu, cursors, and 1080p frame rate/latency (target 60 frames/s, record dips) have no hardware evidence.
+- **Boot recovery.** The first GPU deployment linked `/lib/libgcc_s.so.1` to the NVMe volume, creating a boot dependency cycle, and the Pi did not return after reboot. The packager now excludes `/lib` and `/lib64`, and deployment checks PID 1's dependencies for NVMe. The recovery script exists, but the doc still records that boot recovery after the repair needs confirmation.
+- 4K output, and the SD-card installer on a physical card.
+
+**Remaining work:**
+
+1. Reconnect HDMI, confirm the Pi boots and returns after the repair, then verify graphical login, session switching, and frame rate; record evidence in the desktop guide.
+2. Integrate the GUI into the reproducible Buildroot image. Today `agx-gui` has its own `Cargo.lock`, sits outside the workspace, and is built and deployed by separate scripts. A fresh image needs the binary and runtime libraries, and the GPU libraries currently depend on the NVMe volume.
+3. Wire GUI controls to the same shared service interfaces used by the TUI and CLI (services, Wi-Fi/network, profile, and later the agent); the panels so far show system data.
+4. Remaining window-manager gaps: grouping/tabs, scratchpad, multiple monitors.
+5. Keep the TUI, CLI and SSH paths working and tested alongside the GUI, and keep a GUI startup failure recoverable over SSH/serial.
 
 ### Instructions for Herdr
 
-Complete the remaining phases sequentially, preserving the user's explicit decision to bring Wi-Fi provisioning and reboot forward into Phase 2. A completed feature from a later phase does not imply the intervening phases are complete. Each phase requires source code, tests, a Git commit, and verified acceptance criteria before advancing. Do not report physical hardware tests as passed without evidence. Begin Phase 2 with the TUI vertical slice, then extend it in each later phase alongside the corresponding services. Each phase must meet the shared TUI interaction requirements for the screens it introduces. Do not introduce a graphical interface or custom kernel during the headless MVP; the GUI is a later project.
+Complete the remaining phases sequentially, preserving the user's explicit decision to bring Wi-Fi provisioning and reboot forward into Phase 2. A completed feature from a later phase does not imply the intervening phases are complete. Each phase requires source code, tests, a Git commit, and verified acceptance criteria before advancing. Do not report physical hardware tests as passed without evidence. Begin Phase 2 with the TUI vertical slice, then extend it in each later phase alongside the corresponding services. Each phase must meet the shared TUI interaction requirements for the screens it introduces. The graphical interface was started early at the user's explicit direction (November 16, 2026); it must not delay, replace, or weaken the headless acceptance gates, and its hardware claims need the same physical evidence. Do not introduce a custom kernel source tree during the headless MVP (the kernel fragments in use only trim configuration). Before any deployment that touches boot-critical paths, confirm nothing that PID 1 needs at boot is placed on the NVMe volume.
 
 One key architectural choice: **Herdr should orchestrate development from your main workstation, while AGX runs a small Rust agent worker on the Pi.** This avoids trying to port the entire Herdr orchestration system before the operating system itself works.
 

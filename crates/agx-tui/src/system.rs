@@ -237,7 +237,7 @@ impl Ui {
             .and_then(|s| s.trim().parse::<f64>().ok())
             .map(|s| format!("{s:.2} seconds"))
             .unwrap_or_else(|| "Available after next reboot".into());
-        let outer = super::App::new(options).block(" System ", p.cyan);
+        let outer = p.block(options, " System ", p.cyan);
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
         let ratio = self
@@ -367,7 +367,7 @@ impl Ui {
                 height,
             );
             frame.render_widget(Clear, rect);
-            let block = super::App::new(options).block(" GitHub access ", p.purple);
+            let block = p.block(options, " GitHub access ", p.purple);
             let inside = block.inner(rect);
             frame.render_widget(block, rect);
             if !self.dialog_usable {

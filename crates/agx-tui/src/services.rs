@@ -311,8 +311,7 @@ impl Ui {
         options: Options,
         logs: bool,
     ) {
-        let block =
-            super::App::new(options).block(if logs { " Logs " } else { " Services " }, p.cyan);
+        let block = p.block(options, if logs { " Logs " } else { " Services " }, p.cyan);
         let inner = block.inner(area);
         frame.render_widget(block, area);
         let regions = Layout::vertical([
@@ -455,7 +454,7 @@ impl Ui {
                 screen.height.min(10),
             );
             frame.render_widget(Clear, rect);
-            let block = super::App::new(options).block(" Confirm service operation ", p.amber);
+            let block = p.block(options, " Confirm service operation ", p.amber);
             let inside = block.inner(rect);
             frame.render_widget(block, rect);
             let text = if self.dialog_usable {

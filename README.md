@@ -148,10 +148,13 @@ Tell your agent what happened and ask it to continue diagnosing the setup.
 
 ## Project status and technical details
 
-USB login, Rust-managed startup, the dashboard, service supervision, and Wi-Fi have been tested on a real Pi 5. Multi-agent orchestration and a desktop interface remain project goals. The image uses a small, fixed filesystem, so most of a 32 GB card remains unused. HDMI and serial recovery login still need physical verification.
+USB login, Rust-managed startup, the dashboard, service supervision, and Wi-Fi have been tested on a real Pi 5. A graphical desktop (`agx-gui`, with graphical login on HDMI) is under development: the Pi's GPU initializes, but on-screen operation has not yet been verified on a monitor. Multi-agent orchestration (the Phase 6 agent) is not built yet. The image uses a small, fixed filesystem, so most of a 32 GB card remains unused. HDMI and serial recovery login still need physical verification.
 
 - [Manual build, USB connection, flashing, and recovery instructions](docs/phase1.md)
 - [Dashboard controls, development, and verification](docs/phase2.md)
 - [Rust startup, service controls, logs, and recovery](docs/phase3.md)
 - [CLI and TUI administration](docs/phase5.md)
+- [System tab, update candidates, and releases](docs/system.md)
+- [NVMe data volume and ChatGPT sign-in](docs/agent-sign-in.md)
+- [Desktop (GUI) status and usage](docs/desktop.md)
 - [Project roadmap](plans/plan1.md)

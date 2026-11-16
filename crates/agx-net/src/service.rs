@@ -1,10 +1,13 @@
 //! Root-only network service. Owns authentication, DHCP, saved profiles and reboot.
-use crate::*;
+use crate::{
+    MAX_REQUEST, Reply, Request, SOCKET, SavedNetwork, Security, Status, decode_ssid, display_ssid,
+    hex, parse_scan, psk, unhex, validate_credentials,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{self, File, OpenOptions},
-    io::{BufRead, BufReader, Read, Write},
+    io::{self, BufRead, BufReader, Read, Write},
     net::Ipv4Addr,
     os::{
         fd::AsRawFd,
@@ -23,6 +26,7 @@ use std::{
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+use zeroize::Zeroizing;
 
 const ROOT: &str = "/etc/agx";
 const CONFIG: &str = "/etc/agx/wpa_supplicant.conf";
