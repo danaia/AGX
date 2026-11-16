@@ -1,14 +1,18 @@
 [workspace]
-members = ["crates/agx-core", "crates/agx-tui", "crates/agx-cli"]
+members = ["crates/agx-core", "crates/agx-tui", "crates/agx-cli", "crates/agx-net"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.97"
 
 [workspace.dependencies]
 agx-core = { path = "crates/agx-core" }
+agx-net = { path = "crates/agx-net" }
+zeroize = { version = "1", features = ["serde"] }
+pbkdf2 = "0.12"
+sha1 = "0.10"
 agx-tui = { path = "crates/agx-tui" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

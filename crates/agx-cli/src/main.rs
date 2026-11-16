@@ -44,6 +44,27 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
             agx_tui::run(options)?;
         }
+        Some("wifi") => {
+            let command = match args.next().as_deref() {
+                None | Some("status") => agx_net::Request::Status,
+                Some("scan") => agx_net::Request::Scan,
+                Some("check") => agx_net::Request::Check,
+                _ => return Err("usage: agx wifi [status|scan|check] [--json]".into()),
+            };
+            let flags: Vec<_> = args.collect();
+            if flags.iter().any(|flag| flag != "--json") {
+                return Err("usage: agx wifi [status|scan|check] [--json]".into());
+            }
+            let reply = agx_net::request(&command)?;
+            if flags.iter().any(|flag| flag == "--json") {
+                println!("{}", serde_json::to_string(&reply.status)?);
+            } else {
+                println!("{}: {}", reply.status.phase, reply.message);
+            }
+            if !reply.ok {
+                return Err(reply.message.into());
+            }
+        }
         Some("status") => {
             let flags: Vec<_> = args.collect();
             if flags.iter().any(|flag| flag != "--json") {
@@ -87,6 +108,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 fn help() {
     println!(
-        "AGX system console\n\n  agx tui [--ascii] [--no-color] [--no-mouse]\n          [--color auto|truecolor|256|16|never]\n  agx status [--json]\n  agx --version\n\nTUI: click tabs and hardware rows; scroll with the mouse wheel.\nKeyboard: 1/2/? screens, Tab switch, arrows scroll, r refresh, q quit.\nRun over an interactive SSH terminal. NO_COLOR is respected in auto mode."
+        "AGX system console\n\n  agx tui [--ascii] [--no-color] [--no-mouse]\n          [--color auto|truecolor|256|16|never]\n  agx status [--json]\n  agx wifi [status|scan|check] [--json]\n  agx --version\n\nTUI: click tabs and hardware rows; scroll with the mouse wheel.\nKeyboard: 1/2/3/? screens, Tab switch, arrows scroll, r refresh, F10 reboot, q quit.\nRun over an interactive SSH terminal. NO_COLOR is respected in auto mode."
     );
 }

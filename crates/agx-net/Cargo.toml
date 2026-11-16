@@ -1,0 +1,15 @@
+[package]
+name = "agx-net"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+agx-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+signal-hook.workspace = true
+zeroize.workspace = true
+pbkdf2.workspace = true
+sha1.workspace = true

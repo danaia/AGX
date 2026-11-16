@@ -10,3 +10,5 @@ ratatui.workspace = true
 signal-hook.workspace = true
 crossterm.workspace = true
 libc.workspace = true
+agx-net.workspace = true
+zeroize.workspace = true

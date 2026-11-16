@@ -78,7 +78,7 @@ def check(images):
     target = images.parent / "target"
     require((target / "usr/sbin/dropbear").is_file(), "Missing SSH server")
     dropbear = (target / "etc/default/dropbear").read_text()
-    require('-s -p 10.77.0.2:22' in dropbear, "SSH must use key auth on cable address")
+    require('-s -p 22' in dropbear, "SSH must use key authentication on USB and Wi-Fi")
     interfaces = (target / "etc/network/interfaces").read_text()
     require("auto usb0" in interfaces and "address 10.77.0.2" in interfaces,
             "Missing USB Ethernet address")
@@ -88,7 +88,7 @@ def check(images):
     keys = target / "root/.ssh/authorized_keys"
     require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
     debugfs = images.parent / "host/sbin/debugfs"
-    for name, mode in (("root/.ssh", 0o700), ("root/.ssh/authorized_keys", 0o600)):
+    for name, mode in (("root/.ssh", 0o700), ("root/.ssh/authorized_keys", 0o600), ("etc/agx", 0o700), ("etc/agx/network.json", 0o600), ("etc/agx/wpa_supplicant.conf", 0o600)):
         metadata = subprocess.run([str(debugfs), "-R", f"stat /{name}", str(images / "rootfs.ext4")],
                                   capture_output=True, check=True).stdout.decode()
         actual = re.search(r"\bMode:\s+([0-7]+)\b", metadata)
@@ -101,14 +101,19 @@ def check(images):
                                 capture_output=True, check=True).stdout
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
     if 'BR2_PACKAGE_AGX=y' in (images.parent / '.config').read_text().splitlines():
-        binary = (target / 'usr/bin/agx').read_bytes()
-        require(len(binary) >= 20 and binary[:4] == b'\x7fELF' and binary[4] == 2 and binary[5] == 1,
-                'AGX executable must be a 64-bit little-endian ELF')
-        require(struct.unpack_from('<H', binary, 18)[0] == 183, 'AGX executable must target ARM64')
-        packed = subprocess.run([str(debugfs), '-R', 'cat /usr/bin/agx', str(images / 'rootfs.ext4')],
-                                capture_output=True, check=True).stdout
-        require(packed == binary, 'Packed AGX executable differs from the build output')
-        print('PASS: ARM64 AGX executable read back from root filesystem')
+        for name in ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp'):
+            binary = (target / name).read_bytes()
+            require(len(binary) >= 20 and binary[:4] == b'\x7fELF' and binary[4] == 2 and binary[5] == 1,
+                    f'{name} must be a 64-bit little-endian ELF')
+            require(struct.unpack_from('<H', binary, 18)[0] == 183, f'{name} must target ARM64')
+            packed = subprocess.run([str(debugfs), '-R', f'cat /{name}', str(images / 'rootfs.ext4')],
+                                    capture_output=True, check=True).stdout
+            require(packed == binary, f'Packed {name} differs from the build output')
+        require('/usr/sbin/agx-netd' in inittab, 'Network provisioning service must start at boot')
+        for name in ('usr/sbin/wpa_supplicant', 'usr/sbin/iw', 'usr/bin/curl', 'etc/ssl/certs/ca-certificates.crt',
+                     'lib/firmware/regulatory.db', 'lib/firmware/brcm/brcmfmac43455-sdio.raspberrypi,5-model-b.bin'):
+            require((target / name).exists(), f'Missing Wi-Fi prerequisite: {name}')
+        print('PASS: ARM64 AGX/TUI/network executables, startup and Wi-Fi prerequisites')
     print("PASS: ARM64 kernel, Pi 5 DTBs, boot files, consoles, SSH setup and disk partitions")
     print("Hardware boot remains unverified until tested on a Raspberry Pi 5.")
 

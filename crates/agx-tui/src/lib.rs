@@ -1,12 +1,14 @@
 //! Interactive AGX system console. Collection runs off the terminal input thread.
+mod wifi;
 use agx_core::{Sampler, Snapshot};
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
     crossterm::{
         event::{
-            self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind,
-            KeyModifiers, MouseButton, MouseEventKind,
+            self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste,
+            EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers, MouseButton,
+            MouseEventKind,
         },
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -26,6 +28,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use wifi::Interaction;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ColorMode {
@@ -134,7 +137,7 @@ impl Session {
     fn enter(mouse: bool) -> io::Result<Self> {
         let session = Self;
         enable_raw_mode()?;
-        execute!(io::stdout(), EnterAlternateScreen)?;
+        execute!(io::stdout(), EnterAlternateScreen, EnableBracketedPaste)?;
         if mouse {
             execute!(io::stdout(), EnableMouseCapture)?;
         }
@@ -145,6 +148,7 @@ fn restore() {
     let _ = execute!(
         io::stdout(),
         DisableMouseCapture,
+        DisableBracketedPaste,
         LeaveAlternateScreen,
         ratatui::crossterm::cursor::Show
     );
@@ -204,6 +208,7 @@ struct App {
     table_area: Rect,
     options: Options,
     palette: Palette,
+    wifi: wifi::Ui,
 }
 impl App {
     fn new(options: Options) -> Self {
@@ -218,16 +223,21 @@ impl App {
             table_area: Rect::default(),
             palette: Palette::new(options.color),
             options,
+            wifi: wifi::Ui::default(),
         }
     }
     fn icon<'a>(&self, unicode: &'a str, ascii: &'a str) -> &'a str {
         if self.options.ascii { ascii } else { unicode }
     }
     fn page(&mut self, page: usize) {
-        self.page = page % 3;
+        self.page = page % 4;
         self.scroll = 0;
     }
     fn move_row(&mut self, delta: i32) {
+        if self.page == 2 {
+            self.wifi.move_row(delta);
+            return;
+        }
         if self.page == 1 {
             let count = self.snapshot.as_ref().map_or(0, |s| s.hardware.len());
             if count == 0 {
@@ -283,6 +293,7 @@ impl App {
             );
             self.tabs.clear();
             self.table_area = Rect::default();
+            self.wifi.draw_popup(frame, self.palette, self.options);
             return;
         }
         let regions = Layout::vertical([
@@ -336,14 +347,20 @@ impl App {
             ),
             regions[0],
         );
-        let tabs = Layout::horizontal([Constraint::Ratio(1, 3); 3]).split(regions[1]);
+        let tabs = Layout::horizontal([Constraint::Ratio(1, 4); 4]).split(regions[1]);
         self.tabs = tabs.to_vec();
         let names = if area.width < 65 {
-            ["1 Overview".into(), "2 Hardware".into(), "? Help".into()]
+            [
+                "1 System".into(),
+                "2 Devices".into(),
+                "3 Wi-Fi".into(),
+                "? Help".into(),
+            ]
         } else {
             [
                 format!("1 {} Overview", self.icon("◈", ">")),
                 format!("2 {} Hardware", self.icon("■", "#")),
+                format!("3 {} Network", self.icon("↗", "~")),
                 "? Help".into(),
             ]
         };
@@ -363,10 +380,17 @@ impl App {
         match self.page {
             0 => self.overview(frame, regions[2]),
             1 => self.hardware(frame, regions[2]),
+            2 => self
+                .wifi
+                .draw(frame, regions[2], self.palette, self.options),
             _ => self.help(frame, regions[2]),
         }
+        let footer_regions =
+            Layout::horizontal([Constraint::Min(1), Constraint::Length(14)]).split(regions[3]);
         let footer = if let Some(error) = &self.error {
             format!(" q quit | r retry | DATA ERROR: {error}")
+        } else if let Some(notice) = &self.wifi.notice {
+            format!(" q quit | {notice}")
         } else if self.snapshot.is_none() {
             " q quit | Collecting live Linux system information...".into()
         } else if area.width < 80 {
@@ -383,8 +407,11 @@ impl App {
                 } else {
                     self.palette.muted
                 })),
-            regions[3],
+            footer_regions[0],
         );
+        self.wifi
+            .draw_reboot(frame, footer_regions[1], self.palette);
+        self.wifi.draw_popup(frame, self.palette, self.options);
     }
     fn metric(
         &self,
@@ -727,9 +754,9 @@ impl App {
                 "HEADLESS BY DESIGN",
                 Style::default().fg(self.palette.cyan).bold(),
             ),
-            Line::raw("Live Linux data. No system settings are changed by these screens."),
+            Line::raw("Overview and Hardware are read-only. Network provisions this Pi."),
             Line::raw(""),
-            Line::raw("1 / 2 / ?       Overview / Hardware / Help"),
+            Line::raw("1 / 2 / 3 / ?   Overview / Hardware / Network / Help"),
             Line::raw("Tab / Shift-Tab Next / previous screen"),
             Line::raw("Left / Right    Previous / next screen"),
             Line::raw("Up / Down, j/k  Scroll information or select hardware"),
@@ -737,6 +764,9 @@ impl App {
             Line::raw("PageUp/PageDown Scroll by a page"),
             Line::raw("Mouse           Click tabs or hardware; wheel to scroll"),
             Line::raw("r               Request a fresh system sample"),
+            Line::raw("Network: s scan, Enter connect, h hidden, c country"),
+            Line::raw("Network: v saved, f forget, d disconnect, i check Internet"),
+            Line::raw("F10             Reboot (confirmation required)"),
             Line::raw("q / Esc / Ctrl-C Return to the shell"),
             Line::raw(""),
             Line::styled(
@@ -804,6 +834,7 @@ pub fn run(options: Options) -> io::Result<()> {
         previous_hook(info);
     }));
     let worker = Worker::start()?;
+    let wifi_worker = wifi::Worker::start()?;
     let _session = Session::enter(options.mouse)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     terminal.clear()?;
@@ -822,6 +853,10 @@ pub fn run(options: Options) -> io::Result<()> {
             }
             dirty = true;
         }
+        while let Ok(update) = wifi_worker.results.try_recv() {
+            app.wifi.update(update);
+            dirty = true;
+        }
         if dirty || last_frame.elapsed() >= Duration::from_secs(1) {
             terminal.draw(|frame| app.draw(frame))?;
             dirty = false;
@@ -834,7 +869,42 @@ pub fn run(options: Options) -> io::Result<()> {
             break;
         }
         dirty = true;
-        match event::read()? {
+        let input = event::read()?;
+        if matches!(&input, Event::Key(key) if key.kind == KeyEventKind::Release) {
+            continue;
+        }
+        if matches!(&input, Event::Key(key) if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
+        {
+            break;
+        }
+        if app.wifi.has_popup() {
+            if let Interaction::Send(command) = app.wifi.popup_event(&input) {
+                wifi_worker.send(command, &mut app.wifi);
+            }
+            continue;
+        }
+        if matches!(&input, Event::Key(key) if key.code == KeyCode::F(10)) {
+            app.wifi.reboot();
+            continue;
+        }
+        if matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.wifi.reboot_area.contains((mouse.column, mouse.row).into()))
+        {
+            app.wifi.reboot();
+            continue;
+        }
+        if app.page == 2
+            && let Event::Key(key) = &input
+        {
+            match app.wifi.key(*key) {
+                Interaction::Consumed => continue,
+                Interaction::Send(command) => {
+                    wifi_worker.send(command, &mut app.wifi);
+                    continue;
+                }
+                Interaction::Unused => (),
+            }
+        }
+        match input {
             Event::Key(key) if key.kind != KeyEventKind::Release => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
                     break;
@@ -843,20 +913,48 @@ pub fn run(options: Options) -> io::Result<()> {
                     KeyCode::Char('q') | KeyCode::Esc => break,
                     KeyCode::Char('1') => app.page(0),
                     KeyCode::Char('2') => app.page(1),
-                    KeyCode::Char('?') | KeyCode::Char('3') => app.page(2),
-                    KeyCode::Tab | KeyCode::Right => app.page(app.page + 1),
-                    KeyCode::BackTab | KeyCode::Left => app.page(app.page + 2),
+                    KeyCode::Char('?') | KeyCode::Char('4') => app.page(3),
+                    KeyCode::Char('3') => {
+                        app.page(2);
+                        if let Some(command) = app.wifi.entered() {
+                            wifi_worker.send(command, &mut app.wifi);
+                        }
+                    }
+                    KeyCode::Tab | KeyCode::Right => {
+                        app.page(app.page + 1);
+                        if app.page == 2
+                            && let Some(command) = app.wifi.entered()
+                        {
+                            wifi_worker.send(command, &mut app.wifi);
+                        }
+                    }
+                    KeyCode::BackTab | KeyCode::Left => {
+                        app.page(app.page + 3);
+                        if app.page == 2
+                            && let Some(command) = app.wifi.entered()
+                        {
+                            wifi_worker.send(command, &mut app.wifi);
+                        }
+                    }
                     KeyCode::Down | KeyCode::Char('j') => app.move_row(1),
                     KeyCode::Up | KeyCode::Char('k') => app.move_row(-1),
                     KeyCode::PageDown => app.move_row(8),
                     KeyCode::PageUp => app.move_row(-8),
                     KeyCode::Home => {
                         app.scroll = 0;
-                        app.table.select(Some(0));
+                        if app.page == 2 {
+                            app.wifi.home_end(false);
+                        } else {
+                            app.table.select(Some(0));
+                        }
                     }
                     KeyCode::End => {
                         let count = app.snapshot.as_ref().map_or(0, |s| s.hardware.len());
-                        app.table.select(count.checked_sub(1));
+                        if app.page == 2 {
+                            app.wifi.home_end(true);
+                        } else {
+                            app.table.select(count.checked_sub(1));
+                        }
                     }
                     KeyCode::Char('r') => {
                         let _ = worker.refresh.try_send(());
@@ -872,6 +970,11 @@ pub fn run(options: Options) -> io::Result<()> {
                         .position(|rect| rect.contains((mouse.column, mouse.row).into()))
                     {
                         app.page(page);
+                        if page == 2
+                            && let Some(command) = app.wifi.entered()
+                        {
+                            wifi_worker.send(command, &mut app.wifi);
+                        }
                     } else if app.page == 1
                         && app.table_area.contains((mouse.column, mouse.row).into())
                         && mouse.row >= app.table_area.y + 2
@@ -886,6 +989,10 @@ pub fn run(options: Options) -> io::Result<()> {
                         {
                             app.table.select(Some(index));
                         }
+                    } else if app.page == 2
+                        && let Interaction::Send(command) = app.wifi.mouse(mouse)
+                    {
+                        wifi_worker.send(command, &mut app.wifi);
                     }
                 }
                 MouseEventKind::ScrollDown => app.move_row(3),
@@ -931,7 +1038,7 @@ mod tests {
             let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
             let mut app = App::new(options);
             app.snapshot = Some(Sampler::default().collect().unwrap());
-            for page in 0..3 {
+            for page in 0..4 {
                 app.page(page);
                 terminal.draw(|frame| app.draw(frame)).unwrap();
                 let text: String = terminal
@@ -944,7 +1051,7 @@ mod tests {
                 assert!(text.contains("AGX") || text.contains("Overview"));
                 assert!(text.is_ascii(), "ASCII mode emitted Unicode");
                 if width >= 40 {
-                    assert_eq!(app.tabs.len(), 3);
+                    assert_eq!(app.tabs.len(), 4);
                     assert!(text.contains("q quit"), "Quit shortcut must remain visible");
                 }
             }

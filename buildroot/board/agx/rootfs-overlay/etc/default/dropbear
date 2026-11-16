@@ -1,2 +1,2 @@
 # Password authentication disabled; only the build-time public key is authorised.
-DROPBEAR_ARGS="-s -p 10.77.0.2:22"
+DROPBEAR_ARGS="-s -p 22"

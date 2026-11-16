@@ -11,3 +11,10 @@ tui-build:
 	./scripts/cargo.sh build --locked --release --target aarch64-unknown-linux-gnu --package agx-cli
 deploy-tui: tui-build
 	./scripts/deploy-tui.sh
+
+.PHONY: network-build deploy-network
+network-build:
+	./scripts/cargo.sh build --locked --workspace --release --target aarch64-unknown-linux-gnu
+deploy-network: network-build
+	./scripts/deploy-tui.sh
+	./scripts/deploy-network.sh
