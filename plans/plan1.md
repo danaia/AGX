@@ -1,10 +1,10 @@
 # **AGX OS — MVP Development Plan**
 
-Version 0.3 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
+Version 0.4 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
 
-**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 remains in progress, with Overview, Hardware, and Network screens running on the Pi. At the user's request, personal Wi-Fi provisioning and reboot were brought forward from Phases 3–4. Authentication entered through the TUI, DHCP, DNS, HTTPS, clock synchronization, Wi-Fi SSH, and automatic Wi-Fi reconnection after a real TUI-initiated reboot passed on November 15, 2026. The remaining hardware audit and kernel trimming are still outstanding. See the [TUI foundation record](../docs/phase2.md) and [Wi-Fi provisioning record](../docs/wifi-provisioning.md).
+**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 remains in progress, with Profile, Overview, Hardware, and Network screens running on the Pi. Profile is the first tab and provisions administrator accounts, persistent hostname overrides, and passwords with an advisory quality meter. SSH and console password login and the branded ASCII splash are physically verified; root SSH key recovery is retained. See the [profile guide](../docs/profile-provisioning.md). At the user's request, personal Wi-Fi provisioning and reboot were brought forward from Phases 3–4. Authentication entered through the TUI, DHCP, DNS, HTTPS, clock synchronization, Wi-Fi SSH, and automatic Wi-Fi reconnection after a real TUI-initiated reboot passed on November 15, 2026. The remaining hardware audit and kernel trimming are still outstanding. See the [TUI foundation record](../docs/phase2.md) and [Wi-Fi provisioning record](../docs/wifi-provisioning.md).
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -62,6 +62,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 **Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Personal Wi-Fi provisioning and confirmed reboot were subsequently implemented and physically verified, including saved authentication and automatic reconnection after reboot. Broadcom firmware and driver support are working. Full Phase 2 hardware acceptance remains pending.
 
+- Preserve the Profile-first provisioning flow: account name, hostname, username, masked password/confirmation, advisory quality meter, and explicit apply review. Simple passwords are allowed. Maintain native SSH/console authentication and the branded login splash.
 - Add a Rust workspace and `agx-tui`, with the initial `agx tui` launcher and a shared system-information layer. Select and pin the terminal rendering/input dependencies during implementation.
 - Build the navigation shell, palette, icon fallbacks, keyboard shortcuts, and mouse event handling. Deliver Overview and Hardware screens with live uptime, CPU/memory information, storage, and USB network status.
 - Show loading, empty, stale, and error states. Keep refresh work separate from input handling so keyboard and mouse remain responsive.
@@ -104,7 +105,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 - Implement `agx status`, `agx wifi`, `agx logs`, `agx reboot`, and `agx agent`.
 - Support machine-readable JSON output.
 - Connect the CLI to Rust system services through the shared interfaces used by the TUI.
-- Complete the TUI administration workspace across Overview, Hardware, Services, Logs, and Network, including keyboard help, mouse interactions, consistent status colors/icons, and confirmations for disruptive actions.
+- Complete the TUI administration workspace across Profile, Overview, Hardware, Services, Logs, and Network, including keyboard help, mouse interactions, consistent status colors/icons, and confirmations for disruptive actions.
 - Keep JSON output free of terminal styling and TUI control sequences. Verify behavior in interactive and noninteractive SSH sessions.
 
 **Pass:** AGX can be administered headlessly through either its Rust TUI or native CLI. Common tasks work with mouse or keyboard, and scripts receive stable machine-readable JSON.

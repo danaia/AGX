@@ -141,7 +141,10 @@ def main():
 if grep -q '^{user}:' /etc/passwd; then
     deluser {user}
 fi
-if test -d /home/{user}; then rmdir /home/{user}; fi
+if test -d /home/{user}; then
+    rm -f /home/{user}/.ash_history
+    rmdir /home/{user}
+fi
 if grep -q '^root::' {backup}/shadow; then
     sed -i 's/^root:!:/root::/' /etc/shadow
     chmod 600 /etc/shadow

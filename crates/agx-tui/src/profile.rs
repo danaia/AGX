@@ -210,6 +210,8 @@ impl Ui {
         };
         if field.len() + value.len() <= limit {
             field.push_str(value);
+            self.error = false;
+            self.message.clear();
         }
     }
     pub fn event(&mut self, input: &Event) -> (bool, Option<Request>) {
@@ -345,6 +347,8 @@ impl Ui {
                         _ => return (true, None),
                     };
                     field.pop();
+                    self.error = false;
+                    self.message.clear();
                 }
                 KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     self.review()
@@ -689,6 +693,12 @@ mod tests {
             .collect();
         assert!(!text.contains("never-render"));
         assert!(text.contains("********"));
+        ui.error = true;
+        ui.message = "Passwords do not match.".into();
+        ui.focus = 4;
+        ui.event(&Event::Key(KeyCode::Backspace.into()));
+        assert!(!ui.error);
+        assert!(ui.message.is_empty());
         ui.event(&Event::Key(KeyCode::Esc.into()));
         assert!(ui.password.is_empty());
         assert!(ui.confirm_password.is_empty());

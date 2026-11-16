@@ -10,7 +10,7 @@ Connect through USB SSH, then launch:
 agx tui --color truecolor
 ```
 
-Press `3` for Network. Scan, select a network, enter or paste its password in the masked field, and choose **Connect & save**. Authentication is saved after successful association. The radio region is initially `US`, as selected for this development Pi.
+Press `4` for Network (Profile is now tab 1). Scan, select a network, enter or paste its password in the masked field, and choose **Connect & save**. Authentication is saved after successful association. The radio region is initially `US`, as selected for this development Pi.
 
 | Control | Action |
 | --- | --- |
@@ -26,13 +26,13 @@ Press `3` for Network. Scan, select a network, enter or paste its password in th
 
 Forms support keyboard navigation, mouse controls, and bracketed paste. Esc cancels a form; password characters remain in the field rather than triggering global shortcuts. Authentication forms require at least 60 columns and 20 rows. Closing the TUI leaves networking running.
 
-After reboot, reconnect through USB at `10.77.0.2` or through the Wi-Fi address shown in Network. SSH uses keys on both interfaces. Wi-Fi and USB present the same device host key. Wi-Fi addresses come from DHCP and can change.
+After reboot, reconnect through USB at `10.77.0.2` or through the Wi-Fi address shown in Network. SSH supports named-account passwords on both interfaces; root remains key-only. See the [profile guide](profile-provisioning.md). Wi-Fi and USB present the same device host key. Wi-Fi addresses come from DHCP and can change.
 
 ## Services and credentials
 
 The shared Rust `agx-net` interface connects the TUI to root-owned `agx-netd`. BusyBox init currently supervises the daemon independently of SSH sessions. The daemon manages the existing Linux Broadcom driver, `wpa_supplicant`, DHCP through the Rust `agx-dhcp` hook, DNS, and clock synchronization. Phase 3 will migrate supervision to Rust init.
 
-Credentials are entered through the TUI rather than shell arguments. `/etc/agx` and the runtime directory are root-only; configuration files and the control socket have mode `0600`. WPA2 passphrases become derived PSKs before persistence. WPA3 authentication requires a stored secret in the protected supplicant configuration. Passwords are excluded from status responses and logs. The factory image contains no personal network profiles or Wi-Fi passwords.
+Credentials are entered through the TUI rather than shell arguments. `/etc/agx` is root-only with mode `0700`; its configuration files use mode `0600`. The runtime directory allows traversal by `agx-admin`; its control socket uses mode `0660` for root and that administrator group. WPA2 passphrases become derived PSKs before persistence. WPA3 authentication requires a stored secret in the protected supplicant configuration. Passwords are excluded from status responses and logs. The factory image contains no personal network profiles or Wi-Fi passwords.
 
 Personal WPA2, WPA3, open, and OWE flows are implemented; physical authentication was verified with WPA2. Enterprise authentication, WEP, captive portal login, and static IP configuration are outside this initial flow. The TUI identifies unsupported network security rather than claiming a successful connection.
 

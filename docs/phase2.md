@@ -1,6 +1,6 @@
 # Phase 2 — Rust TUI foundation
 
-The first Phase 2 deliverable is implemented and running on the physical Pi 5. The remaining kernel and hardware work in [the plan](../plans/plan1.md) is still pending. Wi-Fi provisioning and reboot have since been added and verified; see the [Wi-Fi guide and acceptance record](wifi-provisioning.md).
+The first Phase 2 deliverable is implemented and running on the physical Pi 5. The remaining kernel and hardware work in [the plan](../plans/plan1.md) is still pending. Profile provisioning, branded password login, Wi-Fi, and reboot have since been added and verified; see the [profile guide](profile-provisioning.md) and [Wi-Fi guide and acceptance record](wifi-provisioning.md).
 
 ## Use it
 
@@ -19,7 +19,7 @@ ssh -t -i ~/.ssh/id_ed25519 root@10.77.0.2 agx tui
 Overview shows live CPU usage, memory, root filesystem space, board/kernel identity, uptime, load, and network interfaces. Hardware lists detected block devices, interfaces, and loaded modules. Selecting a row shows its details. Help explains all controls.
 
 - Click the tabs or device rows; use the mouse wheel to scroll/select.
-- Press `1`, `2`, `3`, or `?` for Overview, Hardware, Network, or Help. `F10` opens the reboot confirmation.
+- Press `1`, `2`, `3`, `4`, or `?` for Profile, Overview, Hardware, Network, or Help. `F10` opens the reboot confirmation.
 - Tab/Shift-Tab and Left/Right change screens. Up/Down or `j`/`k` scroll/select; PageUp/PageDown move by a page, and Home/End select hardware entries.
 - `r` requests a new sample. `q`, Esc, or Ctrl-C returns to the shell.
 - Smaller terminals get a compact overview; below 40 columns or 12 rows, a resize notice replaces the dashboard.
