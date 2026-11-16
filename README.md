@@ -1,4 +1,30 @@
-# ANGI OS
+<h1 align="center">
+  <img src="brand/ANGI.svg" alt="ANGI OS" width="560">
+</h1>
+
+<p align="center"><strong>A thin operating system made for AI coding agents.<br>A small machine where agents build software, and the operating system itself.</strong></p>
+
+| | |
+| --- | --- |
+| **Built for** | AI coding agents, on a Raspberry Pi 5 that costs a fraction of a developer workstation |
+| **Desktop UX** | Based on [Omarchy](https://omarchy.org): Hyprland-style tiling, Omarchy's key bindings, keyboard first |
+| **Base system** | The Linux kernel, assembled from source with Buildroot. Not Debian, Arch, Fedora, or any distribution |
+| **Control plane** | Written in Rust: init, services, CLI, terminal dashboard, desktop |
+| **Status** | Early development. The terminal dashboard runs on a real Pi 5; the desktop is built but not yet verified on the Pi's own display |
+
+> [!NOTE]
+> **Designed with Omarchy's UX.** ANGI's desktop follows the user experience of [Omarchy](https://omarchy.org), David Heinemeier Hansson's opinionated Arch Linux and Hyprland setup: dwindle tiling, the same chords (<kbd>Super</kbd> + arrows to move focus, <kbd>Super</kbd> + <kbd>Q</kbd> to close, <kbd>Super</kbd> + <kbd>1</kbd>-<kbd>5</kbd> for workspaces), and the same gaps and borders. ANGI is not built on Arch or on Omarchy. It borrows the experience, not the base system.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/angi-tui.png" alt="The ANGI terminal dashboard (Overview) running on a Raspberry Pi 5"></td>
+    <td width="50%"><img src="docs/images/angi-desktop.png" alt="The ANGI desktop shell with tiled windows"></td>
+  </tr>
+  <tr>
+    <td><sub><strong>Terminal dashboard</strong> (<code>agx tui</code>) on a Raspberry Pi 5, over SSH. The Pi's MAC addresses and LAN address are covered.</sub></td>
+    <td><sub><strong>Desktop</strong> in a preview window on a development workstation, in a network sandbox. It has not yet been shown on the Pi's HDMI output.</sub></td>
+  </tr>
+</table>
 
 **Our mission: make building enterprise-level software unbelievably easy, starting with a Raspberry Pi.**
 
