@@ -69,7 +69,7 @@ def check(images):
     require("kernel=Image" in config, "Firmware does not select Image")
     require("dtoverlay=dwc2,dr_mode=peripheral" in config, "Missing USB device overlay")
     cmdline = (images / "rpi-firmware/cmdline.txt").read_text()
-    for token in ("root=/dev/mmcblk0p2", "rootwait", "console=tty1", "console=ttyAMA10,115200",
+    for token in ("root=/dev/mmcblk0p2", "rootwait", "init=/usr/sbin/agx-init", "console=tty1", "console=ttyAMA10,115200",
                   "g_ether.host_addr=02:77:00:00:00:01", "g_ether.dev_addr=02:77:00:00:00:02"):
         require(token in cmdline.split(), f"Missing boot argument: {token}")
     inittab = (images.parent / "target/etc/inittab").read_text()
@@ -106,7 +106,7 @@ def check(images):
                                 capture_output=True, check=True).stdout
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
     if 'BR2_PACKAGE_AGX=y' in (images.parent / '.config').read_text().splitlines():
-        for name in ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp'):
+        for name in ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp', 'usr/sbin/agx-init'):
             binary = (target / name).read_bytes()
             require(len(binary) >= 20 and binary[:4] == b'\x7fELF' and binary[4] == 2 and binary[5] == 1,
                     f'{name} must be a 64-bit little-endian ELF')
@@ -114,7 +114,7 @@ def check(images):
             packed = subprocess.run([str(debugfs), '-R', f'cat /{name}', str(images / 'rootfs.ext4')],
                                     capture_output=True, check=True).stdout
             require(packed == binary, f'Packed {name} differs from the build output')
-        require('/usr/sbin/agx-netd' in inittab, 'Network provisioning service must start at boot')
+        require('/usr/sbin/agx-init --supervise' in inittab, 'BusyBox recovery must start the Rust supervisor')
         for name in ('usr/sbin/wpa_supplicant', 'usr/sbin/iw', 'usr/bin/curl', 'etc/ssl/certs/ca-certificates.crt',
                      'lib/firmware/regulatory.db', 'lib/firmware/brcm/brcmfmac43455-sdio.raspberrypi,5-model-b.bin'):
             require((target / name).exists(), f'Missing Wi-Fi prerequisite: {name}')

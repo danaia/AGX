@@ -152,7 +152,7 @@ def main():
         measurements['rss_bytes'] = after[2]
         measurements['idle_cpu_percent_one_core'] = round((after[0]-before[0]) / max(1, after[1]-before[1]) * status['cpu_count'] * 100, 2)
         assert b'\x1b[?1006h' in console.raw, 'Mouse capture not enabled'
-        console.click(50, 5)
+        console.click(38, 5)
         console.expect('HARDWARE INVENTORY')
         console.click(22, 11)
         console.expect('Selected device')

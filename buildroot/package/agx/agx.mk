@@ -8,6 +8,7 @@ AGX_DEPENDENCIES += libxcrypt
 AGX_CARGO_BUILD_OPTS = --workspace
 
 define AGX_INSTALL_TARGET_CMDS
+	$(INSTALL) -D -m 0755 $(@D)/target/$(RUSTC_TARGET_NAME)/$(if $(BR2_ENABLE_DEBUG),debug,release)/agx-init $(TARGET_DIR)/usr/sbin/agx-init
 	$(INSTALL) -D -m 0755 $(@D)/target/$(RUSTC_TARGET_NAME)/$(if $(BR2_ENABLE_DEBUG),debug,release)/agx $(TARGET_DIR)/usr/bin/agx
 	$(INSTALL) -D -m 0755 $(@D)/target/$(RUSTC_TARGET_NAME)/$(if $(BR2_ENABLE_DEBUG),debug,release)/agx-netd $(TARGET_DIR)/usr/sbin/agx-netd
 	$(INSTALL) -D -m 0755 $(@D)/target/$(RUSTC_TARGET_NAME)/$(if $(BR2_ENABLE_DEBUG),debug,release)/agx-dhcp $(TARGET_DIR)/usr/sbin/agx-dhcp

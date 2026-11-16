@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/agx-core", "crates/agx-tui", "crates/agx-cli", "crates/agx-net", "crates/agx-profile"]
+members = ["crates/agx-core", "crates/agx-tui", "crates/agx-cli", "crates/agx-net", "crates/agx-profile", "crates/agx-init"]
 resolver = "2"
 
 [workspace.package]
@@ -8,6 +8,7 @@ edition = "2024"
 rust-version = "1.97"
 
 [workspace.dependencies]
+agx-init = { path = "crates/agx-init" }
 agx-profile = { path = "crates/agx-profile" }
 agx-core = { path = "crates/agx-core" }
 agx-net = { path = "crates/agx-net" }

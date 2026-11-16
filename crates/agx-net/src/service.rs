@@ -393,15 +393,36 @@ impl Manager {
             Request::ProfileStatus => return Ok("Profile ready".into()),
             Request::SaveProfile(save) => return agx_profile::service::save(save),
             Request::Status => return Ok(self.state.message.clone()),
-            Request::Reboot { confirmed } => {
+            Request::Reboot { confirmed } | Request::Shutdown { confirmed } => {
+                let reboot = matches!(request, Request::Reboot { .. });
                 if !confirmed {
-                    return Err(err("Reboot requires explicit confirmation"));
+                    return Err(err("Power operation requires explicit confirmation"));
                 }
-                thread::spawn(|| {
+                if Path::new(agx_init::SOCKET).exists() {
+                    let operation = if reboot {
+                        agx_init::Request::Reboot { confirmed: true }
+                    } else {
+                        agx_init::Request::Shutdown { confirmed: true }
+                    };
+                    let reply = agx_init::request(&operation)?;
+                    return if reply.ok {
+                        Ok(reply.message)
+                    } else {
+                        Err(err(reply.message))
+                    };
+                }
+                thread::spawn(move || {
                     thread::sleep(Duration::from_secs(2));
-                    let _ = command("/sbin/reboot", &[]);
+                    let _ = command(
+                        if reboot {
+                            "/sbin/reboot"
+                        } else {
+                            "/sbin/poweroff"
+                        },
+                        &[],
+                    );
                 });
-                return Ok("Reboot requested. SSH sessions will close.".into());
+                return Ok("Power operation requested. SSH sessions will close.".into());
             }
             Request::Country { country } => {
                 let country = country.to_uppercase();

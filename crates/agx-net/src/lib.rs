@@ -118,6 +118,9 @@ pub enum Request {
     Reboot {
         confirmed: bool,
     },
+    Shutdown {
+        confirmed: bool,
+    },
 }
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Reply {

@@ -1,0 +1,535 @@
+//! Fixed service definitions, bounded lifecycle journal, restart backoff, and process-tree cleanup.
+use crate::{Action, Log, Reply, Request, Service};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    fs,
+    process::{Child, Command, Stdio},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
+const LOG_LIMIT: usize = 512;
+#[derive(Clone)]
+pub struct Definition {
+    pub name: &'static str,
+    pub program: String,
+    pub args: Vec<String>,
+    pub controllable: bool,
+}
+impl Definition {
+    fn new(name: &'static str, program: &str, args: &[&str], controllable: bool) -> Self {
+        Self {
+            name,
+            program: program.into(),
+            args: args.iter().map(|s| (*s).into()).collect(),
+            controllable,
+        }
+    }
+}
+pub fn definitions(pid1: bool) -> Vec<Definition> {
+    let mut services = Vec::new();
+    if pid1 {
+        services.extend([
+            Definition::new(
+                "syslog",
+                "/sbin/syslogd",
+                &["-n", "-s", "128", "-b", "2"],
+                false,
+            ),
+            Definition::new("kernel-log", "/sbin/klogd", &["-n"], false),
+            Definition::new(
+                "ssh",
+                "/usr/sbin/dropbear",
+                &["-F", "-E", "-g", "-p", "22", "-R"],
+                false,
+            ),
+            Definition::new(
+                "console",
+                "/sbin/getty",
+                &["-L", "tty1", "0", "vt100"],
+                false,
+            ),
+            Definition::new(
+                "serial-console",
+                "/sbin/getty",
+                &["-L", "ttyAMA10", "115200", "vt100"],
+                false,
+            ),
+            Definition::new("cron", "/usr/sbin/crond", &["-f"], true),
+        ]);
+    }
+    services.push(Definition::new("network", "/usr/sbin/agx-netd", &[], true));
+    services
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Identity {
+    pid: i32,
+    start: u64,
+    parent: i32,
+}
+fn identity(pid: i32) -> Option<Identity> {
+    let stat = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    let (_, tail) = stat.rsplit_once(") ")?;
+    let fields: Vec<_> = tail.split_whitespace().collect();
+    Some(Identity {
+        pid,
+        parent: fields.get(1)?.parse().ok()?,
+        start: fields.get(19)?.parse().ok()?,
+    })
+}
+fn signal_process(process: Identity, signal: i32) {
+    if identity(process.pid).is_some_and(|current| current.start == process.start) {
+        unsafe {
+            libc::kill(process.pid, signal);
+        }
+    }
+}
+struct Managed {
+    definition: Definition,
+    child: Option<Child>,
+    descendants: BTreeMap<i32, Identity>,
+    desired: bool,
+    stopping: Option<Instant>,
+    retry: Instant,
+    started: Instant,
+    failures: u32,
+    starts: u64,
+    last_exit: Option<String>,
+}
+impl Managed {
+    fn new(definition: Definition) -> Self {
+        Self {
+            definition,
+            child: None,
+            descendants: BTreeMap::new(),
+            desired: true,
+            stopping: None,
+            retry: Instant::now(),
+            started: Instant::now(),
+            failures: 0,
+            starts: 0,
+            last_exit: None,
+        }
+    }
+    fn state(&self) -> Service {
+        Service {
+            name: self.definition.name.into(),
+            state: if self.stopping.is_some() {
+                "stopping"
+            } else if self.child.is_some() {
+                "running"
+            } else if !self.desired {
+                "stopped"
+            } else {
+                "backoff"
+            }
+            .into(),
+            pid: self.child.as_ref().map(Child::id),
+            starts: self.starts,
+            last_exit: self.last_exit.clone(),
+            controllable: self.definition.controllable,
+        }
+    }
+    fn observe_tree(&mut self, processes: &[Identity]) {
+        self.descendants
+            .retain(|pid, process| identity(*pid).is_some_and(|p| p.start == process.start));
+        if let Some(child) = &self.child
+            && let Some(process) = identity(child.id() as i32)
+        {
+            self.descendants.insert(process.pid, process);
+        }
+        loop {
+            let before = self.descendants.len();
+            for process in processes {
+                if self.descendants.contains_key(&process.parent) {
+                    self.descendants.insert(process.pid, *process);
+                }
+            }
+            if before == self.descendants.len() {
+                break;
+            }
+        }
+    }
+    fn signal(&self, signal: i32) {
+        // Signal only recorded PID/start-time pairs, including children in separate process groups.
+        for process in self.descendants.values().rev() {
+            signal_process(*process, signal);
+        }
+    }
+    fn stop(&mut self) {
+        if self.child.is_some() && self.stopping.is_none() {
+            // Give the service leader a chance to run its own shutdown and preserve settings.
+            if let Some(child) = &self.child
+                && let Some(process) = identity(child.id() as i32)
+            {
+                signal_process(process, libc::SIGTERM);
+            }
+            self.stopping = Some(Instant::now());
+        }
+    }
+}
+pub struct Supervisor {
+    services: Vec<Managed>,
+    journal: VecDeque<Log>,
+    sequence: u64,
+    pub power: Option<(bool, Instant)>,
+    pid1: bool,
+}
+impl Supervisor {
+    pub fn new(definitions: Vec<Definition>, pid1: bool) -> Self {
+        let mut manager = Self {
+            services: definitions.into_iter().map(Managed::new).collect(),
+            journal: VecDeque::new(),
+            sequence: 0,
+            power: None,
+            pid1,
+        };
+        manager.log("init", "Rust service manager started");
+        manager
+    }
+    fn log(&mut self, service: &str, message: &str) {
+        self.sequence += 1;
+        self.journal.push_back(Log {
+            sequence: self.sequence,
+            unix_seconds: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            service: service.into(),
+            message: message.into(),
+        });
+        while self.journal.len() > LOG_LIMIT {
+            self.journal.pop_front();
+        }
+    }
+    pub fn tick(&mut self) {
+        let processes: Vec<_> = fs::read_dir("/proc")
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|entry| entry.file_name().to_str()?.parse().ok())
+            .filter_map(identity)
+            .collect();
+        let mut events = Vec::new();
+        for service in &mut self.services {
+            service.observe_tree(&processes);
+            if service
+                .stopping
+                .is_some_and(|at| at.elapsed() >= Duration::from_secs(5))
+            {
+                service.signal(libc::SIGKILL);
+            }
+            if let Some(child) = &mut service.child {
+                match child.try_wait() {
+                    Ok(Some(exit)) => {
+                        let expected = service.stopping.take().is_some();
+                        service.signal(libc::SIGKILL);
+                        service.child = None;
+                        service.last_exit = Some(exit.to_string());
+                        if !expected {
+                            service.failures =
+                                if service.started.elapsed() > Duration::from_secs(30) {
+                                    1
+                                } else {
+                                    service.failures.saturating_add(1)
+                                };
+                        }
+                        service.retry = Instant::now()
+                            + if expected {
+                                Duration::ZERO
+                            } else {
+                                backoff(service.failures)
+                            };
+                        events.push((
+                            service.definition.name,
+                            format!(
+                                "Exited: {exit}{}",
+                                if expected {
+                                    " (requested)"
+                                } else {
+                                    "; restart scheduled"
+                                }
+                            ),
+                        ));
+                    }
+                    Err(error) => {
+                        events.push((service.definition.name, format!("Wait failed: {error}")));
+                    }
+                    Ok(None) => (),
+                }
+            }
+            if service.child.is_none()
+                && service.desired
+                && Instant::now() >= service.retry
+                && self.power.is_none()
+            {
+                match Command::new(&service.definition.program)
+                    .args(&service.definition.args)
+                    .env("PATH", "/sbin:/usr/sbin:/bin:/usr/bin")
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                {
+                    Ok(child) => {
+                        let pid = child.id();
+                        service.child = Some(child);
+                        service.started = Instant::now();
+                        service.starts += 1;
+                        if let Some(process) = identity(pid as i32) {
+                            service.descendants.insert(process.pid, process);
+                        }
+                        events.push((service.definition.name, format!("Started PID {pid}")));
+                    }
+                    Err(error) => {
+                        service.failures = service.failures.saturating_add(1);
+                        service.retry = Instant::now() + backoff(service.failures);
+                        service.last_exit = Some(error.to_string());
+                        events.push((
+                            service.definition.name,
+                            format!("Start failed: {error}; retry scheduled"),
+                        ));
+                    }
+                }
+            }
+        }
+        for (name, event) in events {
+            self.log(name, &event);
+        }
+        // Reap only untracked children here; never race Child::try_wait for managed leaders.
+        let tracked: Vec<_> = self
+            .services
+            .iter()
+            .filter_map(|s| s.child.as_ref().map(Child::id))
+            .collect();
+        for process in processes
+            .iter()
+            .filter(|p| p.parent == std::process::id() as i32 && !tracked.contains(&(p.pid as u32)))
+        {
+            unsafe {
+                libc::waitpid(process.pid, std::ptr::null_mut(), libc::WNOHANG);
+            }
+        }
+    }
+    pub fn handle(&mut self, request: Request) -> Reply {
+        let mut ok = true;
+        let mut message = "Services sampled".to_owned();
+        let mut logs = Vec::new();
+        let mut truncated = false;
+        match request {
+            Request::Status => (),
+            Request::Logs { service, after } => {
+                truncated = after > 0
+                    && self
+                        .journal
+                        .front()
+                        .is_some_and(|entry| after.saturating_add(1) < entry.sequence);
+                logs = self
+                    .journal
+                    .iter()
+                    .filter(|entry| {
+                        entry.sequence > after
+                            && service.as_ref().is_none_or(|s| s == &entry.service)
+                    })
+                    .cloned()
+                    .collect();
+                message = "Service lifecycle journal (this boot; latest 512 events)".into();
+            }
+            Request::Control {
+                name,
+                action,
+                confirmed,
+            } => {
+                if self.power.is_some() {
+                    ok = false;
+                    message = "System is shutting down".into();
+                } else if let Some(service) =
+                    self.services.iter_mut().find(|s| s.definition.name == name)
+                {
+                    if !service.definition.controllable {
+                        ok = false;
+                        message = "Recovery service is protected".into();
+                    } else if !matches!(action, Action::Start) && !confirmed {
+                        ok = false;
+                        message = "Stop/restart requires confirmation".into();
+                    } else {
+                        match action {
+                            Action::Start => {
+                                service.desired = true;
+                                service.retry = Instant::now();
+                            }
+                            Action::Stop => {
+                                service.desired = false;
+                                service.stop();
+                            }
+                            Action::Restart => {
+                                service.desired = true;
+                                service.retry = Instant::now();
+                                service.stop();
+                            }
+                        }
+                        message = format!("{name}: {action:?} requested");
+                    }
+                } else {
+                    ok = false;
+                    message = "Unknown service".into();
+                }
+                self.log("init", &message);
+            }
+            Request::Reboot { confirmed } | Request::Shutdown { confirmed } => {
+                if !confirmed {
+                    ok = false;
+                    message = "Power operation requires confirmation".into();
+                } else {
+                    let reboot = matches!(request, Request::Reboot { .. });
+                    self.power = Some((reboot, Instant::now() + Duration::from_secs(2)));
+                    message = if reboot {
+                        "Reboot requested. SSH sessions will close."
+                    } else {
+                        "Shutdown requested. SSH sessions will close."
+                    }
+                    .into();
+                    self.log("init", &message);
+                }
+            }
+        }
+        Reply {
+            ok,
+            message,
+            pid1: self.pid1,
+            services: self.services.iter().map(Managed::state).collect(),
+            logs,
+            last_sequence: self.sequence,
+            logs_truncated: truncated,
+        }
+    }
+    pub fn stop_all(&mut self) {
+        for service in &mut self.services {
+            service.desired = false;
+            service.stop();
+        }
+    }
+    pub fn all_stopped(&self) -> bool {
+        self.services.iter().all(|s| s.child.is_none())
+    }
+}
+impl Drop for Supervisor {
+    fn drop(&mut self) {
+        for service in &mut self.services {
+            service.signal(libc::SIGKILL);
+            if let Some(mut child) = service.child.take() {
+                let _ = child.wait();
+            }
+        }
+    }
+}
+fn backoff(failures: u32) -> Duration {
+    Duration::from_secs(1u64 << failures.saturating_sub(1).min(5))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn pump(manager: &mut Supervisor, until: impl Fn(&mut Supervisor) -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            manager.tick();
+            if until(manager) {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "supervisor did not reach expected state"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    #[test]
+    fn real_process_crash_restarts_and_stop_does_not_restart() {
+        let mut manager = Supervisor::new(
+            vec![Definition::new("test", "/bin/sleep", &["60"], true)],
+            false,
+        );
+        pump(&mut manager, |m| m.services[0].starts == 1);
+        let pid = manager.services[0].child.as_ref().unwrap().id();
+        unsafe {
+            libc::kill(pid as i32, libc::SIGKILL);
+        }
+        pump(&mut manager, |m| m.services[0].starts == 2);
+        assert_ne!(manager.services[0].child.as_ref().unwrap().id(), pid);
+        assert!(
+            !manager
+                .handle(Request::Control {
+                    name: "test".into(),
+                    action: Action::Stop,
+                    confirmed: false
+                })
+                .ok
+        );
+        assert!(
+            manager
+                .handle(Request::Control {
+                    name: "test".into(),
+                    action: Action::Stop,
+                    confirmed: true
+                })
+                .ok
+        );
+        pump(&mut manager, |m| m.all_stopped());
+        manager.tick();
+        assert_eq!(manager.services[0].starts, 2);
+        assert!(!manager.services[0].desired);
+    }
+    #[test]
+    fn protected_services_and_bounded_filtered_journal() {
+        let mut manager = Supervisor::new(
+            vec![Definition::new("ssh", "/bin/false", &[], false)],
+            false,
+        );
+        assert!(
+            !manager
+                .handle(Request::Control {
+                    name: "ssh".into(),
+                    action: Action::Stop,
+                    confirmed: true
+                })
+                .ok
+        );
+        assert!(!manager.handle(Request::Reboot { confirmed: false }).ok);
+        for _ in 0..600 {
+            manager.log("network", "Started");
+        }
+        let reply = manager.handle(Request::Logs {
+            service: Some("network".into()),
+            after: 1,
+        });
+        assert!(reply.logs_truncated);
+        assert_eq!(reply.logs.len(), LOG_LIMIT);
+        assert!(reply.logs.iter().all(|entry| entry.service == "network"));
+        assert!(
+            manager
+                .handle(Request::Logs {
+                    service: Some("ssh".into()),
+                    after: 0
+                })
+                .logs
+                .is_empty()
+        );
+    }
+    #[test]
+    fn spawn_failure_backs_off_without_busy_looping() {
+        let mut manager = Supervisor::new(
+            vec![Definition::new(
+                "missing",
+                "/no/such/agx-service",
+                &[],
+                true,
+            )],
+            false,
+        );
+        manager.tick();
+        for _ in 0..20 {
+            manager.tick();
+        }
+        assert_eq!(manager.services[0].failures, 1);
+        assert!(manager.services[0].state().last_exit.is_some());
+    }
+}

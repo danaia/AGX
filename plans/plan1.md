@@ -4,7 +4,7 @@ Version 0.4 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
 
-**Current position:** Phase 1 passed through physical Pi 5 boot and SSH over USB. Phase 2 remains in progress, with Profile, Overview, Hardware, and Network screens running on the Pi. Profile is the first tab and provisions administrator accounts, persistent hostname overrides, and passwords with an advisory quality meter. SSH and console password login and the branded ASCII splash are physically verified; root SSH key recovery is retained. See the [profile guide](../docs/profile-provisioning.md). At the user's request, personal Wi-Fi provisioning and reboot were brought forward from Phases 3–4. Authentication entered through the TUI, DHCP, DNS, HTTPS, clock synchronization, Wi-Fi SSH, and automatic Wi-Fi reconnection after a real TUI-initiated reboot passed on November 15, 2026. The hardware audit is underway: SD, USB, memory, and Wi-Fi were observed on the Pi, and the first trimmed kernel removes unused RAM block devices and has booted successfully on the Pi with USB SSH and Wi-Fi restored. The remaining hardware and radio audit is outstanding; see the [hardware audit](../docs/phase2-hardware-audit.md). See the [TUI foundation record](../docs/phase2.md) and [Wi-Fi provisioning record](../docs/wifi-provisioning.md).
+**Current position:** Rust startup and service administration are now implemented on the physical Pi. Phase 1 and the Phase 2 headless TUI/hardware path are verified; the optional wired Ethernet, physical HDMI/UART login, and wider radio audit remain recorded follow-ups. Phase 3 adds `agx-init` as Rust PID 1, supervised processes, restart backoff, protected recovery services, Services and Logs screens, shared CLI/JSON controls, and confirmed reboot/shutdown. The existing Phase 4 personal Wi-Fi workflow is preserved and rechecked. Phase 5 administration commands use `clap`, including saved Wi-Fi controls, masked/standard-input credentials, service operations and logs; the agent command remains tied to Phase 6. User accounts, passwords, hostname, Wi-Fi configuration, SSH host keys and root recovery key were checked unchanged across the init migration and real reboot. See the [Phase 3 guide](../docs/phase3.md). Update downloading, installation and card migration are explicitly on hold. Herdr agent integration still needs the orchestration host/repository details and device-side API configuration.
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -60,7 +60,7 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 **First deliverable: a usable Rust TUI on the running Pi.**
 
-**Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Personal Wi-Fi provisioning and confirmed reboot were subsequently implemented and physically verified, including saved authentication and automatic reconnection after reboot. Broadcom firmware and driver support are working. Full Phase 2 hardware acceptance remains pending.
+**Status:** First deliverable passed on November 15, 2026. Rust tests, lint checks, ARM64 compilation, Buildroot packaging, and SSH terminal interaction tests passed. Mouse input, resizing, keyboard controls, terminal restoration, fallback modes, and exit after SSH disconnect were exercised on the physical Pi. Personal Wi-Fi provisioning and confirmed reboot were subsequently implemented and physically verified, including saved authentication and automatic reconnection after reboot. Broadcom firmware and driver support are working. The headless acceptance path is verified; optional physical HDMI/UART login, wired Ethernet and the wider radio audit remain documented follow-ups and have not been claimed as tested.
 
 - Preserve the Profile-first provisioning flow: account name, hostname, username, masked password/confirmation, advisory quality meter, and explicit apply review. Simple passwords are allowed. Maintain native SSH/console authentication and the branded login splash.
 - Add a Rust workspace and `agx-tui`, with the initial `agx tui` launcher and a shared system-information layer. Select and pin the terminal rendering/input dependencies during implementation.
@@ -76,7 +76,9 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 ### Phase 3 — Rust system initialization
 
-A System tab, measured SSH recovery readiness, and animated TUI reboot flow have been introduced ahead of the full service manager. Workstation-built kernel/root filesystem update candidates can be packaged, transferred and checked from the System tab with ASCII progress. Private GitHub release checks use a user-provided, root-only read token; safe on-device installation, installation progress and rollback are still outstanding. See the [System record](../docs/system.md).
+**Status:** Implemented and physically verified on November 15, 2026. The Pi boots `agx-init` as Rust PID 1 with syslog, kernel logging, SSH, two gettys, cron and networking supervised. Crash restart and child cleanup, requested stop/start/restart, protected recovery services, live lifecycle logs, TUI keyboard/mouse confirmations and filtering, and supervision after TUI exit/reopen passed over USB SSH. Accounts and settings were checked unchanged across reboot. See the [Phase 3 record](../docs/phase3.md). Physical HDMI/UART login and a physical power-off cycle remain untested; getty processes and confirmed shutdown routing are implemented.
+
+The System tab also provides SSH recovery timing and public GitHub release metadata checks without a token. Safe on-device update installation and rollback are deferred at the user's request.
 
 - Create `agx-init` in Rust to manage startup and system processes.
 - Create a minimal filesystem and service manager.
@@ -89,7 +91,7 @@ A System tab, measured SSH recovery readiness, and animated TUI reboot flow have
 
 ### Phase 4 — Wi-Fi and networking
 
-**Status:** The initial networking acceptance gate passed ahead of schedule on November 15, 2026: TUI provisioning, saved personal Wi-Fi authentication, DHCP/DNS/NTP, OpenAI HTTPS reachability, USB and Wi-Fi SSH, and automatic reconnection after a TUI reboot. Continue the remaining Phase 2 and Phase 3 work before extending networking.
+**Status:** The initial networking acceptance gate passed ahead of schedule on November 15, 2026: TUI provisioning, saved personal Wi-Fi authentication, DHCP/DNS/NTP, OpenAI HTTPS reachability, USB and Wi-Fi SSH, and automatic reconnection after a TUI reboot. The same Wi-Fi flow has been rechecked under Rust init; wider radio and wired-network hardware investigations remain separate follow-ups.
 
 - Extend the existing Rust `agx-net` library, `agx-netd` service, and Network screen; preserve the verified provisioning flow.
 - Implement Wi-Fi scanning, connection, reconnection, and status commands.
@@ -102,6 +104,8 @@ A System tab, measured SSH recovery readiness, and animated TUI reboot flow have
 **Pass:** The Pi automatically connects to Wi-Fi after reboot and reaches OpenAI over HTTPS. Wi-Fi can be configured and diagnosed through the TUI, with USB SSH retained for recovery.
 
 ### Phase 5 — Complete Rust CLI and TUI administration
+
+**Status:** Administration implementation advanced alongside Phase 3. `clap` now handles validated CLI commands; shared interfaces expose service controls, bounded/followed/filtered lifecycle logs, profile status, Wi-Fi scanning/connection/saved profiles/region/disconnection, and confirmed reboot/shutdown, with JSON output. Services and Logs extend the TUI workspace. The `agx agent` command and Agent screen remain Phase 6 work; Phase 5 is not declared fully complete until those are connected. See the [administration guide](../docs/phase5.md).
 
 - Expand the initial `agx` launcher into `agx-cli` using Rust and `clap`.
 - Implement `agx status`, `agx wifi`, `agx logs`, `agx reboot`, and `agx agent`.

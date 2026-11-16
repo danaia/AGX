@@ -32,6 +32,7 @@ pub(super) struct Ui {
     pub button: Rect,
     pub token_button: Rect,
     pub staged_button: Rect,
+    pub shutdown_button: Rect,
     dialog_save: Rect,
     dialog_cancel: Rect,
     pub running: bool,
@@ -51,6 +52,7 @@ impl Default for Ui {
             button: Rect::default(),
             token_button: Rect::default(),
             staged_button: Rect::default(),
+            shutdown_button: Rect::default(),
             dialog_save: Rect::default(),
             dialog_cancel: Rect::default(),
             running: false,
@@ -317,6 +319,11 @@ impl Ui {
             Line::raw(""),
             Line::raw("F10  Reboot with confirmation"),
         ];
+        self.shutdown_button = if inner.height > 1 {
+            Rect::new(inner.x, inner.bottom() - 1, inner.width.min(36), 1)
+        } else {
+            Rect::default()
+        };
         self.button = if inner.height > 7 {
             Rect::new(inner.x, inner.y + 7, inner.width.min(28), 1)
         } else {
@@ -337,7 +344,17 @@ impl Ui {
         } else {
             Rect::default()
         };
-        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), inner);
+        let body = Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(1),
+        );
+        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), body);
+        frame.render_widget(
+            Paragraph::new("F9   Power off with confirmation").style(Style::default().fg(p.cyan)),
+            self.shutdown_button,
+        );
         if self.token_dialog {
             let screen = frame.area();
             self.dialog_usable = screen.width >= 60 && screen.height >= 16;
@@ -362,7 +379,7 @@ impl Ui {
                 return;
             }
             let text = vec![
-                Line::styled("PRIVATE AGX REPOSITORY", Style::default().fg(p.cyan).bold()),
+                Line::styled("OPTIONAL GITHUB ACCESS", Style::default().fg(p.cyan).bold()),
                 Line::raw(""),
                 Line::raw("Optional: public release checks need no token."),
                 Line::raw("Token is stored root-only and is never shown or logged."),

@@ -34,3 +34,9 @@ stage-system-update:
 .PHONY: release-update
 release-update:
 	./scripts/create-release-update.sh
+
+.PHONY: init-build deploy-init
+init-build:
+	./scripts/cargo.sh build --locked --workspace --release --target aarch64-unknown-linux-gnu
+deploy-init: init-build
+	./scripts/deploy-init.sh

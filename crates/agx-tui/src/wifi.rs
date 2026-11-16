@@ -17,7 +17,7 @@ use std::{
 use zeroize::Zeroizing;
 
 pub(super) struct Update {
-    pub reboot_accepted: bool,
+    pub power_accepted: Option<bool>,
     status: Option<Status>,
     feedback: Option<Result<String, String>>,
     error: Option<String>,
@@ -37,10 +37,14 @@ impl Worker {
                 loop {
                     let command = action.take().unwrap_or(Request::Status);
                     let interactive = !matches!(command, Request::Status);
-                    let reboot = matches!(command, Request::Reboot { confirmed: true });
+                    let power = match command {
+                        Request::Reboot { confirmed: true } => Some(true),
+                        Request::Shutdown { confirmed: true } => Some(false),
+                        _ => None,
+                    };
                     let update = match agx_net::request(&command) {
                         Ok(reply) => Update {
-                            reboot_accepted: reboot && reply.ok,
+                            power_accepted: power.filter(|_| reply.ok),
                             status: Some(reply.status),
                             feedback: if interactive {
                                 Some(if reply.ok {
@@ -54,7 +58,7 @@ impl Worker {
                             error: None,
                         },
                         Err(error) => Update {
-                            reboot_accepted: false,
+                            power_accepted: None,
                             status: None,
                             feedback: if interactive {
                                 Some(Err(error.to_string()))
@@ -100,6 +104,7 @@ struct ConnectForm {
 }
 enum Confirm {
     Reboot,
+    Shutdown,
     Disconnect,
     Forget { id: i32, ssid: String },
 }
@@ -219,6 +224,12 @@ impl Ui {
     pub fn reboot(&mut self) {
         self.popup = Some(Form::Confirm {
             kind: Confirm::Reboot,
+            focus: 0,
+        });
+    }
+    pub fn shutdown(&mut self) {
+        self.popup = Some(Form::Confirm {
+            kind: Confirm::Shutdown,
             focus: 0,
         });
     }
@@ -623,6 +634,10 @@ impl Ui {
                 ..
             } => " Reboot Pi ",
             Form::Confirm {
+                kind: Confirm::Shutdown,
+                ..
+            } => " Power off Pi ",
+            Form::Confirm {
                 kind: Confirm::Disconnect,
                 ..
             } => " Disconnect Wi-Fi ",
@@ -772,7 +787,7 @@ impl Ui {
             Form::Confirm { kind, focus } => {
                 let rows =
                     Layout::vertical([Constraint::Min(3), Constraint::Length(3)]).split(inner);
-                let message=match kind{Confirm::Reboot=>"Reboot this Pi now?\nActive SSH sessions will close. Saved settings are retained.".into(),Confirm::Disconnect=>"Disconnect Wi-Fi?\nWi-Fi SSH sessions may close. USB SSH stays available.".into(),Confirm::Forget{ssid,..}=>format!("Forget {ssid}?\nIts saved authentication will be removed. An active connection to it will close.")};
+                let message=match kind{Confirm::Shutdown=>"Power off this Pi now?\nActive SSH sessions will close. Wait before unplugging power.".into(),Confirm::Reboot=>"Reboot this Pi now?\nActive SSH sessions will close. Saved settings are retained.".into(),Confirm::Disconnect=>"Disconnect Wi-Fi?\nWi-Fi SSH sessions may close. USB SSH stays available.".into(),Confirm::Forget{ssid,..}=>format!("Forget {ssid}?\nIts saved authentication will be removed. An active connection to it will close.")};
                 frame.render_widget(
                     Paragraph::new(message)
                         .wrap(Wrap { trim: false })
@@ -795,6 +810,7 @@ impl Ui {
                     self.popup_buttons[1],
                     match kind {
                         Confirm::Reboot => "Reboot now",
+                        Confirm::Shutdown => "Power off",
                         Confirm::Disconnect => "Disconnect",
                         _ => "Forget",
                     },
@@ -1003,6 +1019,7 @@ impl Ui {
                 if submit {
                     let request = match kind {
                         Confirm::Reboot => Request::Reboot { confirmed: true },
+                        Confirm::Shutdown => Request::Shutdown { confirmed: true },
                         Confirm::Disconnect => Request::Disconnect,
                         Confirm::Forget { id, .. } => Request::Forget { id: *id },
                     };

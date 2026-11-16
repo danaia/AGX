@@ -48,7 +48,7 @@ if ! grep -q 'DROPBEAR_ARGS="-g -p 22"' /etc/default/dropbear; then
     mv /etc/default/dropbear.agx-new /etc/default/dropbear
     /etc/init.d/S50dropbear restart
 fi
-if ! grep -q 'AGX_NETWORK' /etc/inittab; then
+if ! grep -qE 'AGX_(NETWORK|INIT)' /etc/inittab; then
     printf '\n# AGX_NETWORK\n::respawn:/usr/sbin/agx-netd\n' >> /etc/inittab
 fi
 if test -n "$old_pid" && test -r /proc/$old_pid/comm && test "$(cat /proc/$old_pid/comm)" = agx-netd; then

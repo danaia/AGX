@@ -55,6 +55,11 @@ case "$ACTION" in
             # Local source packages need an explicit rebuild to pick up edits.
             brmake "BR2_JLEVEL=${JOBS:-8}" agx-rebuild
         fi
+        # Buildroot does not otherwise recopy changed external firmware configuration.
+        if ! cmp -s "$ROOT/buildroot/board/agx/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||
+           ! cmp -s "$ROOT/buildroot/board/agx/cmdline.txt" "$OUTPUT/images/rpi-firmware/cmdline.txt"; then
+            brmake "BR2_JLEVEL=${JOBS:-8}" rpi-firmware-rebuild
+        fi
         brmake "BR2_JLEVEL=${JOBS:-8}" all
         ;;
 esac

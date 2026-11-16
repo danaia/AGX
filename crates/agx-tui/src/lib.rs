@@ -1,5 +1,6 @@
 //! Interactive AGX system console. Collection runs off the terminal input thread.
 mod profile;
+mod services;
 mod system;
 mod wifi;
 use agx_core::{Sampler, Snapshot};
@@ -213,6 +214,7 @@ struct App {
     wifi: wifi::Ui,
     profile: profile::Ui,
     system: system::Ui,
+    services: services::Ui,
 }
 impl App {
     fn new(options: Options) -> Self {
@@ -230,16 +232,21 @@ impl App {
             wifi: wifi::Ui::default(),
             profile: profile::Ui::default(),
             system: system::Ui::default(),
+            services: services::Ui::default(),
         }
     }
     fn icon<'a>(&self, unicode: &'a str, ascii: &'a str) -> &'a str {
         if self.options.ascii { ascii } else { unicode }
     }
     fn page(&mut self, page: usize) {
-        self.page = page % 6;
+        self.page = page % 8;
         self.scroll = 0;
     }
     fn move_row(&mut self, delta: i32) {
+        if self.page == 5 || self.page == 6 {
+            self.services.move_row(delta, self.page == 6);
+            return;
+        }
         if self.page == 3 {
             self.wifi.move_row(delta);
             return;
@@ -353,7 +360,7 @@ impl App {
             ),
             regions[0],
         );
-        let tabs = Layout::horizontal([Constraint::Ratio(1, 6); 6]).split(regions[1]);
+        let tabs = Layout::horizontal([Constraint::Ratio(1, 8); 8]).split(regions[1]);
         self.tabs = tabs.to_vec();
         let names = if area.width < 65 {
             [
@@ -362,6 +369,8 @@ impl App {
                 "3 Devices".into(),
                 "4 Wi-Fi".into(),
                 "5 System".into(),
+                "6 Services".into(),
+                "7 Logs".into(),
                 "? Help".into(),
             ]
         } else {
@@ -371,6 +380,8 @@ impl App {
                 format!("3 {} Hardware", self.icon("■", "#")),
                 format!("4 {} Network", self.icon("↗", "~")),
                 format!("5 {} System", self.icon("⚙", "*")),
+                "6 Services".into(),
+                "7 Logs".into(),
                 "? Help".into(),
             ]
         };
@@ -404,6 +415,13 @@ impl App {
                 self.system
                     .draw(frame, regions[2], self.palette, self.options, kernel);
             }
+            5 | 6 => self.services.draw(
+                frame,
+                regions[2],
+                self.palette,
+                self.options,
+                self.page == 6,
+            ),
             _ => self.help(frame, regions[2]),
         }
         let footer_regions =
@@ -778,7 +796,7 @@ impl App {
             Line::raw("Overview and Hardware are read-only. Network provisions this Pi."),
             Line::raw(""),
             Line::raw(
-                "1 / 2 / 3 / 4 / 5 / ?   Profile / Overview / Hardware / Network / System / Help",
+                "1-7 / ?   Profile / Overview / Hardware / Network / System / Services / Logs / Help",
             ),
             Line::raw("Tab / Shift-Tab Next / previous screen"),
             Line::raw("Left / Right    Previous / next screen"),
@@ -789,7 +807,9 @@ impl App {
             Line::raw("r               Request a fresh system sample"),
             Line::raw("Network: s scan, Enter connect, h hidden, c country"),
             Line::raw("Network: v saved, f forget, d disconnect, i check Internet"),
-            Line::raw("F10             Reboot (confirmation required)"),
+            Line::raw("Services: s start, x stop, t restart (confirmation required)"),
+            Line::raw("Logs: f service filter, / search, End follow live events"),
+            Line::raw("F9 / F10        Power off / reboot (confirmation required)"),
             Line::raw("q / Esc / Ctrl-C Return to the shell"),
             Line::raw(""),
             Line::styled(
@@ -859,13 +879,14 @@ pub fn run(options: Options) -> io::Result<()> {
     let worker = Worker::start()?;
     let wifi_worker = wifi::Worker::start()?;
     let profile_worker = profile::Worker::start()?;
+    let service_worker = services::Worker::start()?;
     let _session = Session::enter(options.mouse)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     terminal.clear()?;
     let mut app = App::new(options);
     let mut dirty = true;
     let mut last_frame = Instant::now();
-    let mut rebooting = false;
+    let mut power_operation = None;
     while !stop.load(Ordering::Relaxed) && !terminal_closed()? {
         while let Ok(result) = worker.results.try_recv() {
             match result {
@@ -879,17 +900,21 @@ pub fn run(options: Options) -> io::Result<()> {
             dirty = true;
         }
         while let Ok(update) = wifi_worker.results.try_recv() {
-            if update.reboot_accepted {
-                rebooting = true;
+            if let Some(reboot) = update.power_accepted {
+                power_operation = Some(reboot);
             }
             app.wifi.update(update);
             dirty = true;
         }
-        if rebooting {
+        if power_operation.is_some() {
             break;
         }
         while let Ok(update) = profile_worker.results.try_recv() {
             app.profile.update(update);
+            dirty = true;
+        }
+        while let Ok(update) = service_worker.results.try_recv() {
+            app.services.update(update);
             dirty = true;
         }
         if app.system.poll() {
@@ -930,6 +955,17 @@ pub fn run(options: Options) -> io::Result<()> {
                 continue;
             }
         }
+        if (app.page == 5 || app.page == 6) && app.services.popup() {
+            if let Some(command) = app.services.event(&input, app.page == 6) {
+                service_worker.send(command, &mut app.services);
+            }
+            continue;
+        }
+        if (app.page == 5 || app.page == 6)
+            && let Some(command) = app.services.event(&input, app.page == 6)
+        {
+            service_worker.send(command, &mut app.services);
+        }
         if app.page == 4 && app.system.dialog_open() {
             app.system.dialog_input(&input);
             continue;
@@ -953,6 +989,13 @@ pub fn run(options: Options) -> io::Result<()> {
                 || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.button.contains((mouse.column, mouse.row).into())))
         {
             app.system.start_github();
+            continue;
+        }
+        if matches!(&input, Event::Key(key) if key.code == KeyCode::F(9))
+            || (app.page == 4
+                && matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.shutdown_button.contains((mouse.column,mouse.row).into())))
+        {
+            app.wifi.shutdown();
             continue;
         }
         if matches!(&input, Event::Key(key) if key.code == KeyCode::F(10)) {
@@ -987,7 +1030,9 @@ pub fn run(options: Options) -> io::Result<()> {
                     KeyCode::Char('2') => app.page(1),
                     KeyCode::Char('3') => app.page(2),
                     KeyCode::Char('5') => app.page(4),
-                    KeyCode::Char('?') | KeyCode::Char('6') => app.page(5),
+                    KeyCode::Char('6') => app.page(5),
+                    KeyCode::Char('7') => app.page(6),
+                    KeyCode::Char('?') => app.page(7),
                     KeyCode::Char('4') => {
                         app.page(3);
                         if let Some(command) = app.wifi.entered() {
@@ -1003,7 +1048,7 @@ pub fn run(options: Options) -> io::Result<()> {
                         }
                     }
                     KeyCode::BackTab | KeyCode::Left => {
-                        app.page(app.page + 5);
+                        app.page(app.page + 7);
                         if app.page == 3
                             && let Some(command) = app.wifi.entered()
                         {
@@ -1079,12 +1124,13 @@ pub fn run(options: Options) -> io::Result<()> {
     }
     drop(terminal);
     drop(_session);
-    if rebooting {
+    if let Some(rebooting) = power_operation {
         use std::io::Write;
         let mut output = io::stdout().lock();
         let _ = writeln!(
             output,
-            "\nAGX is shutting down for reboot. Your SSH session will close."
+            "\nAGX is shutting down{}. Your SSH session will close.",
+            if rebooting { " for reboot" } else { "" }
         );
         if let Ok(logo) = std::fs::read_to_string("/usr/share/agx/logo.ascii") {
             for line in logo.lines() {
@@ -1093,7 +1139,15 @@ pub fn run(options: Options) -> io::Result<()> {
                 std::thread::sleep(Duration::from_millis(35));
             }
         }
-        let _ = writeln!(output, "\nPlease log back in once AGX is ready.");
+        let _ = writeln!(
+            output,
+            "\n{}",
+            if rebooting {
+                "Please log back in once AGX is ready."
+            } else {
+                "Wait for the Pi to finish shutting down before unplugging power."
+            }
+        );
         let _ = output.flush();
     }
     Ok(())
@@ -1131,7 +1185,7 @@ mod tests {
             let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
             let mut app = App::new(options);
             app.snapshot = Some(Sampler::default().collect().unwrap());
-            for page in 0..6 {
+            for page in 0..8 {
                 app.page(page);
                 terminal.draw(|frame| app.draw(frame)).unwrap();
                 let text: String = terminal
@@ -1144,7 +1198,7 @@ mod tests {
                 assert!(text.contains("AGX") || text.contains("Overview"));
                 assert!(text.is_ascii(), "ASCII mode emitted Unicode");
                 if width >= 40 {
-                    assert_eq!(app.tabs.len(), 6);
+                    assert_eq!(app.tabs.len(), 8);
                     assert!(text.contains("q quit"), "Quit shortcut must remain visible");
                 }
             }

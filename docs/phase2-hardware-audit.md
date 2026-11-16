@@ -1,6 +1,6 @@
 # Phase 2 hardware and kernel audit
 
-Audit of the running Raspberry Pi 5 development installation, November 15, 2026. Phase 2 remains in progress while the wider hardware audit and radio investigation continue. The first trimmed kernel was booted and tested on the Pi.
+Audit of the running Raspberry Pi 5 development installation, November 15, 2026. The Phase 2 headless acceptance path is verified; the wider hardware/radio investigation and optional physical recovery checks remain follow-ups. The first trimmed kernel was booted and tested on the Pi.
 
 ## Observed on the Pi
 

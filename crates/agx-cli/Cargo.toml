@@ -13,3 +13,8 @@ agx-core.workspace = true
 agx-tui.workspace = true
 serde_json.workspace = true
 agx-net.workspace = true
+agx-init.workspace = true
+clap = { version = "4", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
+zeroize.workspace = true
+libc.workspace = true
+signal-hook.workspace = true

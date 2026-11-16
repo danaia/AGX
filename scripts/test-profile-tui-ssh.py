@@ -49,7 +49,7 @@ def login(user, password, *, wrong=False, console=False):
                     os.write(master, password.encode() + b'\n')
                     sent = True
                 if sent and not wrong and b'Welcome to AGX' in output and not commands:
-                    os.write(master, b'id -un; agx wifi status --json; echo PROFILE_LOGIN_OK; exit\n')
+                    os.write(master, b'id -un; agx wifi status --json; agx services --json; echo PROFILE_LOGIN_OK; exit\n')
                     commands = True
                 if wrong and b'Permission denied' in output:
                     break
@@ -66,6 +66,7 @@ def login(user, password, *, wrong=False, console=False):
             assert b'################' in output, 'ASCII brand logo missing'
             assert b'PROFILE_LOGIN_OK\r\n' in output, 'Login shell failed'
             assert b'"interface_present":true' in output, 'New user cannot reach provisioning service'
+            assert b'"pid1":true' in output, 'New administrator cannot reach Rust service manager'
             assert user.encode() in output
         return bytes(output)
     finally:
@@ -87,9 +88,10 @@ def main():
     original_host = base.remote('cat /etc/hostname').strip()
     console = base.Console()
     try:
+        console.expect('PROFILE / IDENTITY')
+        console.send(b'n')
         console.expect('MAKE THIS PI YOURS')
         console.capture('profile-initial')
-        console.send(b'\r')
         console.send(b'Terminal QA')
         console.send(b'\t')
         console.send(b'\x7f' * len(original_host) + b'agx-qa')

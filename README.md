@@ -98,7 +98,7 @@ credentials or permissions you need, or physical actions I must perform.
 
 9. Open agx tui in an interactive SSH terminal if your tools support it.
    Otherwise give me one exact command, with the correct key path, to open
-   it myself. Explain the 1, 2, ?, and q keys and how to shut down safely.
+   it myself. Explain the 1-7, ?, F9, F10, and q keys and how to shut down safely.
    Report what you actually verified and anything still unresolved.
 ```
 
@@ -128,8 +128,9 @@ The agent will check the connection and help open the AGX dashboard.
 
 In the dashboard:
 
-- Press **1** for system information.
-- Press **2** for hardware information.
+- Press **1** for Profile, **2** for Overview, or **3** for Hardware.
+- Press **4** for Network, **5** for System, **6** for Services, or **7** for Logs.
+- Press **F9** to confirm power off or **F10** to confirm reboot.
 - Press **?** for help.
 - Click tabs and rows, or use the arrow keys and mouse wheel.
 - Press **q** to return to the Pi's terminal.
@@ -147,8 +148,10 @@ Tell your agent what happened and ask it to continue diagnosing the setup.
 
 ## Project status and technical details
 
-USB login and the first dashboard have been tested on a real Pi 5. Multi-agent orchestration and a desktop interface remain project goals. The image uses a small, fixed filesystem, so most of a 32 GB card remains unused. HDMI and serial recovery login still need physical verification.
+USB login, Rust-managed startup, the dashboard, service supervision, and Wi-Fi have been tested on a real Pi 5. Multi-agent orchestration and a desktop interface remain project goals. The image uses a small, fixed filesystem, so most of a 32 GB card remains unused. HDMI and serial recovery login still need physical verification.
 
 - [Manual build, USB connection, flashing, and recovery instructions](docs/phase1.md)
 - [Dashboard controls, development, and verification](docs/phase2.md)
+- [Rust startup, service controls, logs, and recovery](docs/phase3.md)
+- [CLI and TUI administration](docs/phase5.md)
 - [Project roadmap](plans/plan1.md)

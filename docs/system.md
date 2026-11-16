@@ -2,7 +2,7 @@
 
 The System tab (`5`) shows the running kernel and the latest measured SSH recovery readiness time. The boot metric starts when Linux starts, and ends when Dropbear is listening and `usb0` has `10.77.0.2`. EEPROM/firmware startup and host USB enumeration are outside that measurement. If the marker is missing, the tab reports that it will be available after the next boot. `S51agx-boot-metrics` records it under `/run`, rather than confusing an old measurement with the current boot.
 
-`F10` requests reboot with a confirmation. Once the service accepts it, the TUI restores the terminal, reveals the AGX ASCII logo, and tells the user that the system is shutting down and to reconnect. A rejected request stays in the TUI and displays the error.
+`F9` requests power off and `F10` requests reboot, each with a confirmation. Rust init handles the power operation; see [Phase 3](phase3.md). Once the service accepts it, the TUI restores the terminal, reveals the AGX ASCII logo, and tells the user that the system is shutting down and to reconnect. A rejected request stays in the TUI and displays the error.
 
 The chosen update source is a Buildroot build on the workstation. Run `make system-update-package` to build and validate the image and create `output/updates/agx-system-update.tar.gz`. It contains the kernel, full root filesystem image, and a manifest of component sizes and SHA-256 hashes.
 

@@ -65,6 +65,10 @@ def main():
         console.capture('wifi-reboot-confirmation')
         console.send(b'\r')
         console.expect('NETWORK PROVISIONING')
+        console.send(b'\x1b[20~')
+        console.expect('Power off Pi')
+        console.send(b'\r')
+        console.expect('NETWORK PROVISIONING')
         console.resize(40,12)
         console.send(b'h')
         console.expect('Provisioning dialog')
@@ -83,7 +87,7 @@ def main():
     assert metadata[-1].split()[2:4]==['root','agx-admin'], metadata
     report={'physical_scan':'passed','masked_password':'passed','invalid_password_stays_local':'passed',
             'hidden_network_form_cancel':'passed','country_edit_save':'passed','disconnect_cancel':'passed',
-            'reboot_defaults_cancel':'passed','small_terminal_guard':'passed','private_permissions':'passed',
+            'reboot_defaults_cancel':'passed','shutdown_defaults_cancel':'passed','small_terminal_guard':'passed','private_permissions':'passed',
             'actual_authentication':'awaiting user credentials in TUI','actual_reboot':'not performed'}
     (base.EVIDENCE/'wifi-pty.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2))

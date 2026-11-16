@@ -1,6 +1,6 @@
 # Phase 2 — Rust TUI foundation
 
-The first Phase 2 deliverable is implemented and running on the physical Pi 5. The remaining kernel and hardware work in [the plan](../plans/plan1.md) is still pending. Profile provisioning, branded password login, Wi-Fi, and reboot have since been added and verified; see the [profile guide](profile-provisioning.md) and [Wi-Fi guide and acceptance record](wifi-provisioning.md).
+The first Phase 2 deliverable is implemented and running on the physical Pi 5. The headless kernel/hardware acceptance path is verified; optional physical recovery checks and the wider radio audit remain documented in [the plan](../plans/plan1.md). Profile provisioning, branded password login, Wi-Fi, and reboot have since been added and verified; see the [profile guide](profile-provisioning.md) and [Wi-Fi guide and acceptance record](wifi-provisioning.md).
 
 ## Use it
 
@@ -97,4 +97,4 @@ The new image has passed artifact validation. A fresh cold boot from this update
 
 ## Remaining Phase 2 work
 
-Complete the remaining kernel driver and firmware audit, and trim the kernel while preserving USB SSH and working Broadcom Wi-Fi. Verify the required devices physically. Interactive HDMI/UART recovery remains a separate outstanding check; headless operation is the primary acceptance path. Wi-Fi management and reboot are already available. Broader service controls and the agent screen arrive with their corresponding later phases.
+The trimmed kernel has booted on the Pi with SD storage, USB recovery, live TUI and saved Wi-Fi verified. Further trimming and the wider radio/driver audit remain follow-ups. Interactive HDMI/UART recovery remains a separate outstanding check; headless operation is the primary acceptance path. Wi-Fi management and reboot are already available. Services and Logs now arrive through [Rust init](phase3.md); the Agent screen remains Phase 6 work.
