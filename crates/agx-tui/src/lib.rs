@@ -1,5 +1,6 @@
 //! Interactive AGX system console. Collection runs off the terminal input thread.
 mod profile;
+mod system;
 mod wifi;
 use agx_core::{Sampler, Snapshot};
 use ratatui::{
@@ -211,6 +212,7 @@ struct App {
     palette: Palette,
     wifi: wifi::Ui,
     profile: profile::Ui,
+    system: system::Ui,
 }
 impl App {
     fn new(options: Options) -> Self {
@@ -227,6 +229,7 @@ impl App {
             options,
             wifi: wifi::Ui::default(),
             profile: profile::Ui::default(),
+            system: system::Ui::default(),
         }
     }
     fn icon<'a>(&self, unicode: &'a str, ascii: &'a str) -> &'a str {
@@ -393,7 +396,14 @@ impl App {
             3 => self
                 .wifi
                 .draw(frame, regions[2], self.palette, self.options),
-            4 => self.system(frame, regions[2]),
+            4 => {
+                let kernel = self
+                    .snapshot
+                    .as_ref()
+                    .map_or("Loading", |s| s.kernel.as_str());
+                self.system
+                    .draw(frame, regions[2], self.palette, self.options, kernel);
+            }
             _ => self.help(frame, regions[2]),
         }
         let footer_regions =
@@ -423,64 +433,6 @@ impl App {
         self.wifi
             .draw_reboot(frame, footer_regions[1], self.palette);
         self.wifi.draw_popup(frame, self.palette, self.options);
-    }
-    fn system(&self, frame: &mut Frame, area: Rect) {
-        let boot = std::fs::read_to_string("/run/agx-ssh-ready-seconds")
-            .ok()
-            .and_then(|s| s.trim().parse::<f64>().ok())
-            .map(|s| format!("{s:.2} seconds"))
-            .unwrap_or_else(|| "Available after the next reboot".into());
-        let kernel = self
-            .snapshot
-            .as_ref()
-            .map_or("Loading", |s| s.kernel.as_str());
-        let lines = vec![
-            Line::styled(
-                "SYSTEM HEALTH & UPDATES",
-                Style::default().fg(self.palette.cyan).bold(),
-            ),
-            Line::raw(""),
-            Line::from(vec![
-                Span::styled(
-                    "Kernel              ",
-                    Style::default().fg(self.palette.muted),
-                ),
-                Span::styled(kernel, Style::default().fg(self.palette.text).bold()),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "SSH recovery ready  ",
-                    Style::default().fg(self.palette.muted),
-                ),
-                Span::styled(boot, Style::default().fg(self.palette.green).bold()),
-            ]),
-            Line::styled(
-                "  From kernel start until SSH listens and USB networking is ready.",
-                Style::default().fg(self.palette.muted),
-            ),
-            Line::styled(
-                "  Firmware time before kernel start is not included.",
-                Style::default().fg(self.palette.muted),
-            ),
-            Line::raw(""),
-            Line::styled(
-                "SYSTEM UPDATE",
-                Style::default().fg(self.palette.purple).bold(),
-            ),
-            Line::raw("  Workstation-built update packages: setup in progress."),
-            Line::styled(
-                "  No update is installed until a package is staged and verified.",
-                Style::default().fg(self.palette.amber),
-            ),
-            Line::raw(""),
-            Line::raw("  F10  Reboot with confirmation"),
-        ];
-        frame.render_widget(
-            Paragraph::new(lines)
-                .wrap(Wrap { trim: false })
-                .block(self.block(" System ", self.palette.cyan)),
-            area,
-        );
     }
     fn metric(
         &self,
@@ -940,6 +892,9 @@ pub fn run(options: Options) -> io::Result<()> {
             app.profile.update(update);
             dirty = true;
         }
+        if app.system.poll() {
+            dirty = true;
+        }
         if dirty || last_frame.elapsed() >= Duration::from_secs(1) {
             terminal.draw(|frame| app.draw(frame))?;
             dirty = false;
@@ -974,6 +929,13 @@ pub fn run(options: Options) -> io::Result<()> {
             if consumed {
                 continue;
             }
+        }
+        if app.page == 4
+            && (matches!(&input, Event::Key(key) if key.code == KeyCode::Char('c'))
+                || matches!(&input, Event::Mouse(mouse) if mouse.kind == MouseEventKind::Down(MouseButton::Left) && app.system.button.contains((mouse.column, mouse.row).into())))
+        {
+            app.system.start();
+            continue;
         }
         if matches!(&input, Event::Key(key) if key.code == KeyCode::F(10)) {
             app.wifi.reboot();

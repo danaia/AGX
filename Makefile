@@ -26,3 +26,7 @@ deploy-profile: network-build
 .PHONY: system-update-package
 system-update-package: build check-image
 	python3 scripts/create-system-update.py
+
+.PHONY: stage-system-update
+stage-system-update:
+	./scripts/stage-system-update.sh

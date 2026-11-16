@@ -55,6 +55,8 @@ dependencies = [
  "crossterm",
  "libc",
  "ratatui",
+ "serde_json",
+ "sha2",
  "signal-hook",
  "zeroize",
 ]

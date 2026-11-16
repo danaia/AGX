@@ -13,3 +13,5 @@ libc.workspace = true
 agx-net.workspace = true
 zeroize.workspace = true
 agx-profile.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
