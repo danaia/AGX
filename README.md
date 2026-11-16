@@ -6,6 +6,36 @@ AGX OS aims to turn a tiny, affordable computer into a powerful workspace where 
 
 From first boot to your first application, we want to make ambitious software development accessible to anyone, at a fraction of the cost of a traditional setup.
 
+## What is AGX?
+
+**AGX is a thin operating system made for one job: letting AI coding agents build software — and build the operating system itself.**
+
+Most operating systems are made for people and later adapted for agents. AGX starts from the other end. It is a small, fully inspectable machine whose every command, service, and log is available to an agent as plain text and JSON, running on a Raspberry Pi 5 that costs a fraction of a developer workstation. The whole system, from boot to the dashboard, lives in one repository. An agent can read it, change it, rebuild it, flash it, and verify the result. Nothing is inherited from someone else's distribution, so nothing is off-limits.
+
+### How AGX is different
+
+- **It is not a Linux distribution.** AGX is not Debian, Ubuntu, Arch, Fedora, or Alpine underneath, and it has no package manager or distribution release cycle. It is assembled from source with [Buildroot](https://buildroot.org/), which is a build tool rather than a distribution, so the image contains only what AGX asks for. There is no distribution to be compatible with, and nothing to uninstall before you can change something.
+- **The AGX layer is written in Rust.** Startup (`agx-init`, PID 1), the service supervisor, the network and account services, the `agx` command line, the terminal dashboard, and the desktop are all Rust, about 11,000 lines in one workspace. The init program is a 0.5 MB binary.
+- **Everything is scriptable.** Status, services, logs, Wi-Fi, accounts, and power each have an `agx` command with `--json` output. The terminal dashboard and the CLI use the same service interfaces, so what an agent can do is what a person can do. The desktop is meant to join them; that wiring is not finished.
+- **Agents already build it.** The setup below is a single prompt: your coding agent downloads the code, builds AGX, flashes the card, and checks that it boots.
+- **It is small on purpose.** A fresh image has about 93 MB of files, boots to a reachable SSH login in about 2.5 seconds after Linux starts, and used roughly 120 MB of the Pi's 16 GB of RAM while idle. These are development measurements, not release benchmarks.
+
+### What AGX is built on
+
+Honesty matters here, because "not a distribution" does not mean "from nothing." AGX runs the **Linux kernel** (Raspberry Pi's 6.12 branch, trimmed for the Pi 5), uses the Pi's own firmware bootloader, and relies on a few small, well-known components: BusyBox for the shell and core utilities, Dropbear for SSH, `wpa_supplicant` for Wi-Fi security, and Mesa for the desktop's GPU drivers. AGX does not rewrite these. It owns everything above them, and that is where agents do their work. A Linux kernel written in Rust is a separate, far larger project and is not part of the current plan.
+
+### Working today and planned
+
+| Working on a real Pi 5 | Planned |
+| --- | --- |
+| Bootable image built from source; SSH over USB and Wi-Fi | An AGX agent that runs on the Pi, signs in with a ChatGPT subscription, and uses permission-controlled tools (Phase 6) |
+| Rust init, service supervision, logs, confirmed reboot and shutdown | Herdr orchestration of several agents across machines |
+| Terminal dashboard and `agx` CLI with JSON output | A reproducible `v0.1.0` release image, with measured boot time and resource use (Phase 7) |
+| Wi-Fi, accounts, and password login provisioned from the dashboard | On-device system updates with rollback (on hold) |
+| Desktop with tiling windows and graphical login (built; not yet verified on a monitor) | The desktop built into the standard image |
+
+The AGX agent does not exist yet. Today the agent is the coding agent on your computer that builds and checks the system. The [project roadmap](plans/plan1.md) records exactly what has been tested, and what has not. AGX is early software: this describes the direction, and the roadmap describes the evidence.
+
 ## Get started with one prompt
 
 **Connect the Pi. Insert a microSD card into your computer. Give your coding agent the prompt below.**

@@ -2,7 +2,7 @@
 
 Version 0.5 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
-**Last updated:** November 16, 2026, from the `p1` branch (31 commits since `main`, November 15–16, 2026; preview tag `v0.4.0-preview.1`).
+**Last updated:** November 16, 2026, from the `p1` branch (31 commits since `main`, November 15–16, 2026; preview tag `v0.4.0-preview.1`), plus the library refactor (commit `b080816`) deployed to the development Pi.
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. The MVP does not require a desktop, GNOME, X11, Wayland, or browser. At the user's request a graphical desktop (`agx-gui`) was started ahead of Phases 6 and 7; it is additive and must never become a requirement for booting, administering, or accepting the headless MVP. See [GUI system](#gui-system--started-early-in-progress).
 
@@ -30,6 +30,7 @@ The newest work on this branch (November 16) is the graphical desktop: a Slint/D
 - **Kernel trim and hardware audit:** RAM block devices disabled, USB gadget/SDIO retained; trimmed kernel booted on the Pi with backups kept. Fresh image not flashed. See the [hardware audit](../docs/phase2-hardware-audit.md).
 - **System tab, boot timing and update candidates:** kernel and SSH-recovery boot time (2.54 s measured on Nov 15), `make system-update-package`, workstation staging and SHA-256 verification with ASCII progress, anonymous public GitHub release checks with an optional token, and `make release-update`, which strips the root recovery key and checks for secrets. The `v0.4.0-preview.1` release is public. **Installation and rollback remain unavailable**, and the archive must not be flashed over a running installation. See [System tab](../docs/system.md).
 - **Persistent NVMe data volume:** dedicated ext4 `AGX_DATA` on `/dev/nvme0n1p1` mounted by Rust init at `/var/lib/agx-data` (boot continues if it is missing). The earlier Windows data on that drive was erased at the user's request. Low read speed still needs investigation. See [sign-in and storage](../docs/agent-sign-in.md).
+- **Library code-structure refactor (commit `b080816`, deployed November 16, 2026):** `agx-core`, `agx-net` and `agx-tui` were split into responsibility-based modules (models/parsers/sampler; protocol/client/ssid/credentials; app state/render/screens, runtime, terminal, worker, palette). The TUI `lib.rs` went from 1,293 to 46 lines. Public APIs are preserved, and the 52 tests pass (23 in the root workspace, 29 in the standalone GUI workspace; re-run November 16, 2026). The rebuilt `agx` CLI/TUI binary (SHA-256 `7a1749c0…`) was installed on the Pi over Wi-Fi, with the previous binary kept as `/usr/bin/agx.prev`. `test-tui-ssh.py` passed (mouse, keyboard, resize, ASCII/no-color, terminal restore on q/Ctrl-C/SIGTERM, non-interactive refusal, SSH-disconnect exit) and `test-wifi-tui-ssh.py` passed (scan, masked password, dialogs, private permissions). The services and profile suites were **not** re-run: they kill the network service and create a temporary account, so they should wait for a USB recovery connection. `agx-netd`, `agx-init` and `agx-gui` were not redeployed (behavior-neutral change; restarting networking over the only link was not worth the risk). `AGENTS.md` and `CLAUDE.md` now point Codex and Claude at [docs/code-structure.md](../docs/code-structure.md): review a file near 500 lines, segment near 750 when responsibilities separate. `python3 scripts/check-file-sizes.py` lists the backlog.
 - **ChatGPT sign-in groundwork:** official Codex CLI 0.169.0 installed on the NVMe volume (checksum verified) for device-code sign-in. This is not the AGX agent.
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
@@ -70,6 +71,22 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 - Validate on the physical Pi over SSH, including keyboard-only use, mouse clicks and scrolling, resizing, terminal cleanup, and operation without a graphical session. Keep the CLI and JSON output available for automation.
 
 ## **Phased task list for Herdr**
+
+### What is next
+
+In priority order. Items 1–3 are small and protect what already exists; 4–6 are the MVP critical path.
+
+1. **Commit the work in hand** as separate commits: the plan/README update, then the library refactor with `AGENTS.md`, `CLAUDE.md`, `docs/code-structure.md` and the size-check script.
+2. **Finish the refactor regression check.** The TUI and Wi-Fi suites passed on the Pi on November 16. Still to run, with USB SSH connected as a fallback: `test-services-tui-ssh.py` (`AGX_EXPECT_PID1=1`) and `test-profile-tui-ssh.py`. Redeploy `agx-netd`/`agx-gui` with the next functional change rather than for this one.
+3. **Confirm the Pi boots after the libgcc_s/NVMe incident.** On November 16 the Pi was observed up on Rust PID 1 with the NVMe volume mounted (31 minutes of uptime), so it does boot again, but the reboot after the repair was not witnessed here. Do one deliberate cold reboot with USB SSH attached before more GUI deployments. With no monitor attached, the supervised `console` service (the GUI greeter) loops in backoff with "No connected display connector found"; this is expected and harmless but noisy.
+4. **Phase 6 — the agent.** Build `agx-agent`, the permission-controlled tool interface with approvals, the ChatGPT sign-in flow (not the Codex CLI's private credentials), a health-inspection tool, then `agx agent` and the TUI Agent screen. This also closes Phase 5.
+5. **Verify the GUI on a real display.** Connect HDMI, then check graphical login, GUI↔TUI switching (F8), the power menu, cursors, and 1080p frame rate against the 60 frames/s target. Record evidence in the desktop guide.
+6. **Phase 7 — release acceptance.** Flash the fresh image and cold-boot it, run the terminal acceptance matrix, measure boot time, idle/active resource use and image size, and publish the results.
+7. **Put the GUI in the Buildroot image** (binary, Mesa/input libraries, no NVMe dependency for boot-critical files) so a fresh image can reach graphical login.
+8. **Wire GUI controls to the shared service interfaces** (services, network, profile, agent).
+9. **Open hardware follow-ups:** HDMI/UART recovery login, wired Ethernet, radio audit (`txcap_blob` messages, region 99), NVMe read speed, a physical power-off cycle.
+10. **Code-structure backlog:** `agx-tui/wifi.rs` (1,166 lines), `agx-net/service.rs` (1,128), `agx-gui/wm.rs` (1,092) and `agx-gui/main.rs` (903) are over the 750-line threshold; `profile.rs`, `supervisor.rs`, `agx-cli/main.rs` and `system.rs` are in the review band. Segment each when it is next changed.
+11. **On hold by the user's decision:** on-device update download/installation, rollback, and card migration.
 
 ### Phase 1 — Bootloader and boot image
 
