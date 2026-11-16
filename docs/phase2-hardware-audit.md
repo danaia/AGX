@@ -1,6 +1,6 @@
 # Phase 2 hardware and kernel audit
 
-Audit of the running Raspberry Pi 5 development installation, November 15, 2026. Phase 2 remains in progress until the candidate kernel has been booted and its devices tested on the Pi.
+Audit of the running Raspberry Pi 5 development installation, November 15, 2026. Phase 2 remains in progress while the wider hardware audit and radio investigation continue. The first trimmed kernel was booted and tested on the Pi.
 
 ## Observed on the Pi
 
@@ -23,4 +23,8 @@ The candidate image built and passed `make check-image`, including checks for th
 6c73574454825e2265e795859459d2c3f1ceca873486c456f744b3d9e04b5fd6
 ```
 
-This image has not been flashed or booted on the physical Pi. It is a fresh image, so writing it over the current card would replace its saved account and Wi-Fi settings; retain the working installation for recovery when planning the hardware test.
+The candidate kernel and modules were installed on the existing SD installation and booted successfully on November 15, 2026. The full fresh image has not been flashed. The existing account and Wi-Fi settings were preserved.
+
+After reboot, USB SSH and Wi-Fi SSH worked; the saved Wi-Fi connection, DHCP, DNS, time synchronization, and HTTPS reachability recovered. The root filesystem was writable, the existing administrator remained present, and the SSH TUI regression suite passed. `/proc/partitions` shows the SD card without the previous RAM disks. Wi-Fi took additional time to initialize after the first USB SSH connection; its service subsequently recovered and reconnected.
+
+The previous kernel and modules are retained under `/root/agx-kernel-backup`; the FAT boot partition also has `Image.agx-backup`. Recovery from a boot failure requires restoring the backup kernel and modules, using physical access to the SD card if SSH is unavailable. The fresh image would replace existing account and Wi-Fi settings if flashed over the current card.
