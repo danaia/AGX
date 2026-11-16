@@ -886,7 +886,7 @@ fn check_github_release() -> io::Result<String> {
             "\n%{http_code}",
             "--config",
             "-",
-            "https://api.github.com/repos/danaia/AGX/releases?per_page=100",
+            "https://api.github.com/repos/danaia/ANGI/releases?per_page=100",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
