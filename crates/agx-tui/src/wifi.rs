@@ -17,6 +17,7 @@ use std::{
 use zeroize::Zeroizing;
 
 pub(super) struct Update {
+    pub reboot_accepted: bool,
     status: Option<Status>,
     feedback: Option<Result<String, String>>,
     error: Option<String>,
@@ -36,8 +37,10 @@ impl Worker {
                 loop {
                     let command = action.take().unwrap_or(Request::Status);
                     let interactive = !matches!(command, Request::Status);
+                    let reboot = matches!(command, Request::Reboot { confirmed: true });
                     let update = match agx_net::request(&command) {
                         Ok(reply) => Update {
+                            reboot_accepted: reboot && reply.ok,
                             status: Some(reply.status),
                             feedback: if interactive {
                                 Some(if reply.ok {
@@ -51,6 +54,7 @@ impl Worker {
                             error: None,
                         },
                         Err(error) => Update {
+                            reboot_accepted: false,
                             status: None,
                             feedback: if interactive {
                                 Some(Err(error.to_string()))

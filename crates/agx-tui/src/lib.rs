@@ -233,7 +233,7 @@ impl App {
         if self.options.ascii { ascii } else { unicode }
     }
     fn page(&mut self, page: usize) {
-        self.page = page % 5;
+        self.page = page % 6;
         self.scroll = 0;
     }
     fn move_row(&mut self, delta: i32) {
@@ -350,14 +350,15 @@ impl App {
             ),
             regions[0],
         );
-        let tabs = Layout::horizontal([Constraint::Ratio(1, 5); 5]).split(regions[1]);
+        let tabs = Layout::horizontal([Constraint::Ratio(1, 6); 6]).split(regions[1]);
         self.tabs = tabs.to_vec();
         let names = if area.width < 65 {
             [
                 "1 Profile".into(),
-                "2 System".into(),
+                "2 Overview".into(),
                 "3 Devices".into(),
                 "4 Wi-Fi".into(),
+                "5 System".into(),
                 "? Help".into(),
             ]
         } else {
@@ -366,6 +367,7 @@ impl App {
                 format!("2 {} Overview", self.icon("◈", ">")),
                 format!("3 {} Hardware", self.icon("■", "#")),
                 format!("4 {} Network", self.icon("↗", "~")),
+                format!("5 {} System", self.icon("⚙", "*")),
                 "? Help".into(),
             ]
         };
@@ -391,6 +393,7 @@ impl App {
             3 => self
                 .wifi
                 .draw(frame, regions[2], self.palette, self.options),
+            4 => self.system(frame, regions[2]),
             _ => self.help(frame, regions[2]),
         }
         let footer_regions =
@@ -420,6 +423,64 @@ impl App {
         self.wifi
             .draw_reboot(frame, footer_regions[1], self.palette);
         self.wifi.draw_popup(frame, self.palette, self.options);
+    }
+    fn system(&self, frame: &mut Frame, area: Rect) {
+        let boot = std::fs::read_to_string("/run/agx-ssh-ready-seconds")
+            .ok()
+            .and_then(|s| s.trim().parse::<f64>().ok())
+            .map(|s| format!("{s:.2} seconds"))
+            .unwrap_or_else(|| "Available after the next reboot".into());
+        let kernel = self
+            .snapshot
+            .as_ref()
+            .map_or("Loading", |s| s.kernel.as_str());
+        let lines = vec![
+            Line::styled(
+                "SYSTEM HEALTH & UPDATES",
+                Style::default().fg(self.palette.cyan).bold(),
+            ),
+            Line::raw(""),
+            Line::from(vec![
+                Span::styled(
+                    "Kernel              ",
+                    Style::default().fg(self.palette.muted),
+                ),
+                Span::styled(kernel, Style::default().fg(self.palette.text).bold()),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "SSH recovery ready  ",
+                    Style::default().fg(self.palette.muted),
+                ),
+                Span::styled(boot, Style::default().fg(self.palette.green).bold()),
+            ]),
+            Line::styled(
+                "  From kernel start until SSH listens and USB networking is ready.",
+                Style::default().fg(self.palette.muted),
+            ),
+            Line::styled(
+                "  Firmware time before kernel start is not included.",
+                Style::default().fg(self.palette.muted),
+            ),
+            Line::raw(""),
+            Line::styled(
+                "SYSTEM UPDATE",
+                Style::default().fg(self.palette.purple).bold(),
+            ),
+            Line::raw("  Workstation-built update packages: setup in progress."),
+            Line::styled(
+                "  No update is installed until a package is staged and verified.",
+                Style::default().fg(self.palette.amber),
+            ),
+            Line::raw(""),
+            Line::raw("  F10  Reboot with confirmation"),
+        ];
+        frame.render_widget(
+            Paragraph::new(lines)
+                .wrap(Wrap { trim: false })
+                .block(self.block(" System ", self.palette.cyan)),
+            area,
+        );
     }
     fn metric(
         &self,
@@ -764,7 +825,9 @@ impl App {
             ),
             Line::raw("Overview and Hardware are read-only. Network provisions this Pi."),
             Line::raw(""),
-            Line::raw("1 / 2 / 3 / 4 / ?   Profile / Overview / Hardware / Network / Help"),
+            Line::raw(
+                "1 / 2 / 3 / 4 / 5 / ?   Profile / Overview / Hardware / Network / System / Help",
+            ),
             Line::raw("Tab / Shift-Tab Next / previous screen"),
             Line::raw("Left / Right    Previous / next screen"),
             Line::raw("Up / Down, j/k  Scroll information or select hardware"),
@@ -850,6 +913,7 @@ pub fn run(options: Options) -> io::Result<()> {
     let mut app = App::new(options);
     let mut dirty = true;
     let mut last_frame = Instant::now();
+    let mut rebooting = false;
     while !stop.load(Ordering::Relaxed) && !terminal_closed()? {
         while let Ok(result) = worker.results.try_recv() {
             match result {
@@ -863,8 +927,14 @@ pub fn run(options: Options) -> io::Result<()> {
             dirty = true;
         }
         while let Ok(update) = wifi_worker.results.try_recv() {
+            if update.reboot_accepted {
+                rebooting = true;
+            }
             app.wifi.update(update);
             dirty = true;
+        }
+        if rebooting {
+            break;
         }
         while let Ok(update) = profile_worker.results.try_recv() {
             app.profile.update(update);
@@ -936,7 +1006,8 @@ pub fn run(options: Options) -> io::Result<()> {
                     KeyCode::Char('1') => app.page(0),
                     KeyCode::Char('2') => app.page(1),
                     KeyCode::Char('3') => app.page(2),
-                    KeyCode::Char('?') | KeyCode::Char('5') => app.page(4),
+                    KeyCode::Char('5') => app.page(4),
+                    KeyCode::Char('?') | KeyCode::Char('6') => app.page(5),
                     KeyCode::Char('4') => {
                         app.page(3);
                         if let Some(command) = app.wifi.entered() {
@@ -952,7 +1023,7 @@ pub fn run(options: Options) -> io::Result<()> {
                         }
                     }
                     KeyCode::BackTab | KeyCode::Left => {
-                        app.page(app.page + 4);
+                        app.page(app.page + 5);
                         if app.page == 3
                             && let Some(command) = app.wifi.entered()
                         {
@@ -1026,6 +1097,25 @@ pub fn run(options: Options) -> io::Result<()> {
             _ => (),
         }
     }
+    drop(terminal);
+    drop(_session);
+    if rebooting {
+        use std::io::Write;
+        let mut output = io::stdout().lock();
+        let _ = writeln!(
+            output,
+            "\nAGX is shutting down for reboot. Your SSH session will close."
+        );
+        if let Ok(logo) = std::fs::read_to_string("/usr/share/agx/logo.ascii") {
+            for line in logo.lines() {
+                let _ = writeln!(output, "{line}");
+                let _ = output.flush();
+                std::thread::sleep(Duration::from_millis(35));
+            }
+        }
+        let _ = writeln!(output, "\nPlease log back in once AGX is ready.");
+        let _ = output.flush();
+    }
     Ok(())
 }
 
@@ -1061,7 +1151,7 @@ mod tests {
             let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
             let mut app = App::new(options);
             app.snapshot = Some(Sampler::default().collect().unwrap());
-            for page in 0..5 {
+            for page in 0..6 {
                 app.page(page);
                 terminal.draw(|frame| app.draw(frame)).unwrap();
                 let text: String = terminal
@@ -1074,7 +1164,7 @@ mod tests {
                 assert!(text.contains("AGX") || text.contains("Overview"));
                 assert!(text.is_ascii(), "ASCII mode emitted Unicode");
                 if width >= 40 {
-                    assert_eq!(app.tabs.len(), 5);
+                    assert_eq!(app.tabs.len(), 6);
                     assert!(text.contains("q quit"), "Quit shortcut must remain visible");
                 }
             }

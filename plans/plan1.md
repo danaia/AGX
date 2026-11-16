@@ -76,6 +76,8 @@ Buildroot provides a `raspberrypi5_defconfig`, which is the basis of the existin
 
 ### Phase 3 — Rust system initialization
 
+A System tab, measured SSH recovery readiness, and animated TUI reboot flow have been introduced ahead of the full service manager. Workstation-built kernel/root filesystem update candidates can be packaged; safe on-device installation and rollback are still outstanding. See the [System record](../docs/system.md).
+
 - Create `agx-init` in Rust to manage startup and system processes.
 - Create a minimal filesystem and service manager.
 - Add logging, process supervision, and shutdown. Migrate the existing confirmed TUI reboot operation and supervised `agx-netd` from BusyBox init into the Rust service manager without losing saved network authentication.
