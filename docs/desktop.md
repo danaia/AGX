@@ -39,7 +39,8 @@ The root greeter reads `/etc/agx/gui.env` and passes its graphics options to the
 
 ```text
 SLINT_BACKEND=linuxkms-femtovg
-SLINT_DEBUG_PERFORMANCE=refresh_lazy,console
+# Optional while measuring frame rate; leave off for normal use.
+# SLINT_DEBUG_PERFORMANCE=refresh_lazy,console
 # Optional: select the connected output and its listed 1080p/60 mode index.
 # SLINT_DRM_OUTPUT=HDMI-A-1
 # SLINT_DRM_MODE=4

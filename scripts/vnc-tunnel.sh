@@ -34,6 +34,7 @@ port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; }
 
 SSH_OPTIONS=(
     -i "$KEY" -o BatchMode=yes -o ConnectTimeout=8
+    -o GatewayPorts=no
     -o ExitOnForwardFailure=yes -o ServerAliveInterval=5 -o ServerAliveCountMax=3
     -o "HostKeyAlias=$HOST_KEY_ALIAS" -o StrictHostKeyChecking=yes
 )

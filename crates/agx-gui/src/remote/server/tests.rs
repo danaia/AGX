@@ -299,3 +299,18 @@ fn the_handshake_does_not_retain_an_obsolete_capture_for_the_session() {
     drop(client);
     worker.join().unwrap();
 }
+
+#[test]
+fn an_idle_poll_releases_a_capture_finished_after_the_last_viewer_left() {
+    let shared = Shared::new(|_| {});
+    let id = shared.register().unwrap();
+    assert!(shared.wants_frame()); // The UI starts capturing for this viewer.
+    shared.unregister(id);
+    shared.publish(frame(8, 4, 10)); // Its capture completes after the disconnect.
+    let late = Arc::downgrade(shared.hub().frame.as_ref().unwrap());
+    assert!(!shared.wants_frame());
+    assert!(late.upgrade().is_none());
+    // A new viewer still causes a fresh capture rather than using an old picture.
+    shared.register().unwrap();
+    assert!(shared.wants_frame());
+}

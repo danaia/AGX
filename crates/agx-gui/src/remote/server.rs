@@ -77,8 +77,14 @@ impl Shared {
 
     /// Whether some client is waiting for a frame, so the UI thread should capture one.
     pub fn wants_frame(&self) -> bool {
-        self.hub()
-            .clients
+        let mut hub = self.hub();
+        if hub.clients.is_empty() {
+            // A capture may finish after the last viewer unregisters. Release
+            // that late frame on the next timer poll as well.
+            hub.frame = None;
+            return false;
+        }
+        hub.clients
             .values()
             .any(|client| client.pending && !client.closed)
     }
