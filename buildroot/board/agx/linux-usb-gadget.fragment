@@ -3,3 +3,6 @@ CONFIG_USB_GADGET=y
 CONFIG_USB_DWC2=y
 CONFIG_USB_DWC2_PERIPHERAL=y
 CONFIG_USB_ETH=y
+
+# The SD-root system does not use the default 16 virtual RAM block devices.
+# CONFIG_BLK_DEV_RAM is not set

@@ -85,6 +85,11 @@ def check(images):
     kernel_config = next((images.parent / "build").glob("linux-*/.config")).read_text()
     for option in ("CONFIG_USB_GADGET=y", "CONFIG_USB_DWC2=y", "CONFIG_USB_DWC2_PERIPHERAL=y", "CONFIG_USB_ETH=y"):
         require(option in kernel_config.splitlines(), f"Missing built-in kernel option: {option}")
+    require("# CONFIG_BLK_DEV_RAM is not set" in kernel_config.splitlines(),
+            "Unused RAM block devices must be disabled")
+    require("CONFIG_BRCMFMAC=m" in kernel_config.splitlines() and
+            "CONFIG_BRCMFMAC_SDIO=y" in kernel_config.splitlines(),
+            "Missing Broadcom SDIO Wi-Fi support")
     keys = target / "root/.ssh/authorized_keys"
     require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
     debugfs = images.parent / "host/sbin/debugfs"
