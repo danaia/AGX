@@ -457,6 +457,7 @@ fn main() -> ExitCode {
     }
     quit_on_signals();
     let result = match std::env::args().nth(1).as_deref() {
+        Some("--cursor-preview") => CursorPreviewWindow::new().map_err(Into::into).and_then(|ui| ui.run().map_err(Into::into)),
         Some("--login") => login::run(false),
         Some("--login-preview") => login::run(true),
         _ => run(),
@@ -539,6 +540,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     ui.set_ws_occupied(ModelRc::from(app.borrow().occupied.clone()));
     ui.set_mod_name(app.borrow().modk.name().into());
     ui.set_draw_cursor(graphics::draw_cursor());
+    ui.set_resize_cursor_overlay(cfg!(feature = "kms"));
     // Callbacks never nest, but a stray re-entrant event is dropped rather than panicking.
     macro_rules! hook {
         ($on:ident, |$app:ident, $ui:ident $(, $arg:ident)*| $body:expr) => {{
@@ -787,6 +789,26 @@ fn apply_omarchy_theme(ui: &AppWindow) {
 #[cfg(test)]
 mod pointer_tests {
     use super::*;
+
+    #[test]
+    fn floating_edges_and_corners_select_directional_resize_cursors() {
+        let mut app = App::new();
+        app.desk.toggle_float();
+        app.view.sync(app.desk.scene(), None);
+        let r = app.desk.rect_of(app.desk.focused().unwrap()).unwrap();
+        for (x, y, cursor) in [
+            (r.x, r.y + r.h / 2.0, 2),
+            (r.right() - 1.0, r.y + r.h / 2.0, 2),
+            (r.x + r.w / 2.0, r.y, 3),
+            (r.x + r.w / 2.0, r.bottom() - 1.0, 3),
+            (r.x, r.y, 4),
+            (r.right() - 1.0, r.bottom() - 1.0, 4),
+            (r.right() - 1.0, r.y, 5),
+            (r.x, r.bottom() - 1.0, 5),
+        ] {
+            assert_eq!(app.hover(x, y), cursor, "cursor at {x},{y}");
+        }
+    }
 
     #[test]
     fn hover_uses_cached_scene_and_never_requests_model_updates() {

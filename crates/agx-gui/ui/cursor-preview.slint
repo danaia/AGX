@@ -1,0 +1,74 @@
+// Render the actual desktop Cursor component on both theme surfaces.
+import { Cursor } from "cursor.slint";
+import { Theme } from "data.slint";
+
+component CursorPanel inherits Rectangle {
+    in property <bool> light;
+    background: root.light ? #f4f6fa : #171d29;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: root.light ? #dce2eb : #30394a;
+    VerticalLayout {
+        padding: 26px;
+        spacing: 12px;
+        Text {
+            text: root.light ? "Light theme" : "Dark theme";
+            color: root.light ? #253247 : #e9eef7;
+            font-size: 22px;
+            font-weight: 600;
+            height: 36px;
+        }
+        Text {
+            text: root.light ? "Deep slate · soft white halo" : "Soft pearl · subtle dark halo";
+            color: root.light ? #68758b : #94a1b6;
+            font-size: 12px;
+            height: 22px;
+        }
+        Text { text: "3× DETAIL"; color: root.light ? #68758b : #94a1b6; font-size: 11px; height: 32px; vertical-alignment: bottom; }
+        Rectangle {
+            height: 112px;
+            HorizontalLayout {
+                for label[i] in ["Move", "Horizontal", "Vertical", "NW / SE", "NE / SW"]: Rectangle {
+                    Cursor { x: parent.width / 2; y: 52px; shape: i + 1; light-surface: root.light; magnification: 3; }
+                }
+            }
+        }
+        HorizontalLayout {
+            for label in ["Move", "Horizontal", "Vertical", "NW / SE", "NE / SW"]: Text {
+                text: label;
+                color: root.light ? #68758b : #94a1b6;
+                horizontal-alignment: center;
+                font-size: 10px;
+            }
+        }
+        Rectangle { height: 1px; background: root.light ? #dce2eb : #30394a; }
+        Text { text: "ACTUAL SIZE · 24 PX"; color: root.light ? #68758b : #94a1b6; font-size: 11px; height: 38px; vertical-alignment: bottom; }
+        Rectangle {
+            height: 66px;
+            HorizontalLayout {
+                for label[i] in ["Move", "Horizontal", "Vertical", "NW / SE", "NE / SW"]: Rectangle {
+                    Cursor { x: parent.width / 2; y: 30px; shape: i + 1; light-surface: root.light; }
+                }
+            }
+        }
+    }
+}
+
+export component CursorPreviewWindow inherits Window {
+    title: "AGX Cursor Preview";
+    background: #0e131d;
+    default-font-family: "JetBrainsMono Nerd Font";
+    width: 1120px;
+    height: 600px;
+    VerticalLayout {
+        padding: 32px;
+        spacing: 18px;
+        Text { text: "AGX  /  Resize cursors"; color: #e9eef7; font-size: 26px; font-weight: 600; height: 40px; }
+        Text { text: "Fine strokes. Rounded tips. Automatic contrast for dark and light themes."; color: #94a1b6; font-size: 13px; height: 28px; }
+        HorizontalLayout {
+            spacing: 20px;
+            CursorPanel { light: false; }
+            CursorPanel { light: true; }
+        }
+    }
+}

@@ -2,6 +2,9 @@
 // draws what it places and forwards raw keyboard and pointer input to it.
 import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
+import { Cursor } from "cursor.slint";
+import { CursorPreviewWindow } from "cursor-preview.slint";
+export { CursorPreviewWindow }
 import { LineEdit, Button } from "std-widgets.slint";
 export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
 
@@ -65,38 +68,6 @@ component WorkspaceButton inherits Rectangle {
         font-weight: root.occupied || root.active ? 700 : 400;
         horizontal-alignment: center;
         vertical-alignment: center;
-    }
-}
-
-// Drawn by us because Slint's software renderer never draws the mouse cursor.
-component Cursor inherits Rectangle {
-    in property <int> shape;
-    width: 22px;
-    height: 22px;
-    // Arrow: tip at the pointer. The others are centred on it.
-    if root.shape == 0 || root.shape == 6: Path {
-        x: 0; y: 0; width: 14px; height: 20px;
-        viewbox-width: 14; viewbox-height: 20;
-        commands: "M 0 0 L 0 16 L 4 12.5 L 7 19 L 9.5 18 L 6.5 11.5 L 11.5 11.5 Z";
-        fill: #ffffff; stroke: #000000; stroke-width: 1px;
-    }
-    if root.shape == 2: Path {
-        x: -10px; y: -6px; width: 20px; height: 12px;
-        viewbox-width: 20; viewbox-height: 12;
-        commands: "M 0 6 L 5 1 L 5 4 L 15 4 L 15 1 L 20 6 L 15 11 L 15 8 L 5 8 L 5 11 Z";
-        fill: #ffffff; stroke: #000000; stroke-width: 1px;
-    }
-    if root.shape == 3: Path {
-        x: -6px; y: -10px; width: 12px; height: 20px;
-        viewbox-width: 12; viewbox-height: 20;
-        commands: "M 6 0 L 11 5 L 8 5 L 8 15 L 11 15 L 6 20 L 1 15 L 4 15 L 4 5 L 1 5 Z";
-        fill: #ffffff; stroke: #000000; stroke-width: 1px;
-    }
-    if root.shape == 1 || root.shape == 4 || root.shape == 5: Path {
-        x: -10px; y: -10px; width: 20px; height: 20px;
-        viewbox-width: 20; viewbox-height: 20;
-        commands: "M 10 0 L 14 4 L 11.5 4 L 11.5 8.5 L 16 8.5 L 16 6 L 20 10 L 16 14 L 16 11.5 L 11.5 11.5 L 11.5 16 L 14 16 L 10 20 L 6 16 L 8.5 16 L 8.5 11.5 L 4 11.5 L 4 14 L 0 10 L 4 6 L 4 8.5 L 8.5 8.5 L 8.5 4 L 6 4 Z";
-        fill: #ffffff; stroke: #000000; stroke-width: 1px;
     }
 }
 
@@ -183,6 +154,7 @@ export component AppWindow inherits Window {
     in property <bool> dragging: false;
     in property <int> cursor: 0;
     in property <bool> draw-cursor: false;
+    in property <bool> resize-cursor-overlay: false;
     in-out property <length> cursor-x;
     in-out property <length> cursor-y;
     in-out property <bool> cursor-seen: false;
@@ -196,6 +168,8 @@ export component AppWindow inherits Window {
     in-out property <int> menu-index: 0;
     in property <[MenuRow]> menu-rows: [];
     in-out property <string> confirm-text: "";
+    property <bool> custom-resize-cursor: root.resize-cursor-overlay
+        && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
     callback pointer(int, int, length, length, bool, bool, bool, bool);
@@ -250,9 +224,14 @@ export component AppWindow inherits Window {
                 background: #7aa2f733;
             }
             touch := TouchArea {
-                mouse-cursor: root.cursor == 1 ? MouseCursor.move : root.cursor == 2 ? MouseCursor.col-resize
+                // LinuxKMS maps built-in resize shapes to its default arrow.
+                // Hide it while AGX draws the directional resize/move overlay.
+                mouse-cursor: root.draw-cursor || root.custom-resize-cursor
+                    ? MouseCursor.none
+                    : root.cursor == 1 ? MouseCursor.move : root.cursor == 2 ? MouseCursor.col-resize
                     : root.cursor == 3 ? MouseCursor.row-resize : root.cursor == 4 ? MouseCursor.nwse-resize
-                    : root.cursor == 5 ? MouseCursor.nesw-resize : root.cursor == 6 ? MouseCursor.pointer : MouseCursor.default;
+                    : root.cursor == 5 ? MouseCursor.nesw-resize
+                    : root.cursor == 6 ? MouseCursor.pointer : MouseCursor.default;
                 pointer-event(e) => {
                     root.cursor-x = self.mouse-x;
                     root.cursor-y = self.mouse-y;
@@ -264,6 +243,7 @@ export component AppWindow inherits Window {
                         e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
                 }
                 moved => {
+                    root.cursor-seen = true;
                     root.cursor-x = self.mouse-x;
                     root.cursor-y = self.mouse-y;
                     root.pointer(2, 3, self.mouse-x, self.mouse-y, false, false, false, false);
@@ -430,7 +410,7 @@ export component AppWindow inherits Window {
             }
         }
 
-        if root.draw-cursor && root.cursor-seen: Cursor {
+        if (root.draw-cursor || root.custom-resize-cursor) && root.cursor-seen: Cursor {
             x: root.cursor-x;
             y: root.cursor-y;
             shape: root.menu-open || root.confirm-text != "" ? 0 : root.cursor;
