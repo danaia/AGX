@@ -434,6 +434,7 @@ impl Ui {
         ];
         for i in 0..5 {
             let active = self.editing && self.focus == i;
+            let placeholder = values[i].is_empty();
             let value = if values[i].is_empty() {
                 if i >= 3 && !self.create {
                     "Leave blank to keep password".into()
@@ -456,6 +457,11 @@ impl Ui {
             let block = border(options)
                 .borders(if compact { Borders::TOP } else { Borders::ALL })
                 .title(format!(" {label} "))
+                .title_style(
+                    Style::default()
+                        .fg(if active { p.cyan } else { p.purple })
+                        .bold(),
+                )
                 .border_style(Style::default().fg(if active { p.cyan } else { p.muted }));
             let inside = block.inner(rows[i + 1]);
             let visible: String = value
@@ -469,7 +475,13 @@ impl Ui {
             frame.render_widget(
                 Paragraph::new(visible.clone())
                     .block(block)
-                    .style(Style::default().fg(if active { p.text } else { p.muted })),
+                    .style(if placeholder {
+                        Style::default().fg(p.muted)
+                    } else if active {
+                        Style::default().fg(p.green).bg(p.panel).bold()
+                    } else {
+                        Style::default().fg(p.cyan).bold()
+                    }),
                 rows[i + 1],
             );
             if active && inside.width > 0 {
