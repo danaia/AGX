@@ -75,6 +75,10 @@ fn bootstrap() -> io::Result<()> {
     ] {
         command(script, &["start"])?;
     }
+    // Optional data storage must not prevent recovery if its drive is absent.
+    if std::path::Path::new("/etc/init.d/S12agx-data").exists() {
+        let _ = command("/etc/init.d/S12agx-data", &["start"]);
+    }
     Ok(())
 }
 fn ssh_listening() -> bool {

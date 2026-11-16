@@ -103,10 +103,13 @@ def check(images):
                 f"Incorrect packed SSH permissions: {name}")
         require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
                 f"Incorrect packed SSH ownership: {name}")
-    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue", "etc/profile.d/agx-welcome.sh", "usr/share/agx/logo.ascii", "root/.ssh/authorized_keys"):
+    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue", "etc/profile.d/agx-welcome.sh", "etc/init.d/S12agx-data", "usr/share/agx/logo.ascii", "root/.ssh/authorized_keys"):
         packed = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
                                 capture_output=True, check=True).stdout
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
+    if 'BR2_PACKAGE_E2FSPROGS=y' in (images.parent / '.config').read_text().splitlines():
+        require((target / 'sbin/mke2fs').is_file() and not (target / 'sbin/mke2fs').is_symlink(),
+                'Real e2fsprogs mke2fs is required for ext4 data volumes')
     if 'BR2_PACKAGE_AGX=y' in (images.parent / '.config').read_text().splitlines():
         for name in ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp', 'usr/sbin/agx-init'):
             binary = (target / name).read_bytes()

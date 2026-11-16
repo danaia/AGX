@@ -4,7 +4,7 @@ Version 0.4 plan · Raspberry Pi 5 (16 GB) · Rust · Buildroot · Herdr
 
 **Goal:** Build a headless, bootable, agent-native operating system with Wi-Fi, a colorful Rust terminal user interface (TUI), a scriptable Rust CLI, and an OpenAI-connected agent runtime. The TUI starts in Phase 2 and grows throughout the remaining phases. A graphical interface is planned after the headless MVP; this MVP does not require a desktop, GNOME, X11, Wayland, or browser.
 
-**Current position:** Rust startup and service administration are now implemented on the physical Pi. Phase 1 and the Phase 2 headless TUI/hardware path are verified; the optional wired Ethernet, physical HDMI/UART login, and wider radio audit remain recorded follow-ups. Phase 3 adds `agx-init` as Rust PID 1, supervised processes, restart backoff, protected recovery services, Services and Logs screens, shared CLI/JSON controls, and confirmed reboot/shutdown. The existing Phase 4 personal Wi-Fi workflow is preserved and rechecked. Phase 5 administration commands use `clap`, including saved Wi-Fi controls, masked/standard-input credentials, service operations and logs; the agent command remains tied to Phase 6. User accounts, passwords, hostname, Wi-Fi configuration, SSH host keys and root recovery key were checked unchanged across the init migration and real reboot. See the [Phase 3 guide](../docs/phase3.md). Update downloading, installation and card migration are explicitly on hold. Herdr agent integration still needs the orchestration host/repository details and device-side API configuration.
+**Current position:** Rust startup and service administration are now implemented on the physical Pi. Phase 1 and the Phase 2 headless TUI/hardware path are verified; the optional wired Ethernet, physical HDMI/UART login, and wider radio audit remain recorded follow-ups. Phase 3 adds `agx-init` as Rust PID 1, supervised processes, restart backoff, protected recovery services, Services and Logs screens, shared CLI/JSON controls, and confirmed reboot/shutdown. The existing Phase 4 personal Wi-Fi workflow is preserved and rechecked. Phase 5 administration commands use `clap`, including saved Wi-Fi controls, masked/standard-input credentials, service operations and logs; the agent command remains tied to Phase 6. User accounts, passwords, hostname, Wi-Fi configuration, SSH host keys and root recovery key were checked unchanged across the init migration and real reboot. See the [Phase 3 guide](../docs/phase3.md). Update downloading, installation and card migration are explicitly on hold. Herdr agent integration remains Phase 6 work. The Pi now has a dedicated NVMe data volume and the Codex CLI installed for ChatGPT subscription sign-in; API keys are not part of the selected authentication flow.
 
 The Raspberry Pi 5 already has a bootloader in EEPROM. We'll use that rather than reinvent it, compile our own Linux kernel through Buildroot, and implement the AGX operating environment in Rust.
 
@@ -119,7 +119,7 @@ The System tab also provides SSH recovery timing and public GitHub release metad
 ### Phase 6 — Herdr agent integration
 
 - Build `agx-agent`, a minimal Rust agent worker using Tokio and an HTTPS client.
-- Integrate OpenAI API authentication and requests.
+- Integrate ChatGPT subscription sign-in and requests using a supported OpenAI flow, without requiring API keys.
 - Create a permission-controlled tool execution interface.
 - Connect the Pi worker to the Herdr orchestration host.
 - Allow an agent to inspect AGX system health and report results.

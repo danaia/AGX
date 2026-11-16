@@ -1,0 +1,22 @@
+#!/bin/sh
+# Mount the explicitly configured AGX data filesystem, if present.
+case "$1" in
+    start)
+        test -r /etc/agx/data-volume.uuid || exit 0
+        uuid=$(cat /etc/agx/data-volume.uuid)
+        case "$uuid" in ''|*[!0-9a-fA-F-]*) echo 'Invalid AGX data UUID' >&2; exit 1 ;; esac
+        mkdir -p /var/lib/agx-data
+        mountpoint -q /var/lib/agx-data && exit 0
+        for device in /dev/nvme*n*p*; do
+            test -b "$device" || continue
+            if blkid "$device" | grep -Fq "UUID=\"$uuid\""; then
+                mount -t ext4 -o noatime,nosuid,nodev "$device" /var/lib/agx-data
+                exit $?
+            fi
+        done
+        echo 'AGX data volume not found' >&2
+        exit 1
+        ;;
+    stop) mountpoint -q /var/lib/agx-data && umount /var/lib/agx-data || true ;;
+    *) exit 0 ;;
+esac
