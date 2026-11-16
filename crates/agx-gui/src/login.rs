@@ -1,5 +1,5 @@
 //! Root greeter only. A successful login execs a fresh, unprivileged session.
-use crate::{ComponentHandle, LoginWindow, Timer, prepare_display};
+use crate::{ComponentHandle, LoginWindow, Timer, graphics};
 use std::{
     cell::RefCell, ffi::CString, io, os::unix::process::CommandExt, process::Command, rc::Rc,
     time::Duration,
@@ -10,9 +10,8 @@ pub fn run(preview: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !preview && unsafe { libc::geteuid() } != 0 {
         return Err("The login screen must be started by agx-init".into());
     }
-    prepare_display();
     let ui = LoginWindow::new()?;
-    ui.set_draw_cursor(cfg!(feature = "kms"));
+    ui.set_draw_cursor(graphics::draw_cursor());
     let authenticated = Rc::new(RefCell::new(None::<String>));
     let result = authenticated.clone();
     let weak = ui.as_weak();
@@ -66,7 +65,7 @@ fn exec_session(username: &str) -> io::Error {
     let Ok(name) = CString::new(username) else {
         return io::Error::other("Invalid account");
     };
-    // Copy libc's account data before forking. No allocation in pre_exec.
+    // Copy libc's account data before replacing this process with the session.
     let entry = unsafe { libc::getpwnam(name.as_ptr()) };
     if entry.is_null() {
         return io::Error::other("Account disappeared");
@@ -94,6 +93,11 @@ fn exec_session(username: &str) -> io::Error {
         .env("SHELL", "/bin/sh")
         .env("TERM", "linux")
         .current_dir(&home);
+    for key in graphics::ENVIRONMENT {
+        if let Some(value) = std::env::var_os(key) {
+            session.env(key, value);
+        }
+    }
     unsafe {
         session.pre_exec(move || {
             // The software framebuffer backend needs access to the active VT.

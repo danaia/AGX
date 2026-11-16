@@ -17,9 +17,9 @@ path = "src/main.rs"
 [features]
 # Preview on a desktop (Wayland/X11) window.
 default = ["desktop"]
-desktop = ["slint/backend-winit", "slint/renderer-software"]
+desktop = ["slint/backend-winit", "slint/renderer-femtovg", "slint/renderer-software"]
 # Appliance mode: draw straight to DRM/KMS with libinput. No display server.
-kms = ["slint/backend-linuxkms-noseat", "slint/renderer-software"]
+kms = ["slint/backend-linuxkms-noseat", "slint/renderer-femtovg", "slint/renderer-software"]
 
 [dependencies]
 agx-core = { path = "../agx-core" }

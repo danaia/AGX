@@ -3,7 +3,7 @@ use crate::{Action, Log, Reply, Request, Service};
 use std::{
     collections::{BTreeMap, VecDeque},
     fs, io,
-    os::unix::process::CommandExt,
+    os::unix::{fs::OpenOptionsExt, process::CommandExt},
     process::{Child, Command, Stdio},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -328,6 +328,21 @@ impl Supervisor {
                     .stdout(Stdio::null())
                     .stderr(Stdio::null());
                 if service.definition.name == "console" && service.definition.args == ["--login"] {
+                    // The greeter and unprivileged session inherit the same stderr.
+                    // Keep profiling output available over SSH; rotate between sessions.
+                    let log = "/run/agx/gui.log";
+                    if fs::metadata(log).is_ok_and(|m| m.len() > 4 * 1024 * 1024) {
+                        let _ = fs::rename(log, "/run/agx/gui.previous.log");
+                    }
+                    if let Ok(log) = fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .mode(0o600)
+                        .custom_flags(libc::O_NOFOLLOW)
+                        .open(log)
+                    {
+                        command.stderr(log);
+                    }
                     unsafe {
                         command.pre_exec(attach_graphical_console);
                     }

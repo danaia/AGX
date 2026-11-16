@@ -7,6 +7,7 @@ mod keymap;
 mod wm;
 mod scene_model;
 mod login;
+mod graphics;
 
 use agx_core::{Sampler, Snapshot};
 use keymap::{Cmd, ModKey, Mods, bind};
@@ -449,6 +450,11 @@ fn mods(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Mods {
 }
 
 fn main() -> ExitCode {
+    prepare_display();
+    if let Err(error) = graphics::initialize() {
+        eprintln!("agx-gui: {error}");
+        return ExitCode::FAILURE;
+    }
     quit_on_signals();
     let result = match std::env::args().nth(1).as_deref() {
         Some("--login") => login::run(false),
@@ -488,6 +494,10 @@ fn quit_on_signals() {
 /// boot. Load it here when the DRM device is missing.
 #[cfg(feature = "kms")]
 fn prepare_display() {
+    if unsafe { libc::geteuid() } == 0 {
+        // vc4 drives HDMI; v3d provides the Pi 5's GPU render device.
+        let _ = Command::new("modprobe").arg("v3d").status();
+    }
     let card = std::path::Path::new("/dev/dri/card0");
     if card.exists() {
         return;
@@ -512,7 +522,6 @@ fn prepare_display() {
 fn prepare_display() {}
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    prepare_display();
     let ui = AppWindow::new()?;
     apply_omarchy_theme(&ui);
     ui.global::<Sys>().set_logo(LOGO.trim_end().into());
@@ -529,7 +538,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     ui.set_wins(ModelRc::from(app.borrow().view.windows.clone()));
     ui.set_ws_occupied(ModelRc::from(app.borrow().occupied.clone()));
     ui.set_mod_name(app.borrow().modk.name().into());
-    ui.set_draw_cursor(cfg!(feature = "kms") || std::env::var_os("AGX_GUI_CURSOR").is_some());
+    ui.set_draw_cursor(graphics::draw_cursor());
     // Callbacks never nest, but a stray re-entrant event is dropped rather than panicking.
     macro_rules! hook {
         ($on:ident, |$app:ident, $ui:ident $(, $arg:ident)*| $body:expr) => {{

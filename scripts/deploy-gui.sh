@@ -10,19 +10,30 @@ KEY=${AGX_SSH_KEY:-"${HOME}/.ssh/id_ed25519"}
 TARGET="$ROOT/output/target"
 BINARY="${AGX_GUI_BINARY:-${CARGO_TARGET_DIR:-$ROOT/.cache/cargo-target}/aarch64-unknown-linux-gnu/release/agx-gui}"
 RELEASE="${CARGO_TARGET_DIR:-$ROOT/.cache/cargo-target}/aarch64-unknown-linux-gnu/release"
-SSH=(ssh -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$DESTINATION")
+SSH_OPTIONS=(-o BatchMode=yes -o ConnectTimeout=10 -i "$KEY")
+if [[ -n "${AGX_SSH_HOST_KEY_ALIAS:-}" ]]; then
+    SSH_OPTIONS+=(-o "HostKeyAlias=$AGX_SSH_HOST_KEY_ALIAS" -o StrictHostKeyChecking=yes)
+fi
+SSH=(ssh "${SSH_OPTIONS[@]}" "$DESTINATION")
+SCP=(scp -O "${SSH_OPTIONS[@]}")
 [[ -f "$BINARY" ]] || { echo 'Run make gui-build before deployment.' >&2; exit 1; }
 for binary in agx agx-init; do
     [[ -f "$RELEASE/$binary" ]] || { echo 'Run make init-build before deployment.' >&2; exit 1; }
 done
 [[ -d "$TARGET/usr/share/X11/xkb" ]] || { echo 'Build the desktop packages first (see defconfig).' >&2; exit 1; }
+RUNTIME="$ROOT/.cache/agx-gui-runtime.tar"
+python3 "$ROOT/scripts/package-gui-runtime.py" "$TARGET" "$RUNTIME"
 
 # Keep the first installed versions so recovery SSH can restore the whole stack.
 "${SSH[@]}" 'set -e
-mkdir -p /root/agx-gui-backup
+mountpoint -q /var/lib/agx-data || { echo "The NVMe data volume must be mounted" >&2; exit 1; }
+mkdir -p /var/lib/agx-data/agx-gui/backup
+if ! test -e /root/agx-gui-backup; then
+    ln -s /var/lib/agx-data/agx-gui/backup /root/agx-gui-backup
+fi
 for binary in /usr/bin/agx /usr/bin/agx-gui /usr/sbin/agx-init; do
     if test -f "$binary" && ! test -f "/root/agx-gui-backup/${binary##*/}"; then
-        cp -p "$binary" "/root/agx-gui-backup/${binary##*/}"
+        cp -pL "$binary" "/root/agx-gui-backup/${binary##*/}"
     fi
 done'
 
@@ -30,35 +41,62 @@ STRIPPED="$ROOT/.cache/agx-gui.stripped"
 "$ROOT/output/host/bin/aarch64-linux-strip" -o "$STRIPPED" "$BINARY"
 
 echo "Copying runtime libraries and data to $DESTINATION"
-(cd "$TARGET" && tar --owner=0 --group=0 --numeric-owner -cf - \
-    usr/lib/libevdev.so.* usr/lib/libinput.so.* usr/lib/libudev.so.* \
-    usr/lib/libxkbcommon.so.* usr/lib/libfontconfig.so.* usr/lib/libfreetype.so.* \
-    usr/lib/libexpat.so.* usr/share/libinput usr/share/X11 usr/share/fontconfig etc/fonts) |
-    "${SSH[@]}" 'tar -xf - -C /'
+"${SCP[@]}" "$RUNTIME" "$DESTINATION:/var/lib/agx-data/agx-gui/runtime.tar"
+"${SSH[@]}" 'set -e
+archive=/var/lib/agx-data/agx-gui/runtime.tar
+release_id=$(sha256sum "$archive" | cut -c1-16)
+release=/var/lib/agx-data/agx-gui/releases/$release_id
+mkdir -p "$release"
+tar -xf "$archive" -C "$release"
+# Libraries live on NVMe. Atomic symlink replacement leaves running mappings intact.
+find "$release" \( -type f -o -type l \) | while IFS= read -r source; do
+    relative=${source#"$release"/}
+    case "$relative" in lib/*|lib64/*) echo "Refusing to relocate boot library: $relative" >&2; exit 1 ;; esac
+    destination=/$relative
+    mkdir -p "$(dirname "$destination")"
+    ln -sf "$source" "$destination.agx-new"
+    mv -f "$destination.agx-new" "$destination"
+done
+rm "$archive"
+modprobe v3d'
 
 echo 'Staging desktop, graphical login and startup binaries'
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$STRIPPED" "$DESTINATION:/usr/bin/agx-gui.new"
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$RELEASE/agx" "$DESTINATION:/usr/bin/agx.new"
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$RELEASE/agx-init" "$DESTINATION:/usr/sbin/agx-init.new"
+"${SCP[@]}" "$STRIPPED" "$DESTINATION:/var/lib/agx-data/agx-gui/agx-gui.new"
+"${SCP[@]}" "$RELEASE/agx" "$DESTINATION:/usr/bin/agx.new"
+"${SCP[@]}" "$RELEASE/agx-init" "$DESTINATION:/usr/sbin/agx-init.new"
 "${SSH[@]}" 'mkdir -p /usr/libexec'
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$ROOT/buildroot/board/agx/rootfs-overlay/usr/libexec/agx-display-access" "$DESTINATION:/usr/libexec/agx-display-access.new"
+"${SCP[@]}" "$ROOT/buildroot/board/agx/rootfs-overlay/usr/libexec/agx-display-access" "$DESTINATION:/usr/libexec/agx-display-access.new"
+"${SSH[@]}" 'mkdir -p /etc/modules-load.d'
+"${SCP[@]}" "$ROOT/buildroot/board/agx/rootfs-overlay/etc/modules-load.d/agx-display.conf" "$DESTINATION:/etc/modules-load.d/agx-display.conf"
 "${SSH[@]}" 'set -e
-chmod 755 /usr/bin/agx-gui.new /usr/bin/agx.new /usr/sbin/agx-init.new /usr/libexec/agx-display-access.new
+chmod 755 /var/lib/agx-data/agx-gui/agx-gui.new /usr/bin/agx.new /usr/sbin/agx-init.new /usr/libexec/agx-display-access.new
 /usr/bin/agx.new --version
 /usr/sbin/agx-init.new --check
-libraries=$(ldd /usr/bin/agx-gui.new 2>&1) || { printf "%s\n" "$libraries"; exit 1; }
+# PID 1 must load before NVMe is mounted. Check resolved paths, not only ldd success.
+for library in $(ldd /usr/sbin/agx-init.new); do
+    case "$library" in
+        /*) case "$(readlink -f "$library")" in
+            /var/lib/agx-data/*) echo "PID 1 depends on NVMe: $library" >&2; exit 1 ;;
+        esac ;;
+    esac
+done
+libraries=$(ldd /var/lib/agx-data/agx-gui/agx-gui.new 2>&1) || { printf "%s\n" "$libraries"; exit 1; }
 if printf "%s\n" "$libraries" | grep -q "not found"; then
     printf "%s\n" "$libraries" >&2; exit 1
 fi
 mv /usr/bin/agx.new /usr/bin/agx
 mv /usr/libexec/agx-display-access.new /usr/libexec/agx-display-access
-mv /usr/bin/agx-gui.new /usr/bin/agx-gui
+gui_hash=$(sha256sum /var/lib/agx-data/agx-gui/agx-gui.new | cut -c1-16)
+gui=/var/lib/agx-data/agx-gui/agx-gui.$gui_hash
+mv /var/lib/agx-data/agx-gui/agx-gui.new "$gui"
+ln -sf "$gui" /usr/bin/agx-gui.new
+mv -f /usr/bin/agx-gui.new /usr/bin/agx-gui
 mv /usr/sbin/agx-init.new /usr/sbin/agx-init'
 
 # fontconfig finds no fonts on the bare image, and Slint's text stack panics on that.
 echo 'Installing a system font'
 "${SSH[@]}" 'mkdir -p /usr/share/fonts'
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$ROOT/crates/agx-gui/ui/fonts/JetBrainsMonoNerdFont-Regular.ttf" "$DESTINATION:/usr/share/fonts/"
+"${SCP[@]}" "$ROOT/crates/agx-gui/ui/fonts/JetBrainsMonoNerdFont-Regular.ttf" "$DESTINATION:/usr/share/fonts/"
 
 echo 'Checking the display overlay in config.txt'
 "${SSH[@]}" 'set -e
