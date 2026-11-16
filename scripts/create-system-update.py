@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(dir=package_dir) as temporary:
     manifest_file = temp / 'manifest.json'
     manifest_file.write_text(json.dumps(manifest, indent=2) + '\n')
     archive = temp / 'agx-system-update.tar.gz'
-    with tarfile.open(archive, 'w:gz') as bundle:
+    with tarfile.open(archive, 'w:gz', dereference=True) as bundle:
         for name, path in [('manifest.json', manifest_file), *files.items()]:
             def clean(info):
                 info.uid = info.gid = 0
