@@ -302,6 +302,7 @@ fn prepare_display() {}
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
+    graphics::attach_input(&ui);
     apply_omarchy_theme(&ui);
     ui.global::<Sys>().set_logo(LOGO.trim_end().into());
     ui.global::<Sys>().set_mode_note(

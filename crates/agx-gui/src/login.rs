@@ -11,6 +11,7 @@ pub fn run(preview: bool) -> Result<(), Box<dyn std::error::Error>> {
         return Err("The login screen must be started by agx-init".into());
     }
     let ui = LoginWindow::new()?;
+    graphics::attach_input(&ui);
     ui.set_draw_cursor(graphics::draw_cursor());
     let remote = remote::start(&ui);
     let authenticated = Rc::new(RefCell::new(None::<String>));

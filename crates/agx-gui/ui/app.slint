@@ -112,7 +112,17 @@ export component LoginWindow inherits Window {
             VerticalLayout {
                 padding: 30px;
                 spacing: 14px;
-                Text { text: "ANGI"; color: Theme.accent; font-size: 38px; font-weight: 700; }
+                Rectangle {
+                    height: 60px;
+                    Image {
+                        x: parent.width - self.width;
+                        width: 104px;
+                        height: 40px;
+                        source: @image-url("../../../brand/brand-mark-text.svg");
+                        image-fit: contain;
+                        accessible-label: "ANGI";
+                    }
+                }
                 Text { text: "Sign in to your desktop"; color: Theme.fg; }
                 username := LineEdit {
                     placeholder-text: "Username";

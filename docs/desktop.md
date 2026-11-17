@@ -26,6 +26,8 @@ Wi-Fi deployment requires the NVMe volume to be mounted. It stores the GUI binar
 
 To install graphical login directly onto an SD card connected to the workstation, run `sudo scripts/install-gui-login-sd.sh /path/to/agx-rootfs /path/to/agx-boot`. This places the GUI executable on SD, verifies the Rust PID 1 boot entry, enables the existing graphical greeter, and checks that accounts and Wi-Fi settings remain unchanged. The Pi's previously installed Mesa/input libraries still require its NVMe volume. A missing GUI executable selects the HDMI text recovery login; missing GPU libraries cause GUI startup retries while SSH/serial recovery remain available.
 
+Both physical Super keys drive desktop shortcuts on HDMI. Slint 1.18's LinuxKMS mapping omits `Super_L`/`Super_R`, so ANGI uses its public libinput hook to deliver those two keys as Slint Meta press/release events to the current window. Other keys keep Slint's existing layout and modifier handling; VNC retains its separate keysym mapping. The hook feature is pinned to the installed Slint/input API and should be reviewed when upgrading Slint.
+
 Local keyboards and mice are discovered through libinput/libudev-zero. The supervised display-access service runs `agx-display-devices`, which grants `agx-admin` access before forwarding kernel input arrival/removal notifications to libudev-zero. This covers keyboards that enumerate late during boot and devices reconnected through a USB hub or switch. It relays device lifecycle notifications, not keypress contents. Install the helper with the GUI; the older permission-only shell fallback cannot notify libinput of newly attached devices.
 
 Preview just the login screen without root or real authentication:

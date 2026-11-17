@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(any(feature = "kms", test))]
 mod detection;
+#[cfg(any(feature = "kms", test))]
+mod kms_keys;
 mod virtual_display;
 
 pub const ENVIRONMENT: [&str; 5] = [
@@ -92,9 +94,10 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
     ) {
         return Err(format!("Unsupported SLINT_BACKEND: {backend}").into());
     }
-    slint::BackendSelector::new()
-        .backend_name(backend.clone())
-        .select()?;
+    let selector = slint::BackendSelector::new().backend_name(backend.clone());
+    #[cfg(feature = "kms")]
+    let selector = selector.with_libinput_event_hook(kms_keys::filter);
+    selector.select()?;
     SOFTWARE_CURSOR.store(backend == "linuxkms-software", Ordering::Relaxed);
     eprintln!("agx-gui: backend={backend}");
     Ok(())
@@ -143,4 +146,12 @@ mod tests {
         assert!(parse_config("export SLINT_BACKEND=linuxkms-software").is_err());
         assert!(parse_config("SLINT_BACKEND=").is_err());
     }
+}
+
+/// Register the live window for local keys missing from Slint's LinuxKMS mapping.
+pub fn attach_input<C: slint::ComponentHandle + 'static>(ui: &C) {
+    #[cfg(feature = "kms")]
+    kms_keys::attach(ui);
+    #[cfg(not(feature = "kms"))]
+    let _ = ui;
 }

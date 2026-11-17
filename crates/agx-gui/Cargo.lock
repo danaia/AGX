@@ -38,6 +38,7 @@ version = "0.4.0"
 dependencies = [
  "agx-core",
  "agx-profile",
+ "input",
  "libc",
  "signal-hook",
  "slint",
@@ -1591,6 +1592,7 @@ dependencies = [
  "i-slint-core",
  "i-slint-core-macros",
  "i-slint-renderer-femtovg",
+ "input",
 ]
 
 [[package]]
