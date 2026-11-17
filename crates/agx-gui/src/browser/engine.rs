@@ -200,7 +200,7 @@ impl Drop for Engine {
         if let Some(mut child) = self.child.take() {
             // Let WebKit close its data stores without making the desktop wait.
             let _ = self.tx.try_send((12, vec![]));
-            thread::spawn(move || {
+            crate::session_refresh::spawn_cleanup(move || {
                 let deadline = std::time::Instant::now() + Duration::from_millis(500);
                 while std::time::Instant::now() < deadline {
                     if matches!(child.try_wait(), Ok(Some(_))) {

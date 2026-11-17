@@ -22,7 +22,7 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
             Ok(self.0.clone())
         }
     }
-    let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
     slint::platform::set_platform(Box::new(TestPlatform(window.clone()))).unwrap();
     let ui = AppWindow::new().unwrap();
     ui.window().set_size(slint::PhysicalSize::new(1280, 720));
@@ -59,9 +59,9 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     });
     assert_eq!(ui.get_cursor_x(), 1150.0);
     assert_eq!(ui.get_cursor_y(), 115.0);
-    click(1150.0, 115.0);
+    click(1150.0, 155.0);
     assert!(!ui.get_session_open());
-    assert_eq!(*selected.borrow(), vec![1], "second row enters the TUI");
+    assert_eq!(*selected.borrow(), vec![1], "third row enters the TUI");
     render();
     click(1246.0, 17.0);
     assert!(ui.get_session_open());
@@ -73,6 +73,117 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
         "Escape dismisses without choosing an action"
     );
     assert_eq!(*selected.borrow(), vec![1]);
+    render();
+    click(1246.0, 17.0);
+    render();
+    let settings_app = Rc::new(RefCell::new(App::new()));
+    ui.set_wins(ModelRc::from(settings_app.borrow().view.windows.clone()));
+    {
+        let (weak, state) = (ui.as_weak(), settings_app.clone());
+        ui.on_settings_open(move || {
+            state
+                .borrow_mut()
+                .run(&weak.upgrade().unwrap(), Cmd::Open(Kind::Settings));
+        });
+        let (weak, state) = (ui.as_weak(), settings_app.clone());
+        ui.on_pointer(move |kind, button, x, y, ctrl, alt, shift, meta| {
+            state.borrow_mut().pointer(
+                &weak.upgrade().unwrap(),
+                kind,
+                button,
+                x,
+                y,
+                mods(ctrl, alt, shift, meta),
+            );
+        });
+    }
+    click(1150.0, 70.0);
+    assert!(
+        settings_app.borrow().desk.is_open(Kind::Settings),
+        "Settings opens as a tile from the first menu row"
+    );
+    render();
+    if let Some(path) = std::env::var_os("AGX_SETTINGS_SCREENSHOT") {
+        use std::io::Write;
+        let mut pixels = vec![slint::Rgb8Pixel::default(); 1280 * 720];
+        window.request_redraw();
+        window.draw_if_needed(|renderer| {
+            renderer.render(&mut pixels, 1280);
+        });
+        let mut file = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+        file.write_all(b"P6\n1280 720\n255\n").unwrap();
+        for p in pixels {
+            file.write_all(&[p.r, p.g, p.b]).unwrap();
+        }
+    }
+    {
+        let (weak, state) = (ui.as_weak(), settings_app.clone());
+        ui.global::<MouseSettings>().on_refresh(move || {
+            state
+                .borrow_mut()
+                .run(&weak.upgrade().unwrap(), Cmd::RefreshDesktop);
+        });
+        let (weak, state) = (ui.as_weak(), settings_app.clone());
+        ui.on_confirm(move |yes| state.borrow_mut().confirm(&weak.upgrade().unwrap(), yes));
+    }
+    let tile = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
+    click(
+        if tile.w - 12. < 500. {
+            tile.x + 98.
+        } else {
+            tile.right() - 98.
+        },
+        tile.bottom() - 34.,
+    );
+    assert!(ui.get_confirm_text().contains("stay signed in"));
+    assert_eq!(settings_app.borrow().pending, Some(Cmd::RefreshDesktop));
+    ui.window().dispatch_event(WindowEvent::KeyPressed {
+        text: slint::platform::Key::Escape.into(),
+    });
+    assert!(ui.get_confirm_text().is_empty());
+    assert_eq!(settings_app.borrow().pending, None);
+    assert!(settings_app.borrow().desk.is_open(Kind::Settings));
+    // Tab stays within the Settings controls, and the speed slider accepts arrow keys.
+    for _ in 0..1 {
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: slint::platform::Key::Tab.into(),
+        });
+    }
+    ui.window().dispatch_event(WindowEvent::KeyPressed {
+        text: slint::platform::Key::RightArrow.into(),
+    });
+    let first_speed = ui.global::<MouseSettings>().get_speed();
+    assert!(first_speed > 0., "keyboard changes pointer speed");
+    for _ in 0..7 {
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: slint::platform::Key::Tab.into(),
+        });
+    }
+    ui.window().dispatch_event(WindowEvent::KeyPressed {
+        text: slint::platform::Key::RightArrow.into(),
+    });
+    assert!(
+        ui.global::<MouseSettings>().get_speed() > first_speed,
+        "Tab wraps within Settings"
+    );
+    ui.window().dispatch_event(WindowEvent::KeyPressed {
+        text: slint::platform::Key::Escape.into(),
+    });
+    assert!(
+        settings_app.borrow().desk.is_open(Kind::Settings),
+        "Escape keeps the tile open"
+    );
+    let settings_rect = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
+    click(settings_rect.right() - 12., settings_rect.y + 14.);
+    assert!(
+        !settings_app.borrow().desk.is_open(Kind::Settings),
+        "normal window close removes Settings"
+    );
+    assert_eq!(
+        *selected.borrow(),
+        vec![1],
+        "Settings never triggers a session action"
+    );
     render();
     let wheel = Rc::new(RefCell::new(Vec::new()));
     let received = wheel.clone();

@@ -72,6 +72,7 @@ pub enum Cmd {
     OpenCode,
     Tui,
     Logout,
+    RefreshDesktop,
     Reboot,
     Shutdown,
 }

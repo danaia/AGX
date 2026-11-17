@@ -39,6 +39,7 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
             Err(error) => return Err(error.into()),
         }
     }
+    crate::settings::initialize();
     let requested = std::env::var("SLINT_BACKEND").unwrap_or_else(|_| {
         if cfg!(feature = "kms") {
             "auto"

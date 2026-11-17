@@ -1,0 +1,31 @@
+// Shared desktop gesture layer, used behind windows and above their read-only content.
+export component DesktopInput inherits TouchArea {
+    in property <int> cursor: 0;
+    in property <bool> hide-cursor: false;
+    callback pointer(int, int, length, length, bool, bool, bool, bool);
+    callback scroll(float, float, bool, bool, bool, bool);
+    callback pointer-moved(length, length);
+    mouse-cursor: root.hide-cursor ? MouseCursor.none
+        : root.cursor == 1 ? MouseCursor.move : root.cursor == 2 ? MouseCursor.col-resize
+        : root.cursor == 3 ? MouseCursor.row-resize : root.cursor == 4 ? MouseCursor.nwse-resize
+        : root.cursor == 5 ? MouseCursor.nesw-resize
+        : root.cursor == 6 ? MouseCursor.pointer : root.cursor == 7 ? MouseCursor.text : MouseCursor.default;
+    pointer-event(e) => {
+        let x = self.absolute-position.x + self.mouse-x;
+        let y = self.absolute-position.y + self.mouse-y;
+        root.pointer-moved(x, y);
+        root.pointer(e.kind == PointerEventKind.down ? 0 : e.kind == PointerEventKind.up ? 1 : e.kind == PointerEventKind.cancel ? 3 : 2,
+            e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
+            x, y, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
+    }
+    moved => {
+        let x = self.absolute-position.x + self.mouse-x;
+        let y = self.absolute-position.y + self.mouse-y;
+        root.pointer-moved(x, y);
+        root.pointer(2, 3, x, y, false, false, false, false);
+    }
+    scroll-event(e) => {
+        root.scroll(e.delta-x / 1px, e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
+        accept
+    }
+}

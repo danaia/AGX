@@ -1,0 +1,229 @@
+// Native Settings content hosted inside an ordinary desktop tile.
+import { Theme } from "data.slint";
+import { Button, Slider, ComboBox, ScrollView } from "std-widgets.slint";
+
+export global MouseSettings {
+    in-out property <float> speed: 0;
+    in-out property <bool> adaptive: true;
+    in-out property <bool> left-handed: false;
+    in-out property <bool> natural: false;
+    in-out property <float> scroll-speed: 100;
+    in-out property <string> status: "Changes apply immediately and are saved for your account";
+    in-out property <bool> native: false;
+    in-out property <int> focus-serial: 0;
+    callback activate();
+    callback refresh();
+    callback changed();
+    callback reset();
+}
+component SettingRow inherits Rectangle {
+    in property <string> label;
+    in property <string> description;
+    in property <bool> compact;
+    min-height: root.compact ? 180px : 100px;
+    border-color: Theme.bg-light;
+    border-width: 1px;
+    background: Theme.bg;
+    VerticalLayout {
+        x: 14px; y: 14px;
+        width: root.compact ? parent.width - 28px : max(1px, parent.width - 230px);
+        height: root.compact ? 86px : parent.height - 28px;
+        spacing: 6px;
+        Text { text: root.label; wrap: word-wrap; color: Theme.fg-bright; font-weight: 600; font-size: 14px; }
+        Text { text: root.description; color: Theme.fg; font-size: 11px; wrap: word-wrap; }
+    }
+    Rectangle {
+        x: root.compact ? 14px : parent.width - self.width - 14px;
+        y: root.compact ? 110px : (parent.height - self.height) / 2;
+        width: root.compact ? max(1px, parent.width - 28px) : 190px;
+        height: 56px;
+        @children
+    }
+}
+export component SettingsPanel inherits Rectangle {
+    in property <bool> active;
+    property <int> request: MouseSettings.focus-serial;
+    changed request => { if (root.active) { keys.focus(); } }
+    changed active => { if (root.active) { keys.focus(); } else { root.focus-step = -1; } }
+    callback pointer-moved(length, length);
+    background: Theme.bg-dark;
+    clip: true;
+    property <int> focus-step: -1;
+    function next-control(backwards: bool) {
+        root.focus-step = root.focus-step < 0 ? (backwards ? 6 : 0) : mod(root.focus-step + (backwards ? 6 : 1), 7);
+        if (root.focus-step == 0) { root.reveal(speed-row.absolute-position.y, speed-row.height); speed-slider.focus(); }
+        if (root.focus-step == 1) { root.reveal(acceleration-row.absolute-position.y, acceleration-row.height); acceleration-choice.focus(); }
+        if (root.focus-step == 2) { root.reveal(primary-row.absolute-position.y, primary-row.height); primary-choice.focus(); }
+        if (root.focus-step == 3) { root.reveal(direction-row.absolute-position.y, direction-row.height); direction-choice.focus(); }
+        if (root.focus-step == 4) { root.reveal(scroll-row.absolute-position.y, scroll-row.height); scroll-slider.focus(); }
+        if (root.focus-step == 5) { reset-button.focus(); }
+        if (root.focus-step == 6) { refresh-button.focus(); }
+    }
+
+    function reveal(y: length, h: length) {
+        let top = y - settings-scroll.absolute-position.y;
+        if (top < 12px) { settings-scroll.content-y = min(0px, settings-scroll.content-y - top + 12px); }
+        else if (top + h > settings-scroll.height - 12px) {
+            settings-scroll.content-y = max(min(0px, settings-scroll.height - settings-scroll.content-height), settings-scroll.content-y - top - h + settings-scroll.height - 12px);
+        }
+    }
+    forward-focus: keys;
+    init => { if (root.active) { keys.focus(); } }
+    tracker := TouchArea {
+        changed mouse-x => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        changed mouse-y => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { MouseSettings.activate(); keys.focus(); } }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (e.modifiers.meta || e.modifiers.alt || e.modifiers.control) { return reject; }
+            if (e.text == Key.Tab || e.text == Key.Backtab) {
+                root.next-control(e.modifiers.shift || e.text == Key.Backtab);
+                return accept;
+            }
+            if (e.text == Key.Escape) { keys.focus(); }
+            accept
+        }
+        key-released(e) => { reject }
+        Rectangle {
+            width: parent.width;
+            height: parent.height;
+            background: Theme.bg-dark;
+            VerticalLayout {
+                spacing: 0;
+                HorizontalLayout {
+                    spacing: 0;
+                    Rectangle {
+                        width: root.width < 620px ? 44px : 190px;
+                        background: Theme.bg-dark;
+                        VerticalLayout {
+                            padding: root.width < 620px ? 4px : 14px;
+                            spacing: 14px;
+                            if root.width >= 620px: Text { text: "PREFERENCES"; color: Theme.fg-dim; font-size: 10px; }
+                            Rectangle {
+                                height: 48px;
+                                background: Theme.bg-light;
+                                border-radius: 6px;
+                                Rectangle { x: 0px; y: 0px; width: 3px; height: parent.height; background: Theme.accent; border-radius: 2px; }
+                                Text { x: root.width < 620px ? 10px : 14px; text: root.width < 620px ? "󰍽" : "󰍽  Mouse & pointer"; color: Theme.accent; font-weight: 600; font-size: 12px; vertical-alignment: center; }
+                            }
+                            Rectangle { vertical-stretch: 1; }
+                            if root.width >= 620px: Text { text: "Your desktop.\nYour preferences."; color: Theme.fg-dim; font-size: 11px; }
+                        }
+                    }
+                    Rectangle { width: 1px; background: Theme.bg-light; }
+                    settings-scroll := ScrollView {
+                        min-width: 0px;
+                        horizontal-stretch: 1;
+                        content-width: self.width;
+                        VerticalLayout {
+                            padding: root.width < 620px ? 12px : 24px;
+                            spacing: 12px;
+                            Text { text: "Mouse & pointer"; wrap: word-wrap; color: Theme.fg-bright; font-size: 20px; font-weight: 700; }
+                            Text { text: "Fine-tune how your mouse moves, clicks and scrolls."; color: Theme.fg; font-size: 12px; wrap: word-wrap; }
+                            if !MouseSettings.native: Text { text: "Preview · native mouse controls apply on the ANGI device."; color: Theme.yellow; wrap: word-wrap; font-size: 11px; }
+                            speed-row := SettingRow {
+                                compact: root.width < 760px;
+                                label: "Pointer speed";
+                                description: "Find a comfortable pace. Try +30 for a faster pointer.";
+                                VerticalLayout {
+                                    spacing: 4px;
+                                    speed-slider := Slider {
+                                        minimum: -100; maximum: 100; step: 5;
+                                        value <=> MouseSettings.speed;
+                                        accessible-label: "Pointer speed";
+                                        changed => { MouseSettings.activate(); MouseSettings.changed(); }
+                                    }
+                                    HorizontalLayout {
+                                        Text { text: "Slower"; color: Theme.fg-dim; font-size: 10px; }
+                                        Text { text: (MouseSettings.speed > 0 ? "+" : "") + round(MouseSettings.speed); color: Theme.accent; horizontal-alignment: center; font-size: 11px; }
+                                        Text { text: "Faster"; color: Theme.fg-dim; horizontal-alignment: right; font-size: 10px; }
+                                    }
+                                }
+                            }
+                            acceleration-row := SettingRow {
+                                compact: root.width < 760px;
+                                label: "Pointer acceleration";
+                                description: "Move farther with a quick sweep. Turn off for consistent movement.";
+                                acceleration-choice := ComboBox {
+                                    model: ["Adaptive", "Constant"];
+                                    current-index: MouseSettings.adaptive ? 0 : 1;
+                                    selected(value) => { MouseSettings.adaptive = self.current-index == 0; MouseSettings.activate(); MouseSettings.changed(); }
+                                }
+                            }
+                            primary-row := SettingRow {
+                                compact: root.width < 760px;
+                                label: "Primary button";
+                                description: "Choose the button you use to select and drag.";
+                                primary-choice := ComboBox {
+                                    model: ["Left button", "Right button"];
+                                    current-index: MouseSettings.left-handed ? 1 : 0;
+                                    selected(value) => { MouseSettings.left-handed = self.current-index == 1; MouseSettings.activate(); MouseSettings.changed(); }
+                                }
+                            }
+                            direction-row := SettingRow {
+                                compact: root.width < 760px;
+                                label: "Scroll direction";
+                                description: "Natural scrolling moves content in the direction of your gesture.";
+                                direction-choice := ComboBox {
+                                    model: ["Standard", "Natural"];
+                                    current-index: MouseSettings.natural ? 1 : 0;
+                                    selected(value) => { MouseSettings.natural = self.current-index == 1; MouseSettings.activate(); MouseSettings.changed(); }
+                                }
+                            }
+                            scroll-row := SettingRow {
+                                compact: root.width < 760px;
+                                label: "Scroll speed";
+                                description: "Adjust how far a wheel step or scroll gesture travels.";
+                                VerticalLayout {
+                                    scroll-slider := Slider { minimum: 25; maximum: 300; step: 25; value <=> MouseSettings.scroll-speed; accessible-label: "Scroll speed"; changed => { MouseSettings.activate(); MouseSettings.changed(); } }
+                                    Text { text: round(MouseSettings.scroll-speed) + "%"; color: Theme.accent; font-size: 11px; horizontal-alignment: center; }
+                                }
+                            }
+                            test-pad := Rectangle {
+                                height: 100px;
+                                border-radius: 8px;
+                                background: test.has-hover ? Theme.bg-light : Theme.bg;
+                                border-width: 1px; border-color: test.has-hover ? Theme.accent : Theme.muted;
+                                property <int> clicks: 0;
+                                VerticalLayout {
+                                    padding: root.width < 620px ? 4px : 14px;
+                                    Text { text: "Try it here"; color: Theme.fg-bright; font-weight: 600; horizontal-alignment: center; }
+                                    Text { text: test-pad.clicks == 0 ? "Move the pointer and click to test your settings" : "Click registered · " + test-pad.clicks; color: Theme.fg; font-size: 11px; horizontal-alignment: center; wrap: word-wrap; }
+                                }
+                                test := TouchArea {
+                                    mouse-cursor: MouseCursor.pointer;
+                                    clicked => { parent.clicks += 1; }
+                                    moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle { height: 1px; background: Theme.bg-light; }
+                Rectangle {
+                    height: root.width < 500px ? 132px : 94px;
+                    Text {
+                        x: 12px; y: 8px;
+                        width: parent.width - 24px; height: 32px;
+                        text: MouseSettings.status; color: Theme.fg; font-size: 11px;
+                        wrap: word-wrap; overflow: elide;
+                    }
+                    reset-button := Button {
+                        x: 12px; y: 48px;
+                        width: 160px; height: 32px;
+                        text: "Restore defaults";
+                        clicked => { MouseSettings.activate(); MouseSettings.reset(); }
+                    }
+                    refresh-button := Button {
+                        x: root.width < 500px ? 12px : parent.width - self.width - 12px;
+                        y: root.width < 500px ? 88px : 48px;
+                        width: 160px; height: 32px;
+                        text: "Refresh desktop…";
+                        clicked => { MouseSettings.activate(); MouseSettings.refresh(); }
+                    }
+                }
+            }
+        }
+    }
+    }
+}

@@ -59,3 +59,7 @@ owns durable peer mail. Role profiles and the development skill are separate
 assets. `angi-root.c` is the small administrator execution boundary;
 `sdk-env.sh` and `angi-build.sh` own native build configuration. SDK preparation,
 provisioning and runtime deployment are separate scripts under `scripts/`.
+
+Desktop preferences live in `agx-gui/src/settings.rs`: validated per-account mouse settings, atomic storage, live libinput device configuration and hotplug reapplication. `ui/settings.slint` owns the responsive Settings tile content, mouse controls and test area; `ui/app.slint` hosts it in the regular window frame and exposes it through the session menu. `ui/desktop-input.slint` owns shared desktop pointer forwarding behind windows and above their read-only content, allowing native Settings controls to receive input within normal window stacking. `graphics/kms_input.rs` forwards device lifecycle events and applies the configured native scroll multiplier.
+
+`agx-gui/src/session_refresh.rs` owns authenticated desktop restart and tracks asynchronous terminal/browser cleanup jobs so refresh can finish them before exec. Normal window closure remains asynchronous. `main.rs` invokes restart only after the desktop runtime has returned and released its UI state.

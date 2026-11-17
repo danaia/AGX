@@ -53,7 +53,7 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         (
             "System",
             "Operating system and machine details",
-            "settings info version kernel host",
+            "info version kernel host",
         ),
         (
             "Web",
@@ -65,6 +65,11 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             "Native shell, tabs and searchable scrollback",
             "terminal shell cli command bash ssh tmux",
         ),
+        (
+            "Settings",
+            "Mouse, pointer and desktop preferences",
+            "settings preferences mouse sensitivity acceleration scrolling",
+        ),
     ]) {
         entries.push(Entry {
             label: label.into(),
@@ -73,6 +78,8 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             aliases,
             icon: if kind == Kind::Web {
                 12
+            } else if kind == Kind::Settings {
+                14
             } else if kind == Kind::Terminal {
                 7
             } else {
@@ -329,6 +336,12 @@ mod tests {
             results(&desktop, "Super", "workspace 3", 0)[0].command,
             Cmd::Workspace(2)
         );
+        for query in ["settings", "mouse", "sensitivity"] {
+            assert_eq!(
+                results(&desktop, "Super", query, 0)[0].command,
+                Cmd::Open(Kind::Settings)
+            );
+        }
         assert!(results(&desktop, "Super", "not-an-app", 0).is_empty());
         assert!(
             results(&desktop, "Super", "", 1)

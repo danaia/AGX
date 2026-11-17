@@ -18,6 +18,8 @@ mod app;
 #[cfg(test)]
 mod pointer_tests;
 mod runtime;
+mod settings;
+mod session_refresh;
 mod system_ui;
 use app::{App, session_action};
 use keymap::Mods;
@@ -87,6 +89,10 @@ fn main() -> ExitCode {
     if let Err(error) = result {
         eprintln!("agx-gui: {error}");
         return ExitCode::from(1);
+    }
+    if let Err(error) = session_refresh::restart_if_requested() {
+        eprintln!("agx-gui: could not refresh desktop: {error}");
+        return ExitCode::FAILURE;
     }
     ExitCode::from(EXIT_CODE.load(Ordering::SeqCst) as u8)
 }

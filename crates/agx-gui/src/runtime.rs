@@ -10,6 +10,7 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
     graphics::attach_input(&ui);
+    let _settings_save = crate::settings::install(&ui);
     apply_omarchy_theme(&ui);
     ui.global::<Sys>().set_logo(LOGO.trim_end().into());
     ui.global::<Sys>().set_mode_note(
@@ -69,6 +70,27 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
             a.run(&ui, cmd);
         }
     });
+    hook!(on_settings_open, |a, ui| a
+        .run(&ui, Cmd::Open(crate::wm::Kind::Settings)));
+    {
+        let (weak, state) = (ui.as_weak(), app.clone());
+        ui.global::<crate::MouseSettings>().on_activate(move || {
+            if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
+                if app.desk.focused() != Some(crate::wm::Kind::Settings) {
+                    app.desk.focus(crate::wm::Kind::Settings);
+                    app.refresh(&ui);
+                }
+            }
+        });
+    }
+    {
+        let (weak, state) = (ui.as_weak(), app.clone());
+        ui.global::<crate::MouseSettings>().on_refresh(move || {
+            if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
+                app.run(&ui, Cmd::RefreshDesktop);
+            }
+        });
+    }
     hook!(on_layout_toggle, |a, ui| a.run(&ui, Cmd::CycleLayout));
     hook!(on_browser_key, |a,
                            ui,

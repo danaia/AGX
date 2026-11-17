@@ -54,6 +54,7 @@ fn scroll_event(
     // v120 wheel units: 120 = one notch = 60 logical pixels, like the VNC path.
     // Libinput positive is down/right; Slint positive is content motion up/left.
     let scale = if wheel { 0.5 } else { 1.0 };
+    let scale = scale * crate::settings::scroll_factor();
     let delta_x = (-horizontal * scale) as f32;
     let delta_y = (-vertical * scale) as f32;
     if !delta_x.is_finite() || !delta_y.is_finite() || (delta_x == 0.0 && delta_y == 0.0) {
@@ -167,6 +168,7 @@ mod native {
         });
     }
     pub(in crate::graphics) fn filter(event: &Event) -> bool {
+        crate::settings::device_event(event);
         // Release the target borrow before dispatching any UI callbacks.
         let target = TARGET.with(|target| target.borrow().clone());
         target.is_some_and(|target| target(event))

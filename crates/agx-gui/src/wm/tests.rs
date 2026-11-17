@@ -377,3 +377,24 @@ fn dragging_a_gap_changes_the_split() {
     d.set_split(h.split, ratio);
     assert!((rect(&d, Kind::Overview).w - o.w - 100.0).abs() < 1.0);
 }
+
+#[test]
+fn settings_tiles_floats_moves_workspaces_and_reopens_once() {
+    let mut d = desk();
+    assert!(!d.is_open(Kind::Settings));
+    d.open(Kind::Settings);
+    assert_eq!(d.focused(), Some(Kind::Settings));
+    assert!(!d.is_floating(Kind::Settings));
+    let count = d.scene().windows.len();
+    d.open(Kind::Settings);
+    assert_eq!(d.scene().windows.len(), count);
+    d.toggle_float();
+    assert!(d.is_floating(Kind::Settings));
+    d.move_to_workspace(2, true);
+    assert_eq!(d.current(), 2);
+    assert_eq!(d.focused(), Some(Kind::Settings));
+    d.close(Kind::Settings);
+    assert!(!d.is_open(Kind::Settings));
+    d.open(Kind::Settings);
+    assert_eq!(d.focused(), Some(Kind::Settings));
+}

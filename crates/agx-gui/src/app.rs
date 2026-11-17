@@ -95,7 +95,10 @@ impl App {
                 .windows
                 .iter()
                 .any(|w| w.kind == Kind::Terminal && !w.collapsed);
-        if !terminal_search && (self.desk.focused() != Some(Kind::Web) || !browser_visible) {
+        if !terminal_search
+            && self.desk.focused() != Some(Kind::Settings)
+            && (self.desk.focused() != Some(Kind::Web) || !browser_visible)
+        {
             ui.invoke_focus_desktop();
         }
         for i in 0..wm::WORKSPACES {
@@ -180,13 +183,21 @@ impl App {
             Cmd::CycleFocus(back) => self.desk.cycle_focus(back),
             Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
             Cmd::Menu => self.open_menu(ui),
-            Cmd::Open(k) => self.desk.open(k),
+            Cmd::Open(k) => {
+                self.desk.open(k);
+                if k == Kind::Settings {
+                    let settings = ui.global::<crate::MouseSettings>();
+                    settings.set_focus_serial(settings.get_focus_serial() + 1);
+                }
+            }
             Cmd::OpenCode => self.terminal_open_opencode(ui),
             Cmd::Tui => quit(EXIT_TUI),
             Cmd::Logout => quit(0),
-            Cmd::Reboot | Cmd::Shutdown => {
+            Cmd::Reboot | Cmd::Shutdown | Cmd::RefreshDesktop => {
                 ui.set_confirm_text(
-                    if cmd == Cmd::Reboot {
+                    if cmd == Cmd::RefreshDesktop {
+                        "Refresh the ANGI desktop? Open terminal and browser sessions will close. You will stay signed in."
+                    } else if cmd == Cmd::Reboot {
                         "Reboot this Pi? Network sessions will close."
                     } else {
                         "Power off this Pi? Network sessions will close."
@@ -194,6 +205,7 @@ impl App {
                     .into(),
                 );
                 self.pending = Some(cmd);
+                ui.invoke_focus_desktop();
             }
         }
         self.refresh(ui);
@@ -202,8 +214,19 @@ impl App {
     pub(super) fn confirm(&mut self, ui: &AppWindow, yes: bool) {
         ui.set_confirm_text("".into());
         let cmd = self.pending.take();
-        if yes {
+        if yes && cmd == Some(Cmd::RefreshDesktop) {
+            match crate::settings::flush() {
+                Ok(()) => crate::session_refresh::request(),
+                Err(error) => self.toast(
+                    ui,
+                    &format!("Could not save settings before refresh: {error}"),
+                ),
+            }
+        } else if yes {
             power(ui, cmd);
+        } else if self.desk.focused() == Some(Kind::Settings) {
+            let settings = ui.global::<crate::MouseSettings>();
+            settings.set_focus_serial(settings.get_focus_serial() + 1);
         }
     }
 }

@@ -218,7 +218,7 @@ impl Drop for Session {
         // Child cleanup must not block window movement or rendering.
         if let Some(worker) = self.worker.take() {
             let handle = self.child_handle.try_clone().ok();
-            std::thread::spawn(move || {
+            crate::session_refresh::spawn_cleanup(move || {
                 if let Some(fd) = &handle {
                     unsafe {
                         libc::syscall(

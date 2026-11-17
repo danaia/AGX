@@ -92,9 +92,10 @@ pub enum Kind {
     System,
     Web,
     Terminal,
+    Settings,
 }
 impl Kind {
-    pub const ALL: [Kind; 9] = [
+    pub const ALL: [Kind; 10] = [
         Kind::Overview,
         Kind::Cpu,
         Kind::Memory,
@@ -104,6 +105,7 @@ impl Kind {
         Kind::System,
         Kind::Web,
         Kind::Terminal,
+        Kind::Settings,
     ];
     pub fn index(self) -> usize {
         self as usize
@@ -119,6 +121,7 @@ impl Kind {
             Kind::System => "System",
             Kind::Web => "Web",
             Kind::Terminal => "Terminal",
+            Kind::Settings => "Settings",
         }
     }
 }

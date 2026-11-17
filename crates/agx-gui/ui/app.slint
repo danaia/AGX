@@ -7,6 +7,9 @@ export { Web, WebOption }
 import { Terminal, TerminalRow, TerminalRun, TerminalPanel } from "terminal.slint";
 export { Terminal, TerminalRow, TerminalRun }
 import { BrowserPopup } from "browser-popup.slint";
+import { DesktopInput } from "desktop-input.slint";
+import { SettingsPanel, MouseSettings } from "settings.slint";
+export { MouseSettings }
 import { AppLauncher } from "launcher.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
@@ -18,6 +21,11 @@ export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
 component WindowFrame inherits Rectangle {
     in property <Win> win;
     in property <bool> dragging;
+    in property <int> cursor;
+    in property <bool> hide-cursor;
+    callback pointer(int, int, length, length, bool, bool, bool, bool);
+    callback scroll(float, float, bool, bool, bool, bool);
+    callback pointer-moved(length, length);
     clip: true;
     animate x, y, width, height { duration: root.dragging ? 0ms : 110ms; easing: ease-out; }
     background: win.target ? @linear-gradient(45deg, Theme.magenta, Theme.yellow)
@@ -63,6 +71,24 @@ component WindowFrame inherits Rectangle {
             }
         }
     }
+    DesktopInput {
+        cursor: root.cursor;
+        hide-cursor: root.hide-cursor;
+        pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+        scroll(dx, dy, c, a, s, m) => { root.scroll(dx, dy, c, a, s, m); }
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 9 && !win.collapsed: SettingsPanel {
+        x: 6px; y: 28px;
+        width: max(0px, parent.width - 12px);
+        height: max(0px, parent.height - 34px);
+        active: root.win.focused;
+        pointer-moved(x, y) => {
+            root.pointer(2, 3, x, y, false, false, false, false);
+            root.pointer-moved(x, y);
+        }
+    }
+
 }
 
 component WorkspaceButton inherits Rectangle {
@@ -205,6 +231,12 @@ export component AppWindow inherits Window {
     callback confirm(bool);
     callback session-action(int);
     callback layout-toggle();
+    callback settings-open();
+
+    function choose-session(index: int) {
+        if (index == 0) { root.settings-open(); }
+        else { root.session-action(index - 1); }
+    }
 
     function track-cursor(x: length, y: length) {
         root.cursor-x = x;
@@ -223,9 +255,9 @@ export component AppWindow inherits Window {
         key-pressed(e) => {
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
-                if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 4); }
-                if (e.text == Key.UpArrow) { root.session-index = mod(root.session-index + 3, 4); }
-                if (e.text == Key.Return) { root.session-open = false; root.session-action(root.session-index); }
+                if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
+                if (e.text == Key.UpArrow) { root.session-index = mod(root.session-index + 4, 5); }
+                if (e.text == Key.Return) { root.session-open = false; root.choose-session(root.session-index); }
                 return accept;
             }
             if (root.confirm-text != "") {
@@ -252,6 +284,13 @@ export component AppWindow inherits Window {
             changed height => { root.resized(self.width, self.height); }
             init => { root.resized(self.width, self.height); }
 
+            DesktopInput {
+                cursor: root.cursor;
+                hide-cursor: root.draw-cursor || root.custom-resize-cursor;
+                pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+                scroll(dx, dy, c, a, s, m) => { root.scroll(dx, dy, c, a, s, m); }
+                pointer-moved(x, y) => { root.track-cursor(x, y); }
+            }
             for w in root.wins: WindowFrame {
                 x: w.x;
                 y: w.y;
@@ -259,6 +298,11 @@ export component AppWindow inherits Window {
                 height: w.h;
                 win: w;
                 dragging: root.dragging;
+                cursor: root.cursor;
+                hide-cursor: root.draw-cursor || root.custom-resize-cursor;
+                pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+                scroll(dx, dy, c, a, s, m) => { root.scroll(dx, dy, c, a, s, m); }
+                pointer-moved(x, y) => { root.track-cursor(x, y); }
             }
             if root.ghost-visible: Rectangle {
                 x: root.ghost-x;
@@ -269,36 +313,7 @@ export component AppWindow inherits Window {
                 border-color: Theme.accent;
                 background: #7aa2f733;
             }
-            touch := TouchArea {
-                // LinuxKMS maps built-in resize shapes to its default arrow.
-                // Hide it while AGX draws the directional resize/move overlay.
-                mouse-cursor: root.draw-cursor || root.custom-resize-cursor
-                    ? MouseCursor.none
-                    : root.cursor == 1 ? MouseCursor.move : root.cursor == 2 ? MouseCursor.col-resize
-                    : root.cursor == 3 ? MouseCursor.row-resize : root.cursor == 4 ? MouseCursor.nwse-resize
-                    : root.cursor == 5 ? MouseCursor.nesw-resize
-                    : root.cursor == 6 ? MouseCursor.pointer : root.cursor == 7 ? MouseCursor.text : MouseCursor.default;
-                pointer-event(e) => {
-                    root.cursor-x = self.mouse-x;
-                    root.cursor-y = self.mouse-y;
-                    root.cursor-seen = true;
-                    root.pointer(
-                        e.kind == PointerEventKind.down ? 0 : e.kind == PointerEventKind.up ? 1 : e.kind == PointerEventKind.cancel ? 3 : 2,
-                        e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
-                        self.mouse-x, self.mouse-y,
-                        e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
-                }
-                moved => {
-                    root.cursor-seen = true;
-                    root.cursor-x = self.mouse-x;
-                    root.cursor-y = self.mouse-y;
-                    root.pointer(2, 3, self.mouse-x, self.mouse-y, false, false, false, false);
-                }
-                scroll-event(e) => {
-                    root.scroll(e.delta-x / 1px, e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
-                    accept
-                }
-            }
+
         }
 
         // Top bar (hidden while a window is fullscreen).
@@ -410,7 +425,7 @@ export component AppWindow inherits Window {
                 x: parent.width - self.width - 10px;
                 y: 42px;
                 width: 238px;
-                height: 192px;
+                height: 236px;
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: Theme.muted;
@@ -418,17 +433,17 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     padding: 8px;
                     spacing: 2px;
-                    for label[i] in ["Log out", "Enter TUI", "Reboot…", "Shut down…"]: Rectangle {
+                    for label[i] in ["Settings", "Log out", "Enter TUI", "Reboot…", "Shut down…"]: Rectangle {
                         background: row-touch.has-hover || root.session-index == i ? Theme.bg-light : transparent;
                         border-radius: 4px;
                         accessible-role: button;
                         accessible-label: label;
-                        Text { x: 12px; text: label; color: i >= 2 ? Theme.red : Theme.fg-bright; font-size: 14px; vertical-alignment: center; }
+                        Text { x: 12px; text: label; color: i >= 3 ? Theme.red : Theme.fg-bright; font-size: 14px; vertical-alignment: center; }
                         row-touch := TouchArea {
                             mouse-cursor: MouseCursor.pointer;
                             pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
                             moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
-                            clicked => { root.session-open = false; root-keys.focus(); root.session-action(i); }
+                            clicked => { root.session-open = false; root-keys.focus(); root.choose-session(i); }
                         }
                     }
                 }
