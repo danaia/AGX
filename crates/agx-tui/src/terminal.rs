@@ -7,16 +7,33 @@ use ratatui::crossterm::{
 };
 use std::io;
 
-pub(super) struct Session;
+pub(super) struct Session {
+    active: bool,
+}
 impl Session {
     pub(super) fn enter(mouse: bool) -> io::Result<Self> {
-        let session = Self;
+        let session = Self { active: true };
         enable_raw_mode()?;
         execute!(io::stdout(), EnterAlternateScreen, EnableBracketedPaste)?;
         if mouse {
             execute!(io::stdout(), EnableMouseCapture)?;
         }
         Ok(session)
+    }
+    pub(super) fn suspend(&mut self) {
+        restore();
+        self.active = false;
+    }
+    pub(super) fn resume(&mut self, mouse: bool) -> io::Result<()> {
+        // A child app can enable input reporting even if the TUI disables it.
+        execute!(
+            io::stdout(),
+            DisableMouseCapture,
+            DisableBracketedPaste,
+            Show
+        )?;
+        *self = Self::enter(mouse)?;
+        Ok(())
     }
 }
 pub(super) fn restore() {
@@ -31,7 +48,9 @@ pub(super) fn restore() {
 }
 impl Drop for Session {
     fn drop(&mut self) {
-        restore();
+        if self.active {
+            restore();
+        }
     }
 }
 pub(super) struct Signals(pub(super) Vec<signal_hook::SigId>);

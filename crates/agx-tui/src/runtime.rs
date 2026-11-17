@@ -48,7 +48,7 @@ pub fn run(options: Options) -> io::Result<Exit> {
     let wifi_worker = wifi::Worker::start()?;
     let profile_worker = profile::Worker::start()?;
     let service_worker = services::Worker::start()?;
-    let _session = Session::enter(options.mouse)?;
+    let mut session = Session::enter(options.mouse)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     terminal.clear()?;
     let mut app = App::new(options);
@@ -133,6 +133,64 @@ pub fn run(options: Options) -> io::Result<Exit> {
                 exit = Exit::Gui;
                 break;
             }
+            continue;
+        }
+        let shell_request = if matches!(&input,Event::Key(key) if key.code==KeyCode::F(4))
+            || matches!(&input,Event::Mouse(mouse) if mouse.kind==MouseEventKind::Down(MouseButton::Left) && app.shell_footer.contains((mouse.column,mouse.row).into()))
+        {
+            Some(crate::shell::Kind::Shell)
+        } else if app.page == 7 {
+            match &input {
+                Event::Key(key) if key.code == KeyCode::Enter => Some(crate::shell::Kind::Shell),
+                Event::Key(key) if key.code == KeyCode::Char('t') => Some(crate::shell::Kind::Tmux),
+                Event::Key(key) if key.code == KeyCode::Char('o') => {
+                    Some(crate::shell::Kind::OpenCode)
+                }
+                Event::Mouse(mouse)
+                    if mouse.kind == MouseEventKind::Down(MouseButton::Left)
+                        && app.shell_button.contains((mouse.column, mouse.row).into()) =>
+                {
+                    Some(crate::shell::Kind::Shell)
+                }
+                Event::Mouse(mouse)
+                    if mouse.kind == MouseEventKind::Down(MouseButton::Left)
+                        && app.tmux_button.contains((mouse.column, mouse.row).into()) =>
+                {
+                    Some(crate::shell::Kind::Tmux)
+                }
+                Event::Mouse(mouse)
+                    if mouse.kind == MouseEventKind::Down(MouseButton::Left)
+                        && app
+                            .opencode_button
+                            .contains((mouse.column, mouse.row).into()) =>
+                {
+                    Some(crate::shell::Kind::OpenCode)
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        if let Some(kind) = shell_request {
+            if app.profile.editing() || app.system.dialog_open() || app.services.popup() {
+                app.wifi.notice =
+                    Some("Finish the current edit or dialog before opening Terminal.".into());
+                continue;
+            }
+            session.suspend();
+            let result = crate::shell::run(kind, &stop);
+            if stop.load(Ordering::Relaxed) || terminal_closed()? {
+                break;
+            }
+            session.resume(options.mouse)?;
+            terminal.autoresize()?;
+            terminal.clear()?;
+            app.wifi.notice = Some(match result {
+                Ok(status) if status.success() => "Returned from Terminal.".into(),
+                Ok(status) => format!("Terminal finished: {status}"),
+                Err(error) => format!("Unable to open Terminal: {error}"),
+            });
+            let _ = worker.refresh.try_send(());
             continue;
         }
         if app.page == 0 {
@@ -222,7 +280,8 @@ pub fn run(options: Options) -> io::Result<Exit> {
                     KeyCode::Char('5') => app.page(4),
                     KeyCode::Char('6') => app.page(5),
                     KeyCode::Char('7') => app.page(6),
-                    KeyCode::Char('?') => app.page(7),
+                    KeyCode::Char('?') => app.page(8),
+                    KeyCode::Char('8') => app.page(7),
                     KeyCode::Char('4') => {
                         app.page(3);
                         if let Some(command) = app.wifi.entered() {
@@ -238,7 +297,7 @@ pub fn run(options: Options) -> io::Result<Exit> {
                         }
                     }
                     KeyCode::BackTab | KeyCode::Left => {
-                        app.page(app.page + 7);
+                        app.page(app.page + 8);
                         if app.page == 3
                             && let Some(command) = app.wifi.entered()
                         {
@@ -313,7 +372,7 @@ pub fn run(options: Options) -> io::Result<Exit> {
         }
     }
     drop(terminal);
-    drop(_session);
+    drop(session);
     if let Some(rebooting) = power_operation {
         use std::io::Write;
         let mut output = io::stdout().lock();

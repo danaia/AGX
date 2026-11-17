@@ -8,7 +8,11 @@ if [[ ! -f "$BINARY" ]]; then
     echo 'Run make tui-build before deployment.' >&2
     exit 1
 fi
+SSH_OPTIONS=(-o BatchMode=yes -o ConnectTimeout=10 -i "$KEY")
+if [[ -n "${AGX_SSH_HOST_KEY_ALIAS:-}" ]]; then
+    SSH_OPTIONS+=(-o "HostKeyAlias=$AGX_SSH_HOST_KEY_ALIAS" -o StrictHostKeyChecking=yes)
+fi
 # Dropbear includes legacy SCP, rather than an SFTP subsystem.
-scp -O -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$BINARY" "$DESTINATION:/usr/bin/agx.new"
-ssh -o BatchMode=yes -o ConnectTimeout=10 -i "$KEY" "$DESTINATION" \
+scp -O "${SSH_OPTIONS[@]}" "$BINARY" "$DESTINATION:/usr/bin/agx.new"
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" \
     'chmod 755 /usr/bin/agx.new && /usr/bin/agx.new --version && { test ! -f /usr/bin/agx || cp /usr/bin/agx /usr/bin/agx.prev; } && mv /usr/bin/agx.new /usr/bin/agx'

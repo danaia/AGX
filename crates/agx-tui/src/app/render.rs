@@ -28,6 +28,11 @@ impl App {
                 area,
             );
             self.tabs.clear();
+            self.shell_footer = Rect::default();
+            self.gui_footer = Rect::default();
+            self.shell_button = Rect::default();
+            self.tmux_button = Rect::default();
+            self.opencode_button = Rect::default();
             self.table_area = Rect::default();
             self.wifi.draw_popup(frame, self.palette, self.options);
             return;
@@ -83,7 +88,7 @@ impl App {
             ),
             regions[0],
         );
-        let tabs = Layout::horizontal([Constraint::Ratio(1, 8); 8]).split(regions[1]);
+        let tabs = Layout::horizontal([Constraint::Ratio(1, 9); 9]).split(regions[1]);
         self.tabs = tabs.to_vec();
         let names = if area.width < 65 {
             [
@@ -94,6 +99,7 @@ impl App {
                 "5 System".into(),
                 "6 Services".into(),
                 "7 Logs".into(),
+                "8 Terminal".into(),
                 "? Help".into(),
             ]
         } else {
@@ -105,6 +111,7 @@ impl App {
                 format!("5 {} System", self.icon("⚙", "*")),
                 "6 Services".into(),
                 "7 Logs".into(),
+                "8 Terminal".into(),
                 "? Help".into(),
             ]
         };
@@ -121,6 +128,9 @@ impl App {
             frame.render_widget(block, tabs[index]);
         }
         self.table_area = Rect::default();
+        self.shell_button = Rect::default();
+        self.tmux_button = Rect::default();
+        self.opencode_button = Rect::default();
         match self.page {
             0 => self
                 .profile
@@ -160,11 +170,13 @@ impl App {
                 self.services
                     .draw(frame, area, self.palette, self.options, self.page == 6);
             }
+            7 => self.shell(frame, regions[2]),
             _ => self.help(frame, regions[2]),
         }
-        let action_width = if area.width < 70 { 10 } else { 14 };
+        let action_width = if area.width < 70 { 6 } else { 14 };
         let footer_regions = Layout::horizontal([
             Constraint::Min(1),
+            Constraint::Length(action_width),
             Constraint::Length(action_width),
             Constraint::Length(action_width),
             Constraint::Length(action_width),
@@ -192,21 +204,36 @@ impl App {
                 })),
             footer_regions[0],
         );
-        self.gui_footer = footer_regions[1];
+        self.shell_footer = footer_regions[1];
         frame.render_widget(
-            Paragraph::new("[GUI F8]")
-                .centered()
-                .style(Style::default().fg(if self.gui_available {
-                    self.palette.cyan
-                } else {
-                    self.palette.muted
-                })),
+            Paragraph::new(if area.width < 70 {
+                "F4 sh"
+            } else {
+                "[Shell F4]"
+            })
+            .centered()
+            .style(Style::default().fg(self.palette.cyan)),
+            self.shell_footer,
+        );
+        self.gui_footer = footer_regions[2];
+        frame.render_widget(
+            Paragraph::new(if area.width < 70 {
+                "F8 GUI"
+            } else {
+                "[GUI F8]"
+            })
+            .centered()
+            .style(Style::default().fg(if self.gui_available {
+                self.palette.cyan
+            } else {
+                self.palette.muted
+            })),
             self.gui_footer,
         );
         self.wifi
-            .draw_shutdown(frame, footer_regions[2], self.palette);
+            .draw_shutdown(frame, footer_regions[3], self.palette);
         self.wifi
-            .draw_reboot(frame, footer_regions[3], self.palette);
+            .draw_reboot(frame, footer_regions[4], self.palette);
         self.wifi.draw_popup(frame, self.palette, self.options);
     }
 }

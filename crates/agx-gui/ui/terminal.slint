@@ -10,6 +10,7 @@ export global Terminal {
     in-out property <string> title: "Terminal";
     in-out property <string> status: "Opening shell…";
     in-out property <string> error;
+    in-out property <bool> busy;
     in-out property <string> clipboard;
     in-out property <float> font-size: 14;
     in-out property <int> cursor-col;
@@ -93,6 +94,10 @@ export component TerminalPanel inherits Rectangle {
             x: Terminal.cursor-col * root.cw; y: Terminal.cursor-row * root.ch;
             width: root.cw; height: root.ch; border-width: 1px; border-color: Theme.accent;
             background: root.active ? #b8f66c35 : transparent;
+        }
+        if Terminal.busy && Terminal.error == "": Rectangle {
+            background: #11141c;
+            Text { text: "Starting OpenCode…"; color: Theme.fg-dim; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
         }
         if Terminal.error != "": Text { text: Terminal.error; color: Theme.red; wrap: word-wrap; }
     }

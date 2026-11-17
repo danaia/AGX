@@ -144,6 +144,13 @@ impl App {
             return;
         };
         let rows = render::rows(&term);
+        if session.starting
+            && (session.signals.exited.load(Ordering::Acquire)
+                || rows.iter().flatten().any(|run| !run.text.trim().is_empty()))
+        {
+            session.starting = false;
+        }
+        global.set_busy(session.starting);
         if state.previous.len() != rows.len() {
             state
                 .rows
@@ -170,9 +177,9 @@ impl App {
                 size.cols,
                 size.lines,
                 if session.signals.exited.load(Ordering::Acquire) {
-                    "Shell exited"
+                    "Exited"
                 } else {
-                    "Shell"
+                    "Terminal"
                 },
                 if content.display_offset > 0 {
                     format!(" · ↑ {} lines", content.display_offset)
@@ -186,9 +193,18 @@ impl App {
         global.set_rows(ModelRc::from(state.rows.clone()));
         state.tabs(ui);
     }
+    pub(crate) fn terminal_open_opencode(&mut self, ui: &AppWindow) {
+        if !std::path::Path::new("/usr/bin/opencode").is_file() {
+            self.toast(ui, "OpenCode is not installed.");
+            return;
+        }
+        self.desk.open(Kind::Terminal);
+        self.refresh(ui);
+        self.terminal_action(ui, 10, 0);
+    }
     fn terminal_action(&mut self, ui: &AppWindow, action: i32, index: i32) {
         let global = ui.global::<Terminal>();
-        if matches!(action, 0..=2) && self.terminal.last_focus {
+        if matches!(action, 0..=2 | 10) && self.terminal.last_focus {
             if let Some(s) = self.terminal.current() {
                 if s.term.lock().mode().contains(TermMode::FOCUS_IN_OUT) {
                     s.write(b"\x1b[O".to_vec());
@@ -197,7 +213,7 @@ impl App {
             self.terminal.last_focus = false;
         }
         match action {
-            0 => {
+            0 | 10 => {
                 if self.terminal.sessions.len() >= 8 {
                     self.toast(ui, "Terminal supports up to eight tabs.");
                     return;
@@ -213,11 +229,16 @@ impl App {
                     .map(|w| w.rect)
                     .unwrap_or(Rect::new(0., 0., 800., 500.));
                 let (_, size) = geometry(rect, global.get_font_size(), global.get_search_visible());
-                match Session::new(size) {
+                match if action == 10 {
+                    Session::opencode(size)
+                } else {
+                    Session::new(size)
+                } {
                     Ok(s) => {
                         self.terminal.sessions.push(s);
                         self.terminal.active = self.terminal.sessions.len() - 1;
                         global.set_error("".into());
+                        global.set_busy(action == 10);
                     }
                     Err(e) => {
                         global.set_error(format!("Unable to start shell: {e}").into());

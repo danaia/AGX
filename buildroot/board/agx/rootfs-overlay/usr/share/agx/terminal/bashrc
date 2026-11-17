@@ -2,4 +2,8 @@
 # Personal Bash settings take precedence over ANGI's defaults.
 if [ -r /etc/profile.d/agx-terminal.sh ]; then . /etc/profile.d/agx-terminal.sh; fi
 if [ -r "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi
-printf '\033[38;5;150mANGI Terminal\033[0m · Bash · Ctrl+Shift+T new tab · Ctrl+Shift+F search\n\n'
+if [ "$AGX_TERMINAL_CONTEXT" = tui ]; then
+    printf 'ANGI Terminal - Bash - type exit or press Ctrl+D to return to the TUI\n\n'
+else
+    printf '\033[38;5;150mANGI Terminal\033[0m · Bash · Ctrl+Shift+T new tab · Ctrl+Shift+F search\n\n'
+fi

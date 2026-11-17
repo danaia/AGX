@@ -58,3 +58,11 @@ terminal-build:
 	./scripts/build-terminal.sh
 deploy-terminal: terminal-build gui-build
 	./scripts/deploy-terminal.sh
+
+.PHONY: opencode-build deploy-opencode
+opencode-build:
+	./scripts/build-opencode.sh
+deploy-opencode: opencode-build gui-build tui-build
+	./scripts/deploy-opencode.sh
+	./scripts/deploy-tui.sh
+	./scripts/deploy-terminal.sh

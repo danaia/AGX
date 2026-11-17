@@ -84,6 +84,16 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         });
     }
     entries.push(Entry {
+        label: "OpenCode".into(),
+        description: "AI coding agent in a native terminal tab".into(),
+        hint: "Terminal".into(),
+        aliases: "opencode ai coding agent assistant",
+        icon: 13,
+        app: true,
+        running: false,
+        command: Cmd::OpenCode,
+    });
+    entries.push(Entry {
         label: "System Console".into(),
         description: "Switch to ANGI’s text-based tools".into(),
         hint: "TUI".into(),
@@ -269,10 +279,20 @@ mod tests {
         let mut desktop = desktop();
         desktop.close(Kind::Services);
         let apps = results(&desktop, "Super", "", 0);
-        assert_eq!(apps.len(), Kind::ALL.len() + 1);
-        assert_eq!(results(&desktop, "Super", "terminal", 0)[0].command, Cmd::Open(Kind::Terminal));
-        assert!(!desktop.is_open(Kind::Terminal), "shells are started on demand");
+        assert_eq!(apps.len(), Kind::ALL.len() + 2);
+        assert_eq!(
+            results(&desktop, "Super", "terminal", 0)[0].command,
+            Cmd::Open(Kind::Terminal)
+        );
+        assert!(
+            !desktop.is_open(Kind::Terminal),
+            "shells are started on demand"
+        );
         assert!(apps.iter().all(|entry| entry.app));
+        assert_eq!(
+            results(&desktop, "Super", "opencode", 0)[0].command,
+            Cmd::OpenCode
+        );
         assert_eq!(apps[0].command, Cmd::Open(Kind::Overview));
         assert!(
             apps.iter()

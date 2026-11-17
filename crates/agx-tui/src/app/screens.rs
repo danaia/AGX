@@ -353,7 +353,7 @@ impl App {
             Line::raw("Overview and Hardware are read-only. Network provisions this Pi."),
             Line::raw(""),
             Line::raw(
-                "1-7 / ?   Profile / Overview / Hardware / Network / System / Services / Logs / Help",
+                "1-8 / ?   Profile / Overview / Hardware / Network / System / Services / Logs / Terminal / Help",
             ),
             Line::raw("Tab / Shift-Tab Next / previous screen"),
             Line::raw("Left / Right    Previous / next screen"),
@@ -366,6 +366,8 @@ impl App {
             Line::raw("Network: v saved, f forget, d disconnect, i check Internet"),
             Line::raw("Services: s start, x stop, t restart (confirmation required)"),
             Line::raw("Logs: f service filter, / search, End follow live events"),
+            Line::raw("F4              Open shell; exit returns to the TUI"),
+            Line::raw("Terminal: t opens tmux; Ctrl+B then D returns here"),
             Line::raw("F8              Back to GUI (HDMI console)"),
             Line::raw("F9 / F10        Power off / reboot (confirmation required)"),
             Line::raw("q / Esc / Ctrl-C Return to the shell"),

@@ -100,12 +100,19 @@ pub(super) struct Session {
     pub term: Arc<FairMutex<Term<Proxy>>>,
     pub signals: Arc<Signals>,
     pub size: Size,
+    pub starting: bool,
     sender: EventLoopSender,
     worker: Option<JoinHandle<()>>,
     child_handle: OwnedFd,
 }
 impl Session {
     pub fn new(size: Size) -> io::Result<Self> {
+        Self::start(size, false)
+    }
+    pub fn opencode(size: Size) -> io::Result<Self> {
+        Self::start(size, true)
+    }
+    fn start(size: Size, opencode: bool) -> io::Result<Self> {
         if unsafe { libc::geteuid() } == 0 {
             return Err(io::Error::other(
                 "Open Terminal from a signed-in ANGI session.",
@@ -143,14 +150,21 @@ impl Session {
         } else {
             vec!["-l".into()]
         };
+        let program = if opencode {
+            *signals.title.lock().unwrap() = "OpenCode".into();
+            tty::Shell::new("/usr/bin/opencode".into(), vec![])
+        } else {
+            tty::Shell::new(shell.clone(), args)
+        };
         let options = tty::Options {
-            shell: Some(tty::Shell::new(shell.clone(), args)),
+            shell: Some(program),
             working_directory: std::env::var_os("HOME").map(Into::into),
             env: [
                 ("SHELL".into(), shell),
                 ("TERM".into(), "xterm-256color".into()),
                 ("COLORTERM".into(), "truecolor".into()),
                 ("TERM_PROGRAM".into(), "ANGI".into()),
+                ("AGX_TERMINAL_CONTEXT".into(), "gui".into()),
                 ("LC_CTYPE".into(), "C.UTF-8".into()),
             ]
             .into(),
@@ -176,6 +190,7 @@ impl Session {
             term,
             signals,
             size,
+            starting: opencode,
             sender,
             worker: Some(worker),
             child_handle,

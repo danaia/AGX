@@ -181,6 +181,7 @@ impl App {
             Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
             Cmd::Menu => self.open_menu(ui),
             Cmd::Open(k) => self.desk.open(k),
+            Cmd::OpenCode => self.terminal_open_opencode(ui),
             Cmd::Tui => quit(EXIT_TUI),
             Cmd::Logout => quit(0),
             Cmd::Reboot | Cmd::Shutdown => {

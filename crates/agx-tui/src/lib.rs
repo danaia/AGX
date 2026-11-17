@@ -4,6 +4,7 @@ mod palette;
 mod profile;
 mod remote_access;
 mod runtime;
+mod shell;
 mod services;
 mod system;
 mod terminal;

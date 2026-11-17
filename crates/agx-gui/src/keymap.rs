@@ -69,6 +69,7 @@ pub enum Cmd {
     Resize { dw: f32, dh: f32 },
     Menu,
     Open(Kind),
+    OpenCode,
     Tui,
     Logout,
     Reboot,

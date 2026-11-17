@@ -1,6 +1,7 @@
 //! Console state and screen navigation. Rendering lives in child modules.
 mod render;
 mod screens;
+mod shell;
 use crate::terminal::gui_available;
 use crate::{Options, Palette, profile, services, system, wifi};
 use agx_core::Snapshot;
@@ -15,6 +16,10 @@ use std::time::Instant;
 pub(crate) struct App {
     pub(super) gui_available: bool,
     pub(super) gui_footer: Rect,
+    pub(super) shell_footer: Rect,
+    pub(super) shell_button: Rect,
+    pub(super) tmux_button: Rect,
+    pub(super) opencode_button: Rect,
     pub(super) page: usize,
     pub(super) snapshot: Option<Snapshot>,
     pub(super) error: Option<String>,
@@ -42,6 +47,10 @@ impl App {
         Self {
             gui_available,
             gui_footer: Rect::default(),
+            shell_footer: Rect::default(),
+            shell_button: Rect::default(),
+            tmux_button: Rect::default(),
+            opencode_button: Rect::default(),
             page: 0,
             snapshot: None,
             error: None,
@@ -62,7 +71,7 @@ impl App {
         if self.options.ascii { ascii } else { unicode }
     }
     pub(super) fn page(&mut self, page: usize) {
-        self.page = page % 8;
+        self.page = page % 9;
         self.scroll = 0;
     }
     pub(super) fn move_row(&mut self, delta: i32) {
