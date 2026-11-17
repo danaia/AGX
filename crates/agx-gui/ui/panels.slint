@@ -45,11 +45,12 @@ export component OverviewPanel inherits VerticalLayout {
     padding: 12px;
     spacing: 8px;
     alignment: start;
-    if root.height > 330px: Text {
-        text: Sys.logo;
-        color: Theme.accent;
-        font-size: 12px;
-        overflow: clip;
+    Image {
+        source: @image-url("../../../brand/brand-mark-text.svg");
+        width: min(200px, parent.width - 24px);
+        height: self.width * 239 / 711;
+        image-fit: contain;
+        accessible-label: "ANGI";
     }
     Row { label: "host"; value: Sys.hostname; }
     Row { label: "board"; value: Sys.board; }

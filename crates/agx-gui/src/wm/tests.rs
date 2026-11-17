@@ -107,29 +107,78 @@ fn collapsed_headers_remain_reachable_after_a_display_resize() {
 
 fn desk() -> Desktop {
     let screen = Rect::new(0.0, 0.0, 1200.0, 800.0);
-    Desktop::new(screen, Rect::new(0.0, 34.0, 1200.0, 740.0))
+    // Existing tiling/interaction checks use a three-panel tiled fixture.
+    let mut desktop = Desktop::new(screen, Rect::new(0.0, 34.0, 1200.0, 740.0));
+    for i in 0..WORKSPACES {
+        desktop.goto(i);
+        desktop.cycle_layout();
+    }
+    desktop.goto(0);
+    for kind in [Kind::Settings, Kind::Overview, Kind::Cpu, Kind::Memory] {
+        desktop.close(kind);
+    }
+    desktop.open(Kind::Overview);
+    desktop.open(Kind::Cpu);
+    desktop.open(Kind::Memory);
+    desktop.focus(Kind::Overview);
+    desktop.set_ratio_for(Kind::Overview, 0.55);
+    for workspace in &mut desktop.ws {
+        workspace.has_windowed_layout = false;
+    }
+    desktop
+
 }
 fn rect(d: &Desktop, k: Kind) -> Rect {
     d.rect_of(k).unwrap()
 }
 
 #[test]
-fn default_workspace_is_overview_left_cpu_over_memory() {
-    let d = desk();
-    let (o, c, m) = (
-        rect(&d, Kind::Overview),
-        rect(&d, Kind::Cpu),
-        rect(&d, Kind::Memory),
+fn default_desktop_opens_the_reference_layout_in_windowed_mode() {
+    for (width, height) in [(1280., 720.), (1920., 1080.), (2560., 1080.)] {
+        let mut d = Desktop::new(
+            Rect::new(0., 0., width, height),
+            Rect::new(0., 34., width, height - 60.),
+        );
+        let scene = d.scene();
+        assert_eq!(scene.windows.len(), 4);
+        assert!(scene.windows.iter().all(|w| w.floating && !w.collapsed));
+        assert!(scene.handles.is_empty());
+        assert_eq!(d.focused(), Some(Kind::Memory));
+        let (s, o, c, m) = (
+            rect(&d, Kind::Settings), rect(&d, Kind::Overview),
+            rect(&d, Kind::Cpu), rect(&d, Kind::Memory),
+        );
+        assert_eq!(s.x, GAP_OUT);
+        assert!((s.h - (height - 60. - 2. * GAP_OUT)).abs() < 0.01);
+        assert!(s.right() < o.x && o.bottom() < c.y);
+        assert_eq!(o.x, c.x);
+        assert!(c.right() < m.x);
+        assert_eq!(c.y, m.y);
+        assert!((m.right() - (width - GAP_OUT)).abs() < 0.01);
+        for i in 0..WORKSPACES {
+            d.goto(i);
+            assert_eq!(d.mode(), Mode::Floating);
+        }
+        d.goto(0);
+        d.cycle_layout();
+        assert_eq!(d.mode(), Mode::Tiled);
+        assert_eq!(rect(&d, Kind::Settings), s);
+    }
+}
+
+#[test]
+fn initial_windows_follow_display_size_but_custom_positions_survive() {
+    let mut d = Desktop::new(
+        Rect::new(0., 0., 1280., 720.), Rect::new(0., 34., 1280., 660.),
     );
-    assert!(
-        o.right() <= c.x && o.right() <= m.x,
-        "overview is left of the column"
-    );
-    assert!(c.bottom() <= m.y, "cpu is above memory");
-    assert_eq!(o.x, GAP_OUT);
-    // Omarchy: 10px at the edge, 10px (2 x 5) between tiles.
-    assert!((c.x - o.right() - 2.0 * GAP_IN).abs() < 0.01);
-    assert!((m.y - c.bottom() - 2.0 * GAP_IN).abs() < 0.01);
+    d.set_area(Rect::new(0., 0., 1920., 1080.), Rect::new(0., 34., 1920., 1020.));
+    assert!((rect(&d, Kind::Memory).right() - 1910.).abs() < 0.01);
+    assert!((rect(&d, Kind::Settings).bottom() - 1044.).abs() < 0.01);
+    d.move_floating(Kind::Overview, 30., 40.);
+    let custom = rect(&d, Kind::Overview);
+    d.set_area(Rect::new(0., 0., 2560., 1440.), Rect::new(0., 34., 2560., 1380.));
+    assert_eq!(rect(&d, Kind::Overview), custom);
+    assert!((rect(&d, Kind::Memory).right() - 2550.).abs() < 0.01);
 }
 
 #[test]

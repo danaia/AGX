@@ -1,6 +1,8 @@
-# AGX desktop (GUI)
+# ANGI desktop (GUI)
 
 `agx-gui` is a Slint front end with Omarchy/Hyprland-style window management. The tiling engine is `crates/agx-gui/src/wm.rs`, and the key bindings are `keymap.rs`. Both are unit-tested (`scripts/cargo.sh test --manifest-path crates/agx-gui/Cargo.toml`).
+
+The desktop starts in **windowed** mode: Settings fills the left half, with the ANGI overview above CPU and Memory and storage on the right. The overview uses `brand/brand-mark-text.svg`. All five workspaces start in windowed mode; click **windowed** or press **Super+L** to switch to tiling. Windows still at their initial positions follow display size changes; moved or resized windows keep their custom geometry.
 
 Run a preview window on a desktop: `scripts/cargo.sh run --manifest-path crates/agx-gui/Cargo.toml`.
 

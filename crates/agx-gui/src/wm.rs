@@ -5,6 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 mod scene;
+mod startup;
 mod tiling;
 mod windowed;
 
@@ -218,37 +219,23 @@ pub struct Desktop {
 }
 
 impl Desktop {
-    pub fn new(screen: Rect, usable: Rect) -> Self {
-        let mut d = Self {
-            ws: (0..WORKSPACES).map(|_| Workspace::empty()).collect(),
-            cur: 0,
-            prev: 0,
-            next_split: 0,
-            usable,
-            screen,
-            float_rect: HashMap::new(),
-            collapsed: HashSet::new(),
-        };
-        // Overview on the left, CPU above memory on the right, then one
-        // panel per remaining workspace.
-        d.cur = 0;
-        d.open(Kind::Overview);
-        d.open(Kind::Cpu);
-        d.ws[0].focus = Some(Kind::Cpu);
-        d.open(Kind::Memory);
-        d.ws[0].focus = Some(Kind::Overview);
-        d.set_ratio_for(Kind::Overview, 0.55);
-        for (i, k) in [Kind::Network, Kind::Hardware, Kind::Services, Kind::System].into_iter().enumerate() {
-            d.cur = i + 1;
-            d.open(k);
-        }
-        d.cur = 0;
-        d
-    }
-
     pub fn set_area(&mut self, screen: Rect, usable: Rect) {
+        // Follow display sizing for windows still in their original layout. Once
+        // moved or resized, a floating window keeps its user-chosen geometry.
+        let unchanged: Vec<_> = self.ws.iter()
+            .filter(|w| w.mode == Mode::Floating)
+            .flat_map(|w| self.tiled(w).0)
+            .filter(|(k, r)| self.float_rect.get(k) == Some(r))
+            .map(|(k, _)| k)
+            .collect();
         self.screen = screen;
         self.usable = usable;
+        let resized: Vec<_> = self.ws.iter().flat_map(|w| self.tiled(w).0).collect();
+        for (k, r) in resized {
+            if unchanged.contains(&k) {
+                self.float_rect.insert(k, r);
+            }
+        }
         self.constrain_floats();
     }
     pub fn current(&self) -> usize {
@@ -545,6 +532,7 @@ impl Desktop {
             }
         }
     }
+    #[cfg(test)]
     fn set_ratio_for(&mut self, k: Kind, ratio: f32) {
         let area = self.usable.inset(GAP_OUT - GAP_IN);
         let found = self.ws[self.cur].tree.as_ref().and_then(|t| t.find_split(area, k, Axis::Horizontal));

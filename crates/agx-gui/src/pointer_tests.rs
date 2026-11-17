@@ -275,6 +275,8 @@ fn hover_uses_cached_scene_and_never_requests_model_updates() {
 #[test]
 fn tiled_drag_is_overlay_only_and_drop_commits_the_swap() {
     let mut app = App::new();
+    app.desk.cycle_layout();
+    app.view.sync(app.desk.scene(), None);
     let source = app.view.scene.borrow().rect_of(Kind::Overview).unwrap();
     let target = app.view.scene.borrow().rect_of(Kind::Cpu).unwrap();
     app.begin_move(Kind::Overview, source.x + 40.0, source.y + 10.0);

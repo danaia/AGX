@@ -1,7 +1,7 @@
 //! Window creation, callback wiring, timers and background system sampling.
 use crate::system_ui::{apply, apply_omarchy_theme, local_time};
 use crate::{
-    App, AppWindow, LOGO, Sys, browser, graphics, keymap::Cmd, mods, remote, session_action,
+    App, AppWindow, Sys, browser, graphics, keymap::Cmd, mods, remote, session_action,
     terminal,
 };
 use agx_core::Sampler;
@@ -12,7 +12,6 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     graphics::attach_input(&ui);
     let _settings_save = crate::settings::install(&ui);
     apply_omarchy_theme(&ui);
-    ui.global::<Sys>().set_logo(LOGO.trim_end().into());
     ui.global::<Sys>().set_mode_note(
         if cfg!(feature = "kms") {
             "DRM/KMS appliance, no display server"
