@@ -65,11 +65,12 @@ echo 'Staging desktop, graphical login and startup binaries'
 "${SCP[@]}" "$RELEASE/agx" "$DESTINATION:/usr/bin/agx.new"
 "${SCP[@]}" "$RELEASE/agx-init" "$DESTINATION:/usr/sbin/agx-init.new"
 "${SSH[@]}" 'mkdir -p /usr/libexec'
+"${SCP[@]}" "$RELEASE/agx-display-devices" "$DESTINATION:/usr/libexec/agx-display-devices.new"
 "${SCP[@]}" "$ROOT/buildroot/board/agx/rootfs-overlay/usr/libexec/agx-display-access" "$DESTINATION:/usr/libexec/agx-display-access.new"
 "${SSH[@]}" 'mkdir -p /etc/modules-load.d'
 "${SCP[@]}" "$ROOT/buildroot/board/agx/rootfs-overlay/etc/modules-load.d/agx-display.conf" "$DESTINATION:/etc/modules-load.d/agx-display.conf"
 "${SSH[@]}" 'set -e
-chmod 755 /var/lib/agx-data/agx-gui/agx-gui.new /usr/bin/agx.new /usr/sbin/agx-init.new /usr/libexec/agx-display-access.new
+chmod 755 /usr/libexec/agx-display-devices.new /var/lib/agx-data/agx-gui/agx-gui.new /usr/bin/agx.new /usr/sbin/agx-init.new /usr/libexec/agx-display-access.new
 /usr/bin/agx.new --version
 /usr/sbin/agx-init.new --check
 # PID 1 must load before NVMe is mounted. Check resolved paths, not only ldd success.
@@ -85,6 +86,7 @@ if printf "%s\n" "$libraries" | grep -q "not found"; then
     printf "%s\n" "$libraries" >&2; exit 1
 fi
 mv /usr/bin/agx.new /usr/bin/agx
+mv /usr/libexec/agx-display-devices.new /usr/libexec/agx-display-devices
 mv /usr/libexec/agx-display-access.new /usr/libexec/agx-display-access
 gui_hash=$(sha256sum /var/lib/agx-data/agx-gui/agx-gui.new | cut -c1-16)
 gui=/var/lib/agx-data/agx-gui/agx-gui.$gui_hash

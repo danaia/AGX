@@ -3,6 +3,11 @@
 # so device nodes appear root-only. Let the agx-admin group use the display
 # and input devices, including keyboards and mice plugged in later, so the
 # desktop (agx-gui) runs without root.
+# The native helper forwards kernel input hotplug events only after permissions
+# are set, allowing libudev-zero/libinput to attach late or reconnected devices.
+if test -x /usr/libexec/agx-display-devices; then
+    exec /usr/libexec/agx-display-devices
+fi
 GROUP=agx-admin
 while :; do
     find /dev/dri /dev/input /dev/fb0 /dev/console -type c \

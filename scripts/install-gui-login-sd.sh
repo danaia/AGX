@@ -6,6 +6,7 @@ SD_ROOT=${1:?Pass the mounted AGX root filesystem}
 SD_BOOT=${2:?Pass the mounted AGX boot filesystem}
 GUI="$ROOT/.cache/agx-gui-final.stripped"
 INIT="$ROOT/.cache/cargo-target/aarch64-unknown-linux-gnu/release/agx-init"
+DEVICES="$ROOT/.cache/cargo-target/aarch64-unknown-linux-gnu/release/agx-display-devices"
 [[ $(id -u) == 0 ]] || { echo 'Administrator access is required for the SD filesystem.' >&2; exit 1; }
 mountpoint -q "$SD_ROOT" && mountpoint -q "$SD_BOOT"
 [[ $(cat "$SD_ROOT/etc/hostname") == agx ]]
@@ -14,7 +15,7 @@ grep -q '^dtoverlay=vc4-kms-v3d' "$SD_BOOT/config.txt"
 [[ -s "$SD_ROOT/etc/agx/data-volume.uuid" && -x "$SD_ROOT/etc/init.d/S12agx-data" ]]
 [[ -f "$SD_ROOT/lib/libgcc_s.so.1" && ! -L "$SD_ROOT/lib/libgcc_s.so.1" ]]
 cmp "$INIT" "$SD_ROOT/usr/sbin/agx-init"
-[[ -f "$GUI" && ! -L "$GUI" ]]
+[[ -f "$GUI" && ! -L "$GUI" && -x "$DEVICES" ]]
 readelf -h "$GUI" | grep -q 'Machine:.*AArch64'
 gui_bytes=$(stat -c %s "$GUI")
 free_kb=$(df -Pk "$SD_ROOT" | awk 'NR == 2 { print $4 }')
@@ -46,17 +47,18 @@ if [[ -f "$config" ]]; then
 else
     : > "$config.sd-new"
 fi
-printf '%s\n' 'SLINT_BACKEND=linuxkms-femtovg' >> "$config.sd-new"
+printf '%s\n' 'SLINT_BACKEND=auto' >> "$config.sd-new"
 chmod 600 "$config.sd-new"
 mv -f "$config.sd-new" "$config"
 install -D -m 644 "$ROOT/buildroot/board/agx/rootfs-overlay/etc/modules-load.d/agx-display.conf" \
     "$SD_ROOT/etc/modules-load.d/agx-display.conf"
+install -D -m 755 "$DEVICES" "$SD_ROOT/usr/libexec/agx-display-devices"
 install -D -m 755 "$ROOT/buildroot/board/agx/rootfs-overlay/usr/libexec/agx-display-access" \
     "$SD_ROOT/usr/libexec/agx-display-access"
 cmp "$GUI" "$SD_ROOT/usr/bin/agx-gui"
 [[ ! -L "$SD_ROOT/usr/bin/agx-gui" ]]
 [[ "$before" == "$(fingerprint)" ]]
 sync
-echo 'Verified: SD boots Rust init, which launches graphical login directly on HDMI.'
+echo 'Verified: SD boots Rust init; graphical login selects HDMI or enabled VNC at startup.'
 echo 'GUI executable is on SD; existing GPU runtime libraries are on the Pi NVMe volume.'
 echo 'Account, hostname and Wi-Fi configuration checksums are unchanged.'

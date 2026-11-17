@@ -1,8 +1,10 @@
-//! Explicit renderer selection keeps GPU/software comparisons honest and cursors singular.
+//! Startup display selection, explicit renderer overrides and cursor ownership.
 #[cfg(any(feature = "kms", test))]
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(any(feature = "kms", test))]
+mod detection;
 mod virtual_display;
 
 pub const ENVIRONMENT: [&str; 5] = [
@@ -35,14 +37,45 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
             Err(error) => return Err(error.into()),
         }
     }
-    let backend = std::env::var("SLINT_BACKEND").unwrap_or_else(|_| {
+    let requested = std::env::var("SLINT_BACKEND").unwrap_or_else(|_| {
         if cfg!(feature = "kms") {
-            "linuxkms-femtovg"
+            "auto"
         } else {
             "winit-femtovg"
         }
         .into()
     });
+    let backend = if requested == "auto" {
+        #[cfg(feature = "kms")]
+        {
+            let output = detection::at_startup()?;
+            let selected = if let Some(output) = output {
+                eprintln!(
+                    "agx-gui: auto display: {output} connected; using HDMI with VNC mirroring when enabled"
+                );
+                // Resolve once before threads start. The login exec inherits the
+                // concrete backend/output so signing in cannot change display modes.
+                unsafe {
+                    std::env::set_var("SLINT_DRM_OUTPUT", output);
+                }
+                "linuxkms-femtovg"
+            } else {
+                eprintln!("agx-gui: auto display: no connected HDMI monitor; using resizable VNC");
+                "vnc-software"
+            };
+            selected.to_owned()
+        }
+        #[cfg(not(feature = "kms"))]
+        {
+            "winit-femtovg".to_owned()
+        }
+    } else {
+        requested
+    };
+    // Slint and the VNC server also consult this variable directly.
+    unsafe {
+        std::env::set_var("SLINT_BACKEND", &backend);
+    }
     if backend == "vnc-software" {
         if !matches!(std::env::var(crate::remote::ENV).as_deref(), Ok(value) if !matches!(value, "" | "off" | "0"))
         {
