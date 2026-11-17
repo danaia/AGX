@@ -201,7 +201,7 @@ impl App {
         self.refresh(ui);
         self.terminal_action(ui, 10, 0);
     }
-    pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String) {
+    pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String, project: Option<String>) {
         if prompt.trim().is_empty() {
             return;
         }
@@ -220,7 +220,7 @@ impl App {
             .unwrap_or(Rect::new(0., 0., 800., 500.));
         let (_, size) = geometry(rect, global.get_font_size(), global.get_search_visible());
         self.terminal.attempted = true;
-        match Session::agent(size, prompt) {
+        match Session::agent(size, prompt, project) {
             Ok(session) => {
                 self.terminal.sessions.push(session);
                 self.terminal.active = self.terminal.sessions.len() - 1;

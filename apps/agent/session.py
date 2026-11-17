@@ -8,8 +8,9 @@ import time
 
 from messaging import ROLES, database
 from models import active, active_selections
+from scope import OS_SOURCE, scope_text, validate_project
 
-SOURCE = Path("/var/lib/agx-data/angi-dev")
+SOURCE = OS_SOURCE
 ASSETS = Path("/usr/share/agx/agent")
 
 
@@ -59,13 +60,14 @@ def start_server(name, run):
     raise RuntimeError(f"Herdr did not start. Inspect {run / 'server.log'}")
 
 
-def role_config():
+def role_config(project=None):
+    """Agent profiles for a run: the operating system when project is None, else that project folder."""
     choices = active_selections()
     profiles = {}
     for role in ROLES:
         profiles[f"angi-{role}"] = {
             "description": f"ANGI {role}", "mode": "primary",
-            "prompt": (ASSETS / f"profiles/{role}.md").read_text(),
+            "prompt": (ASSETS / f"profiles/{role}.md").read_text() + "\n" + scope_text(project),
             "permission": {"*": "allow", "task": "deny"},
         }
         if role in choices:
@@ -79,23 +81,29 @@ def role_config():
     return json.dumps(config)
 
 
-def launch(state, brief):
-    if not (SOURCE / "Cargo.toml").is_file():
-        raise RuntimeError("Native source checkout is missing. Install the ANGI development SDK first.")
+def launch(state, brief, project=None):
+    if project is None:
+        if not (SOURCE / "Cargo.toml").is_file():
+            raise RuntimeError("Native source checkout is missing. Install the ANGI development SDK first.")
+        workdir, label = SOURCE, "ANGI workshop"
+    else:
+        workdir = validate_project(project)
+        label = f"Project: {workdir.name}"
     configure()
     name = "angi-" + time.strftime("%Y%m%d-%H%M%S") + f"-{os.getpid()}"
     run = state / name
     run.mkdir(mode=0o700)
     (run / "brief.txt").write_text(brief + "\n")
-    os.environ["OPENCODE_CONFIG_CONTENT"] = role_config()
+    config = role_config(workdir if project is not None else None)
+    os.environ["OPENCODE_CONFIG_CONTENT"] = config
     start_server(name, run)
-    workspace = herdr(name, "workspace", "create", "--cwd", str(SOURCE), "--label", "ANGI workshop", "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=orchestrator", "--env", "OPENCODE_CONFIG_CONTENT=" + role_config(), "--no-focus")
+    workspace = herdr(name, "workspace", "create", "--cwd", str(workdir), "--label", label, "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=orchestrator", "--env", "OPENCODE_CONFIG_CONTENT=" + config, "--no-focus")
     root = workspace["root_pane"]["pane_id"]
     # Split panes inherit the server environment, not their parent terminal's
     # overrides. Carry the run explicitly so every peer can address its mailbox.
-    right = herdr(name, "pane", "split", root, "--direction", "right", "--ratio", "0.5", "--cwd", str(SOURCE), "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=builder", "--no-focus")["pane"]["pane_id"]
-    bottom = herdr(name, "pane", "split", right, "--direction", "down", "--cwd", str(SOURCE), "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=tester", "--no-focus")["pane"]["pane_id"]
-    manifest = {"session": name, "panes": dict(zip(ROLES, (root, right, bottom))), "brief": brief}
+    right = herdr(name, "pane", "split", root, "--direction", "right", "--ratio", "0.5", "--cwd", str(workdir), "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=builder", "--no-focus")["pane"]["pane_id"]
+    bottom = herdr(name, "pane", "split", right, "--direction", "down", "--cwd", str(workdir), "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=tester", "--no-focus")["pane"]["pane_id"]
+    manifest = {"session": name, "panes": dict(zip(ROLES, (root, right, bottom))), "brief": brief, "mode": "os" if project is None else "project", "project": None if project is None else str(workdir)}
     (run / "run.json").write_text(json.dumps(manifest, indent=2))
     temporary = state / f"current.{os.getpid()}.new"
     temporary.write_text(name)
@@ -126,9 +134,12 @@ def selected(state):
 
 def resume(state):
     configure()
-    os.environ["OPENCODE_CONFIG_CONTENT"] = role_config()
     run = selected(state)
-    name = json.loads((run / "run.json").read_text())["session"]
+    manifest = json.loads((run / "run.json").read_text())
+    # A resumed run keeps the scope it started with; runs from before project mode are OS runs.
+    project = validate_project(manifest["project"]) if manifest.get("project") else None
+    os.environ["OPENCODE_CONFIG_CONTENT"] = role_config(project)
+    name = manifest["session"]
     start_server(name, run)
     ensure_dispatcher(run)
     os.execvp("herdr", ["herdr", "--session", name])

@@ -95,10 +95,11 @@ pub enum Kind {
     Terminal,
     Settings,
     AgentAngie,
+    Files,
     TerminalWindow(u32),
 }
 impl Kind {
-    pub const ALL: [Kind; 11] = [
+    pub const ALL: [Kind; 12] = [
         Kind::Overview,
         Kind::Cpu,
         Kind::Memory,
@@ -110,13 +111,14 @@ impl Kind {
         Kind::Terminal,
         Kind::Settings,
         Kind::AgentAngie,
+        Kind::Files,
     ];
     pub fn is_terminal(self) -> bool {
         matches!(self, Self::Terminal | Self::TerminalWindow(_))
     }
     pub fn index(self) -> usize {
         match self {
-            Self::TerminalWindow(id) => 11 + id as usize,
+            Self::TerminalWindow(id) => Self::ALL.len() + id as usize,
             other => Self::ALL.iter().position(|kind| *kind == other).unwrap(),
         }
     }
@@ -133,6 +135,7 @@ impl Kind {
             Kind::Terminal | Kind::TerminalWindow(_) => "Terminal",
             Kind::Settings => "Settings",
             Kind::AgentAngie => "Agent Angie",
+            Kind::Files => "Files",
         }
     }
 }

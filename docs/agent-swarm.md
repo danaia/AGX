@@ -97,6 +97,46 @@ Upstream: [Herdr 0.9.5](https://github.com/herdrdev/herdr/releases/tag/v0.9.5)
 and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
 
 
+## What Agent Angie builds: OS or Project
+
+A switch under the prompt chooses the scope of a run; hovering either side explains it.
+
+* **OS** (the default) extends the operating system. Herdr's agents work strictly on ANGI itself:
+  its source in `/var/lib/agx-data/angi-dev`, services and desktop. They may use `angi-build` and,
+  for installations that need root, `angi-root`.
+* **Project** builds the user's own software. A **Select folder…** button appears for the project
+  folder; Start stays disabled until one is chosen. All three Herdr panes start in that folder,
+  and the agents are told to work only inside it, to leave the operating system and its source
+  alone, and not to use `angi-root`.
+
+The scope is the folder the panes start in plus a scope block appended to each role's prompt
+(`apps/agent/scope.py`); the role profiles themselves are scope-neutral. It steers the agents but is
+**not a sandbox**: they run as the desktop account with its permissions. Runs record their mode in
+`run.json`, so resuming a run restores its scope, and runs from before project mode resume as OS runs.
+
+The agent runtime is the only judge of a folder (`agent project PATH` prints one JSON line; launch
+checks again). It accepts a folder you own and can change inside your home or on the data volume
+(including `users/<you>`), and refuses: ANGI's own source (use OS mode), system and credential
+folders under the data volume, your home or the data volume themselves, hidden or settings
+folders, anything outside those locations, and links that lead out of them.
+
+### Choosing the folder with ANGI Files
+
+The project folder enters through two hooks on the `AgentScope` global in `ui/agent-scope.slint`:
+
+* `choose-project()`: the user asked to pick a folder. `agent_project.rs` opens ANGI Files'
+  folder picker, a modal overlay (`ui/files-picker.slint`) over the desktop, starting in the
+  current project or your home folder.
+* `use-project(path)`: a folder was chosen. The picker's "Choose" button calls it with the selected
+  folder, or the folder being viewed when nothing is selected. The runtime validates it.
+
+An accepted folder closes the picker and appears in the prompt. A rejected one keeps the picker
+open and shows the runtime's reason beside the buttons, so the user can pick another without
+starting over. The picker is the full file browser limited to folders (new folder, rename, trash,
+search and the places sidebar all work), so the rules above stay in `scope.py` and the picker never
+duplicates them. Remembering the last project is not stored today (the choice resets with the
+desktop).
+
 ## Provider setup on workspace 2
 
 The three cards below the build prompt open provider setup panels. OpenAI uses

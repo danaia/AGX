@@ -90,8 +90,7 @@ export component ProviderCards inherits HorizontalLayout {
             padding: 18px; spacing: 10px; alignment: start;
             HorizontalLayout {
                 height: 22px;
-                Text { text: title; color: Theme.fg-bright; font-size: 16px; font-weight: 600; }
-                Rectangle { horizontal-stretch: 1; }
+                Text { text: title; color: Theme.fg-bright; font-size: 16px; font-weight: 600; overflow: elide; horizontal-stretch: 1; }
                 if in-use: ActiveLabel { }
             }
             Text { text: index == 0 ? "Connect Local LLM Server" : index == 1 ? "Sign in with ChatGPT" : "Local model over Tailscale"; color: Theme.fg-dim; font-size: 11px; wrap: word-wrap; }
@@ -106,6 +105,8 @@ export component ProviderCards inherits HorizontalLayout {
         }
         // Right footer: the models saved for this service.
         ModelFooter {
+            // Too narrow (the drawer is open, or the window is tiled): the rows would cover the text.
+            visible: parent.width >= 330px;
             width: min(parent.width - 36px, 240px); height: self.preferred-height;
             x: parent.width - self.width - 18px; y: parent.height - self.height - 14px;
             models: AgentProviders.card-models[index]; in-use: in-use;

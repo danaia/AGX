@@ -1,0 +1,426 @@
+// Native file browser. One component draws both the Files window and the folder picker; each is a
+// numbered "pane" whose state Rust owns (src/files). Rows are virtualized by ListView.
+import { Theme } from "data.slint";
+import { Button, LineEdit, ListView, ScrollView } from "std-widgets.slint";
+
+export struct FileRow { name: string, glyph: string, tone: int, size: string, modified: string, kind: string, selected: bool, cursor: bool, dir: bool, dim: bool }
+export struct Crumb { label: string, path: string }
+export struct PlaceRow { label: string, glyph: string, path: string, section: int, active: bool }
+export struct PaneState {
+    rows: [FileRow], path: string, crumbs: [Crumb], places: [PlaceRow],
+    can-back: bool, can-forward: bool, can-up: bool,
+    sort-key: int, sort-ascending: bool, show-hidden: bool, searching: string,
+    loading: bool, error: string, status: string, busy: string,
+    prompt-kind: int, prompt-title: string, prompt-text: string, prompt-serial: int,
+    summary: string, selected: int, single-folder: bool,
+    can-paste: bool, can-undo: bool, can-redo: bool,
+    cursor: int, cursor-serial: int, empty-text: string,
+}
+
+// Pane 0 is the Files window, pane 1 the folder picker. Callbacks carry the pane number.
+export global Files {
+    in property <PaneState> browser;
+    in property <PaneState> chooser;
+    in-out property <bool> chooser-open: false;
+    in-out property <string> chooser-error;
+    in-out property <bool> chooser-checking: false;
+    callback command(int, string, string);
+    callback select(int, int, bool, bool);
+    callback activate(int, int);
+    callback key(int, string, bool, bool, bool, int) -> bool;
+    callback activated();
+    callback open-picker(string);
+}
+
+export component Glyph inherits Text {
+    in property <int> tone;
+    font-size: 15px;
+    horizontal-alignment: center;
+    vertical-alignment: center;
+    color: tone == 0 ? Theme.accent : tone == 2 ? Theme.magenta : tone == 3 ? Theme.green : tone == 4 ? Theme.yellow : tone == 1 ? Theme.fg-bright : Theme.fg-dim;
+}
+
+component ToolButton inherits Rectangle {
+    in property <string> glyph;
+    in property <string> hint;
+    in property <bool> enabled: true;
+    in property <bool> active: false;
+    callback clicked;
+    width: 30px; height: 28px; border-radius: 5px;
+    background: !enabled ? transparent : touch.pressed ? Theme.muted : (touch.has-hover || active) ? Theme.bg-light : transparent;
+    accessible-role: button;
+    accessible-label: hint;
+    Text { text: glyph; font-size: 15px; color: !root.enabled ? Theme.muted : root.active ? Theme.accent : Theme.fg-bright; horizontal-alignment: center; vertical-alignment: center; }
+    touch := TouchArea { enabled: root.enabled; mouse-cursor: MouseCursor.pointer; clicked => { root.clicked(); } }
+}
+
+component Sep inherits Rectangle { width: 1px; height: 18px; background: Theme.muted; }
+
+component Header inherits Rectangle {
+    in property <string> label;
+    in property <bool> current;
+    in property <bool> ascending;
+    in property <TextHorizontalAlignment> align: left;
+    callback clicked;
+    background: touch.has-hover ? Theme.bg-light : transparent;
+    Text {
+        x: 4px; width: parent.width - 8px; vertical-alignment: center; overflow: elide; font-size: 11px; font-weight: 700;
+        text: root.label + (root.current ? (root.ascending ? " ▲" : " ▼") : "");
+        color: root.current ? Theme.accent : Theme.fg-dim;
+        horizontal-alignment: root.align;
+    }
+    touch := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { root.clicked(); } }
+}
+
+export component FileBrowser inherits Rectangle {
+    in property <int> pane;
+    in property <PaneState> s;
+    in property <bool> picker: false;
+    in property <bool> active: true;
+    callback pointer-moved(length, length);
+    callback dismiss();
+    // Escape in the picker closes it; in the window nothing is left to dismiss.
+    property <length> row-h: 26px;
+    property <bool> wide: root.width > 760px;
+    property <bool> show-sidebar: root.width > 520px;
+    property <length> sidebar-w: root.show-sidebar ? 176px : 0px;
+    property <bool> editing-path: false;
+    property <bool> menu-open: false;
+    property <length> menu-x;
+    property <length> menu-y;
+    property <bool> menu-row: false;
+    public function focus-list() { keys.focus(); }
+    background: Theme.bg-dark;
+    clip: true;
+    forward-focus: keys;
+
+    function run(name: string) { Files.command(root.pane, name, ""); root.menu-open = false; keys.focus(); }
+    function reveal() {
+        if (root.s.cursor < 0) { return; }
+        let top = root.s.cursor * root.row-h;
+        let view = -list.content-y;
+        if (top < view) { list.content-y = -top; }
+        else if (top + root.row-h > view + list.visible-height) { list.content-y = -(top + root.row-h - list.visible-height); }
+    }
+    property <int> cursor-serial: root.s.cursor-serial;
+    property <string> location: root.s.path;
+    property <int> prompt-serial: root.s.prompt-serial;
+    changed cursor-serial => { root.reveal(); }
+    changed location => { root.editing-path = false; filter.text = ""; }
+    changed prompt-serial => {
+        if (root.s.prompt-kind >= 1 && root.s.prompt-kind <= 3) { prompt-edit.text = root.s.prompt-text; prompt-edit.focus(); prompt-edit.select-all(); }
+        else { keys.focus(); }
+    }
+    changed active => { if (root.active) { keys.focus(); } }
+    init => { if (root.active) { keys.focus(); } }
+
+    VerticalLayout {
+        // Toolbar: history, location, view and search.
+        Rectangle {
+            height: 38px; background: Theme.bg;
+            HorizontalLayout {
+                padding-left: 8px; padding-right: 8px; padding-top: 5px; padding-bottom: 5px; spacing: 2px;
+                ToolButton { glyph: "󰁍"; hint: "Back"; enabled: root.s.can-back; clicked => { root.run("back"); } }
+                ToolButton { glyph: "󰁔"; hint: "Forward"; enabled: root.s.can-forward; clicked => { root.run("forward"); } }
+                ToolButton { glyph: "󰁝"; hint: "Up one folder"; enabled: root.s.can-up; clicked => { root.run("up"); } }
+                ToolButton { glyph: "󰑐"; hint: "Refresh"; clicked => { root.run("refresh"); } }
+                // Location: breadcrumbs, or a path entry after clicking the empty part or pressing Ctrl+L.
+                Rectangle {
+                    horizontal-stretch: 1; background: Theme.bg-dark; border-radius: 5px; border-width: 1px;
+                    border-color: root.editing-path ? Theme.accent : Theme.muted; clip: true;
+                    HorizontalLayout {
+                        visible: !root.editing-path;
+                        padding-left: 6px; spacing: 0px;
+                        for crumb[i] in root.s.crumbs: Rectangle {
+                            width: label.preferred-width + (i == 0 ? 14px : 22px);
+                            background: crumb-touch.has-hover ? Theme.bg-light : transparent;
+                            label := Text {
+                                x: i == 0 ? 7px : 8px;
+                                text: crumb.label; vertical-alignment: center; font-size: 12px;
+                                color: i == root.s.crumbs.length - 1 ? Theme.fg-bright : Theme.fg;
+                                font-weight: i == root.s.crumbs.length - 1 ? 700 : 400;
+                            }
+                            if i > 0: Text { x: 0px; width: 8px; text: "›"; color: Theme.fg-dim; vertical-alignment: center; font-size: 12px; }
+                            crumb-touch := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { Files.command(root.pane, "navigate", crumb.path); keys.focus(); } }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.editing-path = true; path-edit.text = root.s.path; path-edit.focus(); path-edit.select-all(); } }
+                        }
+                    }
+                    path-edit := LineEdit {
+                        visible: root.editing-path;
+                        font-size: 12px;
+                        accepted => { root.editing-path = false; Files.command(root.pane, "navigate", self.text); keys.focus(); }
+                        key-pressed(e) => {
+                            if (e.text == Key.Escape) { root.editing-path = false; keys.focus(); return accept; }
+                            reject
+                        }
+                    }
+                }
+                Rectangle { width: 4px; }
+                filter-box := Rectangle {
+                    width: root.wide ? 210px : 160px; background: Theme.bg-dark; border-radius: 5px; border-width: 1px;
+                    border-color: filter.has-focus ? Theme.accent : Theme.muted;
+                    HorizontalLayout {
+                        padding-left: 8px; spacing: 4px;
+                        Text { text: root.s.searching != "" ? "󰍉" : "󰈲"; color: root.s.searching != "" ? Theme.accent : Theme.fg-dim; vertical-alignment: center; font-size: 13px; }
+                        filter := LineEdit {
+                            font-size: 12px;
+                            placeholder-text: "Filter or search…";
+                            edited(text) => { Files.command(root.pane, "filter", text); }
+                            accepted => { if (self.text != "") { Files.command(root.pane, "search", self.text); } keys.focus(); }
+                            key-pressed(e) => {
+                                if (e.text == Key.Escape) {
+                                    if (self.text != "") { self.text = ""; Files.command(root.pane, "filter", ""); }
+                                    else { Files.command(root.pane, "clear-search", ""); }
+                                    keys.focus();
+                                    return accept;
+                                }
+                                reject
+                            }
+                        }
+                    }
+                }
+                ToolButton { glyph: root.s.show-hidden ? "\u{f06d0}" : "\u{f06d1}"; hint: "Show hidden files"; active: root.s.show-hidden; clicked => { root.run("hidden"); } }
+            }
+        }
+        // Action bar.
+        Rectangle {
+            height: 34px; background: Theme.bg; border-width: 0px;
+            Rectangle { y: 0px; height: 1px; background: Theme.bg-light; }
+            HorizontalLayout {
+                padding-left: 8px; padding-right: 8px; padding-top: 3px; padding-bottom: 3px; spacing: 2px;
+                ToolButton { glyph: "\u{f0257}"; hint: "New folder (Ctrl+Shift+N)"; enabled: root.s.searching == ""; clicked => { root.run("new-folder"); } }
+                if !root.picker: ToolButton { glyph: "\u{f0224}"; hint: "New file"; enabled: root.s.searching == ""; clicked => { root.run("new-file"); } }
+                Sep { }
+                if !root.picker: ToolButton { glyph: "󰆐"; hint: "Cut (Ctrl+X)"; enabled: root.s.selected > 0; clicked => { root.run("cut"); } }
+                if !root.picker: ToolButton { glyph: "󰆏"; hint: "Copy (Ctrl+C)"; enabled: root.s.selected > 0; clicked => { root.run("copy"); } }
+                if !root.picker: ToolButton { glyph: "󰆒"; hint: "Paste (Ctrl+V)"; enabled: root.s.can-paste; clicked => { root.run("paste"); } }
+                if !root.picker: Sep { }
+                ToolButton { glyph: "󰏫"; hint: "Rename (F2)"; enabled: root.s.selected == 1; clicked => { root.run("rename"); } }
+                ToolButton { glyph: "󰩺"; hint: "Move to Trash (Delete)"; enabled: root.s.selected > 0; clicked => { root.run("trash"); } }
+                Sep { }
+                ToolButton { glyph: "󰕌"; hint: "Undo (Ctrl+Z)"; enabled: root.s.can-undo; clicked => { root.run("undo"); } }
+                ToolButton { glyph: "󰑎"; hint: "Redo (Ctrl+Shift+Z)"; enabled: root.s.can-redo; clicked => { root.run("redo"); } }
+                if !root.picker: Sep { }
+                if !root.picker: ToolButton { glyph: "󰆍"; hint: "Open a terminal here"; clicked => { root.run("terminal"); } }
+                Rectangle { horizontal-stretch: 1; }
+                Text { text: root.s.busy != "" ? root.s.busy : root.s.loading ? "Loading…" : ""; color: Theme.yellow; font-size: 11px; vertical-alignment: center; overflow: elide; max-width: root.width * 0.4; }
+            }
+        }
+        // Rename / create / delete prompt.
+        Rectangle {
+            height: root.s.prompt-kind != 0 ? 42px : 0px; visible: root.s.prompt-kind != 0; background: root.s.prompt-kind == 4 ? #3a1f2a : Theme.bg-light;
+            HorizontalLayout {
+                padding-left: 10px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px; spacing: 8px;
+                Text {
+                    text: root.s.prompt-title; vertical-alignment: center; font-size: 12px; font-weight: 700;
+                    color: root.s.prompt-kind == 4 ? Theme.red : Theme.accent;
+                    horizontal-stretch: root.s.prompt-kind == 4 ? 1 : 0; overflow: elide;
+                }
+                prompt-edit := LineEdit {
+                    visible: root.s.prompt-kind != 4; max-width: root.s.prompt-kind == 4 ? 0px : 100000px;
+                    horizontal-stretch: 1; font-size: 12px;
+                    accepted => { Files.command(root.pane, "prompt-accept", self.text); }
+                    key-pressed(e) => {
+                        if (e.text == Key.Escape) { Files.command(root.pane, "prompt-cancel", ""); return accept; }
+                        reject
+                    }
+                }
+                Button { text: "Cancel"; clicked => { Files.command(root.pane, "prompt-cancel", ""); } }
+                Button { text: root.s.prompt-kind == 4 ? "Delete" : "OK"; primary: true; clicked => { Files.command(root.pane, "prompt-accept", root.s.prompt-kind == 4 ? "" : prompt-edit.text); } }
+            }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            // Sidebar.
+            if root.show-sidebar: Rectangle {
+                width: root.sidebar-w; background: Theme.bg;
+                ScrollView {
+                    VerticalLayout {
+                        padding: 6px; spacing: 1px; alignment: start;
+                        for place[i] in root.s.places: Rectangle {
+                            height: place.section != (i > 0 ? root.s.places[i - 1].section : place.section) ? 40px : 28px;
+                            VerticalLayout {
+                                alignment: end;
+                                if place.section != (i > 0 ? root.s.places[i - 1].section : place.section): Rectangle {
+                                    height: 12px;
+                                    Rectangle { y: 5px; height: 1px; background: Theme.bg-light; }
+                                }
+                                Rectangle {
+                                    height: 28px; border-radius: 5px;
+                                    background: place.active ? #7aa2f733 : place-touch.has-hover ? Theme.bg-light : transparent;
+                                    HorizontalLayout {
+                                        padding-left: 8px; spacing: 8px;
+                                        Text { text: place.glyph; width: 18px; font-size: 14px; color: place.active ? Theme.accent : Theme.fg; vertical-alignment: center; horizontal-alignment: center; }
+                                        Text { text: place.label; font-size: 12px; color: place.active ? Theme.fg-bright : Theme.fg; font-weight: place.active ? 700 : 400; vertical-alignment: center; overflow: elide; }
+                                    }
+                                    place-touch := TouchArea { mouse-cursor: MouseCursor.pointer; clicked => { Files.command(root.pane, "navigate", place.path); keys.focus(); } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // File list.
+            VerticalLayout {
+                horizontal-stretch: 1;
+                Rectangle {
+                    height: 24px; background: Theme.bg;
+                    HorizontalLayout {
+                        padding-left: 36px; padding-right: 14px;
+                        Header { label: "Name"; current: root.s.sort-key == 0; ascending: root.s.sort-ascending; horizontal-stretch: 1; clicked => { Files.command(root.pane, "sort", "name"); } }
+                        if !root.picker: Header { label: "Size"; width: 84px; align: right; current: root.s.sort-key == 1; ascending: root.s.sort-ascending; clicked => { Files.command(root.pane, "sort", "size"); } }
+                        Header { label: "Modified"; width: 140px; align: right; current: root.s.sort-key == 2; ascending: root.s.sort-ascending; clicked => { Files.command(root.pane, "sort", "modified"); } }
+                        if root.wide && !root.picker: Header { label: "Type"; width: 110px; align: right; current: root.s.sort-key == 3; ascending: root.s.sort-ascending; clicked => { Files.command(root.pane, "sort", "type"); } }
+                    }
+                }
+                Rectangle {
+                    vertical-stretch: 1; clip: true;
+                    keys := FocusScope {
+                        key-pressed(e) => {
+                            if (e.modifiers.meta) { return reject; }
+                            if (e.modifiers.control && (e.text == "f" || e.text == "\u{6}")) { filter.focus(); return accept; }
+                            if (e.modifiers.control && (e.text == "l" || e.text == "\u{c}")) {
+                                root.editing-path = true; path-edit.text = root.s.path; path-edit.focus(); path-edit.select-all();
+                                return accept;
+                            }
+                            let name = e.text == Key.UpArrow ? "up" : e.text == Key.DownArrow ? "down" : e.text == Key.LeftArrow ? "left" : e.text == Key.RightArrow ? "right"
+                                : e.text == Key.PageUp ? "pageup" : e.text == Key.PageDown ? "pagedown" : e.text == Key.Home ? "home" : e.text == Key.End ? "end"
+                                : e.text == Key.Return ? "enter" : e.text == Key.Escape ? "escape" : e.text == Key.Backspace ? "backspace" : e.text == Key.Delete ? "delete"
+                                : e.text == Key.F2 ? "f2" : e.text == Key.F5 ? "f5" : e.text;
+                            if (root.menu-open) { root.menu-open = false; if (e.text == Key.Escape) { return accept; } }
+                            if (Files.key(root.pane, name, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, Math.round(list.visible-height / root.row-h) - 1)) { return accept; }
+                            if (e.text == Key.Escape && root.picker) { root.dismiss(); return accept; }
+                            reject
+                        }
+                        list := ListView {
+                            width: parent.width; height: parent.height;
+                            for row[i] in root.s.rows: Rectangle {
+                                height: root.row-h;
+                                background: row.selected ? #7aa2f740 : row-touch.has-hover ? #24283b99 : transparent;
+                                if row.cursor && keys.has-focus: Rectangle { border-width: 1px; border-color: Theme.accent; }
+                                HorizontalLayout {
+                                    padding-left: 8px; padding-right: 14px; spacing: 8px;
+                                    Glyph { text: row.glyph; tone: row.tone; width: 20px; opacity: row.dim ? 0.5 : 1; }
+                                    Text { text: row.name; horizontal-stretch: 1; vertical-alignment: center; overflow: elide; font-size: 13px; color: row.selected ? Theme.fg-bright : row.dim ? Theme.fg-dim : Theme.fg; font-weight: row.dir ? 600 : 400; }
+                                    if !root.picker: Text { text: row.size; width: 84px; horizontal-alignment: right; vertical-alignment: center; font-size: 12px; color: Theme.fg-dim; }
+                                    Text { text: row.modified; width: 140px; vertical-alignment: center; font-size: 12px; color: Theme.fg-dim; horizontal-alignment: right; }
+                                    if root.wide && !root.picker: Text { text: row.kind; width: 110px; vertical-alignment: center; font-size: 12px; color: Theme.fg-dim; horizontal-alignment: right; overflow: elide; }
+                                }
+                                row-touch := TouchArea {
+                                    mouse-cursor: MouseCursor.pointer;
+                                    pointer-event(e) => {
+                                        root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                                        if (e.kind == PointerEventKind.down) {
+                                            keys.focus();
+                                            Files.activated();
+                                            if (e.button == PointerEventButton.right) {
+                                                if (!row.selected) { Files.select(root.pane, i, false, false); }
+                                                root.menu-row = true;
+                                                root.menu-x = self.absolute-position.x - root.absolute-position.x + self.mouse-x;
+                                                root.menu-y = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
+                                                root.menu-open = true;
+                                            } else if (e.button == PointerEventButton.left) {
+                                                root.menu-open = false;
+                                                Files.select(root.pane, i, e.modifiers.control, e.modifiers.shift);
+                                            }
+                                        }
+                                    }
+                                    double-clicked => { Files.activate(root.pane, i); }
+                                }
+                            }
+                        }
+                        // Empty folder, loading or error message.
+                        if root.s.rows.length == 0: Text {
+                            width: parent.width - 40px; x: 20px; y: 36px; horizontal-alignment: center; wrap: word-wrap; font-size: 13px;
+                            text: root.s.error != "" ? root.s.error : root.s.empty-text;
+                            color: root.s.error != "" ? Theme.red : Theme.fg-dim;
+                        }
+                        // Clicks in the blank area clear the selection; right-click opens the folder menu.
+                        TouchArea {
+                            y: min(root.s.rows.length * root.row-h + list.content-y, parent.height); height: max(0px, parent.height - self.y);
+                            pointer-event(e) => {
+                                root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                                if (e.kind == PointerEventKind.down) {
+                                    keys.focus();
+                                    Files.activated();
+                                    if (e.button == PointerEventButton.right) {
+                                        root.menu-row = false;
+                                        root.menu-x = self.absolute-position.x - root.absolute-position.x + self.mouse-x;
+                                        root.menu-y = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
+                                        root.menu-open = true;
+                                    } else { root.menu-open = false; Files.command(root.pane, "deselect", ""); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Status bar.
+        Rectangle {
+            height: 26px; background: Theme.bg;
+            Rectangle { y: 0px; height: 1px; background: Theme.bg-light; }
+            Text {
+                x: 10px; width: parent.width - 20px; vertical-alignment: center; overflow: elide; font-size: 11px;
+                text: root.s.status != "" ? root.s.status : root.s.summary;
+                color: root.s.status != "" ? Theme.yellow : Theme.fg-dim;
+            }
+        }
+    }
+
+    // Context menu, drawn inside the pane so it clips and stacks with its window.
+    if root.menu-open: Rectangle {
+        property <[{label: string, command: string, enabled: bool, rule: bool}]> items: root.menu-row ? [
+            { label: root.s.single-folder ? "Open" : "", command: root.s.single-folder ? "open" : "", enabled: root.s.single-folder, rule: false },
+            { label: "Open a terminal here", command: "terminal", enabled: true, rule: false },
+            { label: "Cut", command: "cut", enabled: !root.picker, rule: true },
+            { label: "Copy", command: "copy", enabled: !root.picker, rule: false },
+            { label: "Rename", command: "rename", enabled: root.s.selected == 1, rule: true },
+            { label: "Move to Trash", command: "trash", enabled: true, rule: false },
+            { label: "Delete permanently…", command: "delete", enabled: true, rule: false },
+        ] : [
+            { label: "New folder", command: "new-folder", enabled: root.s.searching == "", rule: false },
+            { label: "New file", command: "new-file", enabled: root.s.searching == "" && !root.picker, rule: false },
+            { label: "Paste", command: "paste", enabled: root.s.can-paste, rule: true },
+            { label: "Select all", command: "select-all", enabled: true, rule: false },
+            { label: "Show hidden files", command: "hidden", enabled: true, rule: true },
+            { label: "Open a terminal here", command: "terminal", enabled: true, rule: false },
+            { label: "Refresh", command: "refresh", enabled: true, rule: false },
+        ];
+        x: max(4px, min(root.menu-x, root.width - self.width - 4px));
+        y: max(4px, min(root.menu-y, root.height - self.height - 4px));
+        width: 210px; height: menu-layout.preferred-height;
+        background: Theme.bg; border-width: 1px; border-color: Theme.muted; border-radius: 6px;
+        TouchArea { }
+        menu-layout := VerticalLayout {
+            padding: 6px; spacing: 0px;
+            for item in items: Rectangle {
+                height: item.label == "" ? 0px : 28px; visible: item.label != "";
+                border-radius: 4px;
+                background: item-touch.has-hover && item.enabled ? Theme.bg-light : transparent;
+                if item.rule: Rectangle { y: 0px; height: 1px; background: Theme.bg-light; }
+                Text { x: 10px; text: item.label; font-size: 12px; vertical-alignment: center; color: item.enabled ? (item.command == "delete" ? Theme.red : Theme.fg-bright) : Theme.muted; }
+                item-touch := TouchArea {
+                    enabled: item.enabled; mouse-cursor: MouseCursor.pointer;
+                    clicked => {
+                        if (item.command == "open") { Files.activate(root.pane, root.s.cursor); root.menu-open = false; keys.focus(); }
+                        else { root.run(item.command); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The Files window's content, hosted in an ordinary desktop tile.
+export component FilesPanel inherits Rectangle {
+    in property <bool> active;
+    callback pointer-moved(length, length);
+    FileBrowser {
+        pane: 0; s: Files.browser; active: root.active;
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+}

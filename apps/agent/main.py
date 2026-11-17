@@ -8,6 +8,19 @@ from messaging import inbox, send
 from session import launch, resume, status, dispatch
 from ui import welcome
 from models import activate, active, catalog, save, selections
+from scope import describe, validate_project
+
+
+def angi_request(args):
+    """(brief, project) from `angi`, `angi --prompt BRIEF` or `angi --prompt BRIEF --project DIR`; None if malformed."""
+    if args == ["angi"]:
+        return None, None
+    if args[:2] == ["angi", "--prompt"] and len(args) in (3, 5) and args[2].strip():
+        if len(args) == 3:
+            return args[2].strip(), None
+        if args[3] == "--project" and args[4].strip():
+            return args[2].strip(), args[4]
+    return False
 
 
 def main():
@@ -35,6 +48,13 @@ def main():
     if len(args) == 3 and args[0] == "model":
         print(json.dumps(save(args[1], args[2])))
         return
+    if len(args) == 2 and args[0] == "project":
+        # The prompt asks this before it enables Start; launch checks again.
+        try:
+            print(json.dumps(describe(validate_project(args[1]))))
+        except ValueError as error:
+            print(json.dumps({"error": str(error)}))
+        return
     if args and args[0] == "_dispatch":
         dispatch(Path(args[1]))
         return
@@ -47,20 +67,22 @@ def main():
     if args == ["status"]:
         status()
         return
-    if args != ["angi"] and not (len(args) == 3 and args[:2] == ["angi", "--prompt"] and args[2].strip()):
-        print("Usage: agent angi | agent status | agent tell ROLE MESSAGE | agent inbox")
+    request = angi_request(args)
+    if request is False:
+        print("Usage: agent angi [--prompt BRIEF [--project DIR]] | agent status | agent tell ROLE MESSAGE | agent inbox")
         return
+    brief, project = request
     if os.getuid() == 0:
         raise RuntimeError("Run agent angi as your desktop account. Use angi-root for privileged work.")
     state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
-    action, brief = ("start", args[2].strip()) if len(args) == 3 else welcome((state / "current").exists())
+    action, brief = ("start", brief) if brief else welcome((state / "current").exists())
     if action == "connect":
         os.execvp("opencode", ["opencode", "/var/lib/agx-data/angi-dev"])
     elif action == "resume":
         resume(state)
     elif action == "start":
-        launch(state, brief)
+        launch(state, brief, project)
 
 
 if __name__ == "__main__":

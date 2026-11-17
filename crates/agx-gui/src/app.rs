@@ -106,6 +106,7 @@ impl App {
         if !terminal_search
             && self.desk.focused() != Some(Kind::Settings)
             && self.desk.focused() != Some(Kind::AgentAngie)
+            && self.desk.focused() != Some(Kind::Files)
             && (self.desk.focused() != Some(Kind::Web) || !browser_visible)
         {
             ui.invoke_focus_desktop();

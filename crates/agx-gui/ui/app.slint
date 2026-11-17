@@ -11,8 +11,11 @@ import { DesktopInput } from "desktop-input.slint";
 import { StorageView, StorageCell } from "storage.slint";
 import { StorageDialog } from "storage-dialog.slint";
 export { StorageView, StorageCell }
-import { AgentPanel, AgentAngie, AgentProviders, CardModels } from "agent.slint";
-export { AgentAngie, AgentProviders, CardModels }
+import { AgentPanel, AgentAngie, AgentProviders, AgentScope, CardModels } from "agent.slint";
+export { AgentAngie, AgentProviders, AgentScope, CardModels }
+import { FilesPanel, Files, FileRow, Crumb, PlaceRow, PaneState } from "files.slint";
+import { FolderPicker } from "files-picker.slint";
+export { Files, FileRow, Crumb, PlaceRow, PaneState }
 import { SettingsPanel, MouseSettings } from "settings.slint";
 export { MouseSettings }
 import { AppLauncher } from "launcher.slint";
@@ -49,7 +52,7 @@ component WindowFrame inherits Rectangle {
                 HorizontalLayout {
                     padding-left: 10px;
                     Text {
-                        text: win.kind == 7 ? Web.title : win.kind == 8 || win.kind >= 11 ? Terminal.windows[win.kind == 8 ? 0 : win.kind - 10].title : win.title;
+                        text: win.kind == 7 ? Web.title : win.kind == 8 || win.kind >= 12 ? Terminal.windows[win.kind == 8 ? 0 : win.kind - 11].title : win.title;
                         color: win.focused ? Theme.accent : Theme.fg-dim;
                         font-weight: 700;
                         font-size: 12px;
@@ -71,7 +74,7 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 5: ServicesPanel { }
                 if win.kind == 6: SystemPanel { }
                 if win.kind == 7: BrowserPanel { active: win.focused; }
-                if win.kind == 8 || win.kind >= 11: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 10; }
+                if win.kind == 8 || win.kind >= 12: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 11; }
             }
         }
     }
@@ -91,6 +94,16 @@ component WindowFrame inherits Rectangle {
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
     }
     if win.kind == 10 && !win.collapsed: AgentPanel {
+        x: 6px; y: 28px;
+        width: max(0px, parent.width - 12px);
+        height: max(0px, parent.height - 34px);
+        active: root.win.focused;
+        pointer-moved(x, y) => {
+            root.pointer(2, 3, x, y, false, false, false, false);
+            root.pointer-moved(x, y);
+        }
+    }
+    if win.kind == 11 && !win.collapsed: FilesPanel {
         x: 6px; y: 28px;
         width: max(0px, parent.width - 12px);
         height: max(0px, parent.height - 34px);
@@ -241,7 +254,7 @@ export component AppWindow inherits Window {
     in-out property <bool> session-open: false;
     in-out property <int> session-index: 0;
     property <bool> custom-resize-cursor: root.resize-cursor-overlay
-        && !StorageView.selected-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
+        && !StorageView.selected-open && !Files.chooser-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
     callback browser-key(string, bool, bool, bool, bool, bool) -> bool;
@@ -275,7 +288,7 @@ export component AppWindow inherits Window {
 
     root-keys := FocusScope {
         key-pressed(e) => {
-            if StorageView.selected-open { return accept; }
+            if StorageView.selected-open || Files.chooser-open { return accept; }
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
                 if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
@@ -295,7 +308,7 @@ export component AppWindow inherits Window {
             reject
         }
         key-released(e) => {
-            if (!StorageView.selected-open && !root.session-open && root.confirm-text == "" && root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
+            if (!StorageView.selected-open && !Files.chooser-open && !root.session-open && root.confirm-text == "" && root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
             reject
         }
 
@@ -471,6 +484,11 @@ export component AppWindow inherits Window {
                     }
                 }
             }
+        }
+
+        if Files.chooser-open: FolderPicker {
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+            dismissed => { root-keys.focus(); }
         }
 
         if StorageView.selected-open: StorageDialog {

@@ -4,6 +4,7 @@
 //! Exit codes let a launcher script react to the user's choice:
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod browser;
+mod files;
 mod graphics;
 mod input;
 mod keymap;
@@ -14,6 +15,7 @@ mod scene_model;
 mod terminal;
 mod wm;
 
+mod agent_project;
 mod agent_providers;
 mod app;
 #[cfg(test)]

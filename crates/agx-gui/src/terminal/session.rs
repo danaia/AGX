@@ -96,6 +96,14 @@ impl EventListener for Proxy {
         self.0.dirty.store(true, Ordering::Release);
     }
 }
+/// Command line for Agent Angie: the operating system by default, or `--project DIR`.
+pub(super) fn agent_arguments(prompt: String, project: Option<String>) -> Vec<String> {
+    let mut arguments = vec!["angi".into(), "--prompt".into(), prompt];
+    if let Some(project) = project {
+        arguments.extend(["--project".into(), project]);
+    }
+    arguments
+}
 pub(super) struct Session {
     pub term: Arc<FairMutex<Term<Proxy>>>,
     pub signals: Arc<Signals>,
@@ -131,14 +139,11 @@ impl Session {
     pub fn opencode(size: Size) -> io::Result<Self> {
         Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }
-    pub fn agent(size: Size, prompt: String) -> io::Result<Self> {
+    /// Agent Angie on the operating system, or in `project` (a folder the agent runtime validates).
+    pub fn agent(size: Size, prompt: String, project: Option<String>) -> io::Result<Self> {
         Self::start(
             size,
-            Some((
-                "/usr/bin/agent",
-                vec!["angi".into(), "--prompt".into(), prompt],
-                "Agent Angie",
-            )),
+            Some(("/usr/bin/agent", agent_arguments(prompt, project), "Agent Angie")),
             None,
         )
     }

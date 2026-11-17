@@ -238,9 +238,35 @@ class ProviderTests(unittest.TestCase):
                 self.assertEqual(service.status("lmstudio")["tailscale"]["text"], "Connected")
             self.assertFalse(service.tailscale_waiting)
 
+    def test_sign_in_repeats_the_safe_preferences_and_state_restores_shields(self):
+        calls = []
+        def run(*arguments, **_):
+            calls.append(arguments)
+            if arguments[:2] == ("debug", "prefs"):
+                return unittest.mock.Mock(stdout=json.dumps({"ShieldsUp": prefs["shields"]}))
+            if arguments[0] == "set":
+                prefs["shields"] = True
+                return unittest.mock.Mock(stdout="")
+            if arguments[0] == "up":
+                return unittest.mock.Mock(stdout="", stderr="visit https://login.tailscale.com/a/x")
+            return unittest.mock.Mock(stdout=json.dumps({"BackendState": "Running", "Self": {"DNSName": "angi.ts.net."}}))
+        prefs = {"shields": False}
+        with patch.object(providers.tailnet, "run", side_effect=run), patch.object(providers.tailnet.Path, "exists", return_value=True):
+            providers.tailnet.login()
+            up = next(arguments for arguments in calls if arguments[0] == "up")
+            self.assertIn("--shields-up=true", up)
+            self.assertIn("--accept-dns=false", up)
+            self.assertTrue(providers.tailnet.state()["ready"])  # lost shields were re-applied
+            self.assertTrue(prefs["shields"])
+            prefs["shields"] = False
+            with patch.object(providers.tailnet, "shielded", return_value=False):
+                state = providers.tailnet.state()
+            self.assertFalse(state["ready"])  # never offered while incoming connections are possible
+            self.assertIn("locked down", state["text"])
+
     def test_tailscale_state_describes_each_backend_state(self):
         def state(backend, **extra):
-            with patch.object(providers.tailnet, "run", return_value=unittest.mock.Mock(stdout=json.dumps({"BackendState": backend, **extra}))), patch.object(providers.tailnet.Path, "exists", return_value=True):
+            with patch.object(providers.tailnet, "run", return_value=unittest.mock.Mock(stdout=json.dumps({"BackendState": backend, "ShieldsUp": True, **extra}))), patch.object(providers.tailnet.Path, "exists", return_value=True):
                 return providers.tailnet.state()
         self.assertTrue(state("Running", Self={"DNSName": "angi.tail1234.ts.net."})["ready"])
         self.assertIn("angi.tail1234.ts.net", state("Running", Self={"DNSName": "angi.tail1234.ts.net."})["text"])

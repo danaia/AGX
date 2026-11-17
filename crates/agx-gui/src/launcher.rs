@@ -75,6 +75,11 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             "Build with Agent Angie",
             "agent angie herdr build",
         ),
+        (
+            "Files",
+            "Browse, search and organize files and folders",
+            "files file manager folder explorer nautilus browse directory trash copy move",
+        ),
     ]) {
         entries.push(Entry {
             label: label.into(),
@@ -87,6 +92,8 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
                 14
             } else if kind == Kind::Terminal {
                 7
+            } else if kind == Kind::Files {
+                15
             } else {
                 kind.index() as i32
             },

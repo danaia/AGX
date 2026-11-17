@@ -42,6 +42,11 @@ impl App {
         self.terminal.start_directory = directory;
         self.refresh(ui);
     }
+    /// A new terminal window whose shell starts in `directory` (Files' "open a terminal here").
+    pub(crate) fn terminal_open_in(&mut self, ui: &AppWindow, directory: std::path::PathBuf) {
+        self.terminal_new_window(ui);
+        self.terminal.start_directory = Some(directory);
+    }
     pub(super) fn terminal_windows_tick(&mut self, ui: &AppWindow) {
         let mut kinds: Vec<_> = self
             .view

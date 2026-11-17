@@ -2,7 +2,8 @@ import { Theme } from "data.slint";
 import { LineEdit, Button } from "std-widgets.slint";
 
 import { AgentProviders, CardModels, ProviderCards, ProviderPanel } from "agent-providers.slint";
-export { AgentProviders, CardModels }
+import { AgentScope, ModeSwitch, ProjectRow, ScopeTip } from "agent-scope.slint";
+export { AgentProviders, CardModels, AgentScope }
 
 export global AgentAngie {
     callback activate();
@@ -28,23 +29,34 @@ export component AgentPanel inherits Rectangle {
         x: max(20px, (content.width - 660px) / 2);
         y: max(24px, (content.height - 390px) / 2);
         width: min(660px, content.width - 40px);
-        height: 220px;
+        height: 220px + (AgentScope.mode == "project" ? 48px + (AgentScope.error != "" ? 22px : 0px) : 0px);
         spacing: 16px;
+        // Rows below the prompt appear and disappear; keep everything above them where it is.
+        alignment: start;
         Text { text: "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; }
         Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
         Text { text: "Describe your idea and Agent Angie will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
         prompt := LineEdit {
             placeholder-text: "Describe what you want to build…";
-            accepted => { if (self.text != "") { AgentAngie.submit(self.text); } }
+            accepted => { if (self.text != "" && AgentScope.ready) { AgentAngie.submit(self.text); } }
         }
         HorizontalLayout {
+            spacing: 12px;
+            scope-switch := ModeSwitch { y: 2px; }
             Rectangle { horizontal-stretch: 1; }
-            Button { text: "Start building"; clicked => { if (prompt.text != "") { AgentAngie.submit(prompt.text); } } }
+            Button { text: "Start building"; enabled: prompt.text != "" && AgentScope.ready; clicked => { AgentAngie.submit(prompt.text); } }
         }
+        if AgentScope.mode == "project": ProjectRow { }
     }
     ProviderCards {
         x: 24px; y: max(270px, content.height - 176px);
         width: max(0px, content.width - 48px); height: 150px;
+    }
+    // Last, so it draws over the rows below the switch.
+    ScopeTip {
+        hint: scope-switch.hint;
+        x: scope-switch.absolute-position.x - content.absolute-position.x;
+        y: scope-switch.absolute-position.y - content.absolute-position.y + scope-switch.height + 8px;
     }
     }
     if AgentProviders.open: ProviderPanel {
