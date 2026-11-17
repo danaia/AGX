@@ -51,3 +51,11 @@ The GUI entry point now owns startup and signal handling. `app.rs` owns desktop 
 Native Terminal is isolated under `src/terminal/`: `session.rs` owns Alacritty's PTY/parser threads, shell startup, resize and child cleanup; `keys.rs` encodes xterm keys and bracketed paste; `render.rs` converts terminal cells to reusable styled row runs; `input.rs` handles selection, mouse reports, scrolling, terminal shortcuts and chrome hits; `mod.rs` composes sessions, tabs, search and model updates. `ui/terminal.slint` owns its native chrome and glyph presentation. `scripts/build-terminal.sh`, `package-terminal-runtime.py` and `deploy-terminal.sh` build and stage the bounded CLI runtime and locale data without replacing boot libraries.
 
 OpenCode's vendor executable is pinned in `buildroot/package/agx-opencode/`; `apps/opencode/launch.sh` owns its private NVMe environment and preserves the caller's working directory. `scripts/build-opencode.sh`, `package-opencode-runtime.py` and `deploy-opencode.sh` handle its verified binary and Git/search runtime. The packager preserves Git's hard links and leaves OpenCode's embedded runtime unstripped. GUI launch uses a Terminal session directly; the TUI reuses its existing foreground-process handoff. The data-volume mount script prepares the sticky per-account storage parent after mounting.
+
+The development swarm lives in `apps/agent/`: `agent.sh` owns private runtime
+environment setup; `main.py` dispatches commands; `ui.py` owns the build-brief
+form; `session.py` owns Herdr lifecycle and queued delivery; `messaging.py`
+owns durable peer mail. Role profiles and the development skill are separate
+assets. `angi-root.c` is the small administrator execution boundary;
+`sdk-env.sh` and `angi-build.sh` own native build configuration. SDK preparation,
+provisioning and runtime deployment are separate scripts under `scripts/`.

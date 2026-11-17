@@ -1,0 +1,254 @@
+[
+  {
+    "Package": "gcc-12",
+    "Version": "12.2.0-14+deb12u1",
+    "Filename": "pool/main/g/gcc-12/gcc-12_12.2.0-14+deb12u1_arm64.deb",
+    "SHA256": "d4f6bc31cefeb188eddc7e0f738f51c12f863cd03502935c388a9f305f558996"
+  },
+  {
+    "Package": "g++-12",
+    "Version": "12.2.0-14+deb12u1",
+    "Filename": "pool/main/g/gcc-12/g++-12_12.2.0-14+deb12u1_arm64.deb",
+    "SHA256": "cb6c11930cf7ad0e9baa5561b1f5fd033bed829e4acfc4472335bef99ca4cd71"
+  },
+  {
+    "Package": "cpp-12",
+    "Version": "12.2.0-14+deb12u1",
+    "Filename": "pool/main/g/gcc-12/cpp-12_12.2.0-14+deb12u1_arm64.deb",
+    "SHA256": "f95ae5b0f967bf9de96c952e12b865b133756f3f07f904a64a1fec5fcf3d20e7"
+  },
+  {
+    "Package": "libgcc-12-dev",
+    "Version": "12.2.0-14+deb12u1",
+    "Filename": "pool/main/g/gcc-12/libgcc-12-dev_12.2.0-14+deb12u1_arm64.deb",
+    "SHA256": "c83d28b7c3397c25f15ae17783fce78716a3d7cd415940940cc2af8dc4db8d6d"
+  },
+  {
+    "Package": "libstdc++-12-dev",
+    "Version": "12.2.0-14+deb12u1",
+    "Filename": "pool/main/g/gcc-12/libstdc++-12-dev_12.2.0-14+deb12u1_arm64.deb",
+    "SHA256": "b74b18927037498c10c8c5dd7a0abe132b4d90188ca5d6e899a4f777c6d52a74"
+  },
+  {
+    "Package": "binutils-aarch64-linux-gnu",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/binutils-aarch64-linux-gnu_2.40-2_arm64.deb",
+    "SHA256": "fa154fed9b3bb5e11c4c152c3faaa5b56dce9ea39fed68156c3d656c97b4a11e"
+  },
+  {
+    "Package": "binutils-common",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/binutils-common_2.40-2_arm64.deb",
+    "SHA256": "2e340788164c94d876ab88c41f85ec0875a9f4324f83c93a44a14879925a11a0"
+  },
+  {
+    "Package": "libbinutils",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/libbinutils_2.40-2_arm64.deb",
+    "SHA256": "1987db5a2ca550be3153dce8b23d6b2e038079c4de0b26b349e5b742e293ad23"
+  },
+  {
+    "Package": "libctf0",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/libctf0_2.40-2_arm64.deb",
+    "SHA256": "539036b9ecf8af5e803962ffcf0639332dcb3a027a7ab10b174f8f92272f5b21"
+  },
+  {
+    "Package": "libctf-nobfd0",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/libctf-nobfd0_2.40-2_arm64.deb",
+    "SHA256": "27a232cba9b33bd8495e7ccc8ffbe24c729574a8073df0851decba037fb12a63"
+  },
+  {
+    "Package": "libgprofng0",
+    "Version": "2.40-2",
+    "Filename": "pool/main/b/binutils/libgprofng0_2.40-2_arm64.deb",
+    "SHA256": "dd0d7fe758461a2a5560b272a7b71b26b571258554adfb5e9b72c4f18ddf6b24"
+  },
+  {
+    "Package": "libjansson4",
+    "Version": "2.14-2",
+    "Filename": "pool/main/j/jansson/libjansson4_2.14-2_arm64.deb",
+    "SHA256": "49fda2bcfdf6b78098a5cdc9eaee23ef1f3b331559f02f1e32bc26f1fb6b4aec"
+  },
+  {
+    "Package": "libmpc3",
+    "Version": "1.3.1-1",
+    "Filename": "pool/main/m/mpclib3/libmpc3_1.3.1-1_arm64.deb",
+    "SHA256": "19fd1712d02a9ee3eeff5b6678a8766a12f2858c3384258c7abc15edd891739f"
+  },
+  {
+    "Package": "libmpfr6",
+    "Version": "4.2.0-1",
+    "Filename": "pool/main/m/mpfr4/libmpfr6_4.2.0-1_arm64.deb",
+    "SHA256": "d818fbfb555561bff56694cc628dc9939f393a07026aefd237e9c818b9f2cb77"
+  },
+  {
+    "Package": "libisl23",
+    "Version": "0.25-1.1",
+    "Filename": "pool/main/i/isl/libisl23_0.25-1.1_arm64.deb",
+    "SHA256": "e7232e299714254a9473d7eacdf6879eedf02b950c87da145f5d605800710c6c"
+  },
+  {
+    "Package": "libgmp10",
+    "Version": "2:6.2.1+dfsg1-1.1",
+    "Filename": "pool/main/g/gmp/libgmp10_6.2.1+dfsg1-1.1_arm64.deb",
+    "SHA256": "9906387c1dd806518c915bd8616d072c741061d7fa26b222e52763456060b31a"
+  },
+  {
+    "Package": "libzstd1",
+    "Version": "1.5.4+dfsg2-5",
+    "Filename": "pool/main/libz/libzstd/libzstd1_1.5.4+dfsg2-5_arm64.deb",
+    "SHA256": "95e173c9538f96ede4fc275ec7863f395a97dd0ea62454be9bc914efa1b9be93"
+  },
+  {
+    "Package": "make",
+    "Version": "4.3-4.1",
+    "Filename": "pool/main/m/make-dfsg/make_4.3-4.1_arm64.deb",
+    "SHA256": "7ef5f5c0e3f909c811f941598107119af0a0554641b5cc590f584cea6a55d204"
+  },
+  {
+    "Package": "pkgconf",
+    "Version": "1.8.1-1",
+    "Filename": "pool/main/p/pkgconf/pkgconf_1.8.1-1_arm64.deb",
+    "SHA256": "e51f35ecd6a544e072c758f060c7724344b513869b6514d1a493fa14429777b0"
+  },
+  {
+    "Package": "pkgconf-bin",
+    "Version": "1.8.1-1",
+    "Filename": "pool/main/p/pkgconf/pkgconf-bin_1.8.1-1_arm64.deb",
+    "SHA256": "6cd07c60b8d60978fa7e43d3b9d1d35e57c5750ea61d67fca451e145aaab8d1b"
+  },
+  {
+    "Package": "libpkgconf3",
+    "Version": "1.8.1-1",
+    "Filename": "pool/main/p/pkgconf/libpkgconf3_1.8.1-1_arm64.deb",
+    "SHA256": "8638db13be90ebceb2f3feb23780564f279b4e8b14b8b3000ad02c8ff27b1f02"
+  },
+  {
+    "Package": "python3.11",
+    "Version": "3.11.2-6+deb12u8",
+    "Filename": "pool/main/p/python3.11/python3.11_3.11.2-6+deb12u8_arm64.deb",
+    "SHA256": "76b445c9428db92fb8f17a322a99e3e54b3f8d0eeac76d80d5d6fff95f5dd526"
+  },
+  {
+    "Package": "python3.11-minimal",
+    "Version": "3.11.2-6+deb12u8",
+    "Filename": "pool/main/p/python3.11/python3.11-minimal_3.11.2-6+deb12u8_arm64.deb",
+    "SHA256": "6a07dd571f1a15af2f855d64571766fe44b73a57cc3b5ca79502bc89156a5e12"
+  },
+  {
+    "Package": "libpython3.11-stdlib",
+    "Version": "3.11.2-6+deb12u8",
+    "Filename": "pool/main/p/python3.11/libpython3.11-stdlib_3.11.2-6+deb12u8_arm64.deb",
+    "SHA256": "e79876de55c6c2dca10d044b2fa69ccd863950ea01714220c1982d16008105f9"
+  },
+  {
+    "Package": "libpython3.11-minimal",
+    "Version": "3.11.2-6+deb12u8",
+    "Filename": "pool/main/p/python3.11/libpython3.11-minimal_3.11.2-6+deb12u8_arm64.deb",
+    "SHA256": "c48bac178c0fc43a2bf8ace784c762b5ee83e2b981894a991dc3ccfd3ec7cd4b"
+  },
+  {
+    "Package": "libexpat1",
+    "Version": "2.5.0-1+deb12u2",
+    "Filename": "pool/main/e/expat/libexpat1_2.5.0-1+deb12u2_arm64.deb",
+    "SHA256": "8dc1976735acf825e3a922d82f171e20feec7394da2b8c616091983e38706275"
+  },
+  {
+    "Package": "libffi8",
+    "Version": "3.4.4-1",
+    "Filename": "pool/main/libf/libffi/libffi8_3.4.4-1_arm64.deb",
+    "SHA256": "80b5c36177dc0e29d531c7eddbed3cc7355cb490e49f8cfa5959572d161f27b3"
+  },
+  {
+    "Package": "libbz2-1.0",
+    "Version": "1.0.8-5+b1",
+    "Filename": "pool/main/b/bzip2/libbz2-1.0_1.0.8-5+b1_arm64.deb",
+    "SHA256": "d3a96ece03326498b39ff093a76800dfcbcb1d4049d6ae6e9f6fa1aa7a590ad6"
+  },
+  {
+    "Package": "liblzma5",
+    "Version": "5.4.1-1+deb12u1",
+    "Filename": "pool/main/x/xz-utils/liblzma5_5.4.1-1+deb12u1_arm64.deb",
+    "SHA256": "647ce9d81e41c30071ce6ac0d3324579216a33aaa1d28971d6952315f6a95a75"
+  },
+  {
+    "Package": "libreadline8",
+    "Version": "8.2-1.3",
+    "Filename": "pool/main/r/readline/libreadline8_8.2-1.3_arm64.deb",
+    "SHA256": "f3b162b7c1e05430607e792ebdbfc417cbd1f1d32cf83664133ae63d811a72d2"
+  },
+  {
+    "Package": "libsqlite3-0",
+    "Version": "3.40.1-2+deb12u2",
+    "Filename": "pool/main/s/sqlite3/libsqlite3-0_3.40.1-2+deb12u2_arm64.deb",
+    "SHA256": "a690f7f2aa6435bd1fd7cbbd2216acb9acbb8c48c9721f2c195766375439eb13"
+  },
+  {
+    "Package": "libtinfo6",
+    "Version": "6.4-4",
+    "Filename": "pool/main/n/ncurses/libtinfo6_6.4-4_arm64.deb",
+    "SHA256": "baef0f6776f84c7eed4f1146d6e5774689567dad43216894d41da02e6608e4b3"
+  },
+  {
+    "Package": "libnsl2",
+    "Version": "1.3.0-2",
+    "Filename": "pool/main/libn/libnsl/libnsl2_1.3.0-2_arm64.deb",
+    "SHA256": "8f9ba58b219779b43c4ccc78c79b0a23f721fc96323c202abb31e02f942104b3"
+  },
+  {
+    "Package": "libtirpc3",
+    "Version": "1.3.3+ds-1",
+    "Filename": "pool/main/libt/libtirpc/libtirpc3_1.3.3+ds-1_arm64.deb",
+    "SHA256": "deaf9ea54f74cab6690b4bc0b427f05cbe62cc073580d84f5f18a8d9e2ece401"
+  },
+  {
+    "Package": "libuuid1",
+    "Version": "2.38.1-5+deb12u3",
+    "Filename": "pool/main/u/util-linux/libuuid1_2.38.1-5+deb12u3_arm64.deb",
+    "SHA256": "3b2d19df0f3190108cf54228c4cfc822226c06d8f3615a5ab16a7dffb1f58aed"
+  },
+  {
+    "Package": "libncursesw6",
+    "Version": "6.4-4",
+    "Filename": "pool/main/n/ncurses/libncursesw6_6.4-4_arm64.deb",
+    "SHA256": "cf32cb6751718872c6def448b82211eec494f688e2f1a3e6c71bfdaf6b0722c5"
+  },
+  {
+    "Package": "libgssapi-krb5-2",
+    "Version": "1.20.1-2+deb12u5",
+    "Filename": "pool/main/k/krb5/libgssapi-krb5-2_1.20.1-2+deb12u5_arm64.deb",
+    "SHA256": "a00678963f692a929312968f19b77a61a8fc0011690d7dc909a8a2c4810fc7b3"
+  },
+  {
+    "Package": "libkrb5-3",
+    "Version": "1.20.1-2+deb12u5",
+    "Filename": "pool/main/k/krb5/libkrb5-3_1.20.1-2+deb12u5_arm64.deb",
+    "SHA256": "c3c7227f5db903a7a8b8936d47d1d79643edcda36365c4c992e1a96bcc2d4c7e"
+  },
+  {
+    "Package": "libk5crypto3",
+    "Version": "1.20.1-2+deb12u5",
+    "Filename": "pool/main/k/krb5/libk5crypto3_1.20.1-2+deb12u5_arm64.deb",
+    "SHA256": "8ae2c31cde0b3e6f80c573a495b0f90bf6d9efb4455d900728278bb54d9092e5"
+  },
+  {
+    "Package": "libkrb5support0",
+    "Version": "1.20.1-2+deb12u5",
+    "Filename": "pool/main/k/krb5/libkrb5support0_1.20.1-2+deb12u5_arm64.deb",
+    "SHA256": "3043fd4a54b945a1b503170749527f825dcfc7add2f8bf5abb4a329deeb48f4a"
+  },
+  {
+    "Package": "libkeyutils1",
+    "Version": "1.6.3-2",
+    "Filename": "pool/main/k/keyutils/libkeyutils1_1.6.3-2_arm64.deb",
+    "SHA256": "aac46cb6faec4e737502b3c2290b7b02f8ba04e8accd5af7fd07934df0c867b1"
+  },
+  {
+    "Package": "libcom-err2",
+    "Version": "1.47.0-2+b2",
+    "Filename": "pool/main/e/e2fsprogs/libcom-err2_1.47.0-2+b2_arm64.deb",
+    "SHA256": "36c15f933a965b50f4c9558d792d9556934c84e532703935d8ae7e69dd3fa863"
+  }
+]

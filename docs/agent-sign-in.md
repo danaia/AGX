@@ -8,4 +8,8 @@ The official Codex CLI 0.169.0 ARM64 Linux binary is installed at `/var/lib/agx-
 
 For an individual Pi account, run `codex login --device-auth`, open the URL shown, and approve the one-time code in a browser. The session is tied to that user's home directory; don't share or commit authentication files. A user can check `codex login status`, then run `codex` in an interactive terminal. Device-code access may need to be enabled in ChatGPT security settings. See [OpenAI's Codex authentication guide](https://developers.openai.com/codex/auth/).
 
-This provides the official subscription-backed Codex terminal. The AGX Agent screen, `agx agent` command, restricted system-health tools, and Herdr integration remain Phase 6 work. OpenAI also documents a [Sign in with ChatGPT flow for open-source applications](https://developers.openai.com/siwc/token-sharing-open-source/) that can support eligible subscription-backed inference in an AGX-specific runtime; it is separate from reusing the Codex CLI's private credentials.
+This provides the official subscription-backed Codex terminal. The Agent screen,
+`agx agent` command and restricted system-health tools remain separate work. The
+installed [ANGI agent workshop](agent-swarm.md) uses `agent angi` to run three
+OpenCode agents in Herdr, with native Pi builds and administrator access.
+OpenAI also documents a [Sign in with ChatGPT flow for open-source applications](https://developers.openai.com/siwc/token-sharing-open-source/) that can support eligible subscription-backed inference in an ANGI-specific runtime; it is separate from reusing the Codex CLI's private credentials.

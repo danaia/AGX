@@ -66,3 +66,11 @@ deploy-opencode: opencode-build gui-build tui-build
 	./scripts/deploy-opencode.sh
 	./scripts/deploy-tui.sh
 	./scripts/deploy-terminal.sh
+
+.PHONY: agent-sdk deploy-agent agent-test
+agent-sdk:
+	./scripts/provision-agent-dev.sh
+deploy-agent:
+	./scripts/deploy-agent.sh
+agent-test:
+	python3 scripts/test-agent-mail.py

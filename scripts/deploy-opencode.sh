@@ -38,7 +38,13 @@ find "$release" \( -type f -o -type l \) | while IFS= read -r source; do
         mkdir -p "$base/backup/${relative%/*}"
         cp -P "$destination" "$base/backup/$relative"
     fi
-    ln -s "$source" "$destination.agx-opencode-new"
+    # The data-volume mount script must run before NVMe is available.
+    # Keep boot code on SD; only the application runtime may link to NVMe.
+    if test "$relative" = etc/init.d/S12agx-data; then
+        cp -p "$source" "$destination.agx-opencode-new"
+    else
+        ln -s "$source" "$destination.agx-opencode-new"
+    fi
     mv -fT "$destination.agx-opencode-new" "$destination"
 done
 users=/var/lib/agx-data/agx-opencode-users

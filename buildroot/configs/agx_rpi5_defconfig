@@ -106,4 +106,5 @@ BR2_ENABLE_LOCALE_WHITELIST="C C.utf8 en_US"
 
 # AI coding CLI (official pinned ARM64 executable includes an embedded runtime).
 BR2_PACKAGE_AGX_OPENCODE=y
+BR2_PACKAGE_AGX_AGENT=y
 BR2_STRIP_EXCLUDE_FILES="opencode"

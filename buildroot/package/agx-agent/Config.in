@@ -1,0 +1,16 @@
+config BR2_PACKAGE_AGX_AGENT
+	bool "ANGI Herdr development swarm"
+	depends on BR2_aarch64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	depends on BR2_USE_MMU
+	depends on BR2_USE_WCHAR
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on !BR2_STATIC_LIBS
+	depends on BR2_PACKAGE_HOST_RUSTC_TARGET_ARCH_SUPPORTS
+	select BR2_PACKAGE_AGX_OPENCODE
+	select BR2_PACKAGE_PYTHON3
+	select BR2_PACKAGE_PYTHON3_CURSES
+	select BR2_PACKAGE_PYTHON3_SQLITE
+	help
+	  Herdr with three OpenCode roles, a build-brief TUI and admin helper.
+	  Native development SDK and source are provisioned separately on NVMe.

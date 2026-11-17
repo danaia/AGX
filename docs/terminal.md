@@ -54,3 +54,7 @@ The TUI delegates display, scrollback, selection and clipboard handling to the c
 Build and deploy the CLI with `make tui-build` and `scripts/deploy-tui.sh` using the usual SSH host/alias variables. `scripts/test-tui-terminal-ssh.py` tests real PTY handoff, interruption, job control, tmux detach/reattach, resizing, returning to the TUI, and final terminal-mode restoration. Run it with the existing QA Python environment that supplies `pyte`; `AGX_REMOTE_BINARY` can target a staged CLI before installation. It isolates its tmux server from the user's sessions. A running GUI session whose parent CLI predates this update may need a sign-out/sign-in before its System Console action uses the new TUI; a fresh `agx tui` uses the installed version immediately.
 
 **OpenCode** is also available from Apps, the TUI's **8 Terminal → o** action, and the `opencode` shell command. See [OpenCode](opencode.md) for provider setup, pinned runtime details and NVMe storage.
+
+Run **`agent angi`** from either shell to open the [ANGI agent workshop](agent-swarm.md):
+a build-brief TUI and three communicating OpenCode agents in Herdr, with native
+Pi builds and the administrator development skill.

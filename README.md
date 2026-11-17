@@ -58,11 +58,17 @@ Honesty matters here, because "not a distribution" does not mean "from nothing."
 | --- | --- |
 | Bootable image built from source; SSH over USB and Wi-Fi | An ANGI agent that runs on the Pi, signs in with a ChatGPT subscription, and uses permission-controlled tools (Phase 6) |
 | Rust init, service supervision, logs, confirmed reboot and shutdown | Herdr orchestration of several agents across machines |
+| `agent angi`: three communicating OpenCode agents in Herdr, native Pi builds, and an administrator development skill | Native-host configuration for complete Buildroot image rebuilds |
 | Terminal dashboard and `agx` CLI with JSON output | A reproducible `v0.1.0` release image, with measured boot time and resource use (Phase 7) |
 | Wi-Fi, accounts, and password login provisioned from the dashboard | On-device system updates with rollback (on hold) |
 | Desktop with tiling windows and graphical login (built; not yet verified on a monitor) | The desktop built into the standard image |
 
-The ANGI agent does not exist yet. Today the agent is the coding agent on your computer that builds and checks the system. The [project roadmap](plans/plan1.md) records exactly what has been tested, and what has not. ANGI is early software: this describes the direction, and the roadmap describes the evidence.
+The development Pi includes the [ANGI agent workshop](docs/agent-swarm.md).
+Run `agent angi` in Terminal or the TUI's shell, describe what to build, and
+work with its orchestrator, builder and tester. GUI/CLI builds run directly
+on the Pi, with source, tools and caches on NVMe. The integrated Agent screen
+and subscription sign-in workflow remain separate roadmap work. The
+[project roadmap](plans/plan1.md) records the broader project stages.
 
 ## Get started with one prompt
 

@@ -24,6 +24,12 @@ export XDG_CACHE_HOME=$opencode_store/cache
 export XDG_STATE_HOME=$opencode_store/state
 export XDG_CONFIG_HOME=$opencode_store/config
 export TMPDIR=$opencode_store/tmp
+export npm_config_cache=$opencode_store/cache/npm
+export BUN_INSTALL_CACHE_DIR=$opencode_store/cache/bun
+# Deployment exposes individual runtime files through symlinks. Git must copy
+# the underlying regular templates so OpenCode can update its snapshot exclude.
+opencode_template=$(readlink -f /usr/share/git-core/templates/info/exclude)
+export GIT_TEMPLATE_DIR=${opencode_template%/info/exclude}
 # The binary is root-owned and versioned. Updates go through ANGI deployment.
 export OPENCODE_DISABLE_AUTOUPDATE=true
 cd -- "$opencode_workdir"
