@@ -1,6 +1,5 @@
-//! Omarchy's window keybindings, expressed once and tested. Omarchy uses Super;
-//! under another compositor (the desktop preview) Super belongs to that
-//! compositor, so the modifier is configurable with AGX_GUI_MOD=super|alt.
+//! Desktop keybindings, expressed once and tested. Super is the main modifier;
+//! AGX_GUI_MOD=alt remains an explicit override for nested desktop previews.
 use crate::wm::{Dir, Kind};
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -21,8 +20,7 @@ impl ModKey {
         match std::env::var("AGX_GUI_MOD").ok().as_deref() {
             Some("super") => ModKey::Super,
             Some("alt") => ModKey::Alt,
-            _ if cfg!(feature = "kms") => ModKey::Super,
-            _ => ModKey::Alt,
+            _ => ModKey::Super,
         }
     }
     pub fn name(self) -> &'static str {
@@ -194,7 +192,9 @@ mod tests {
         assert_eq!(step(m(true, false, true, false), "="), (300.0, 0.0));
     }
     #[test]
-    fn plain_keys_stay_free_and_alt_is_a_modifier_in_preview() {
+    fn super_space_opens_apps_and_alt_requires_an_explicit_override() {
+        assert_eq!(bind("space", m(true, false, false, false), S), Some(Cmd::Menu));
+        assert_eq!(bind("space", m(false, true, false, false), S), None);
         assert_eq!(bind("q", m(false, false, false, false), S), None);
         assert_eq!(bind("3", m(false, false, false, false), S), Some(Cmd::Workspace(2)));
         assert_eq!(bind("/", m(false, false, false, false), S), Some(Cmd::Menu));

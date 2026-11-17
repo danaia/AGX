@@ -1,0 +1,242 @@
+// Searchable app launcher. The catalogue and command routing live in launcher.rs.
+import { Theme, MenuRow } from "data.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component AppIcon inherits Rectangle {
+    in property <int> kind;
+    out property <color> tint: kind == 0 ? Theme.green : kind == 1 ? Theme.accent
+        : kind == 2 ? Theme.magenta : kind == 3 ? Theme.cyan : kind == 4 ? Theme.yellow
+        : kind == 5 ? Theme.red : kind == 6 ? Theme.accent : Theme.fg;
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: tint.with-alpha(0.12);
+    border-width: 1px;
+    border-color: tint.with-alpha(0.12);
+    Image {
+        x: 9px; y: 9px; width: 24px; height: 24px;
+        colorize: root.tint;
+        source: root.kind == 0 ? @image-url("icons/apps/overview.svg")
+            : root.kind == 1 ? @image-url("icons/apps/cpu.svg")
+            : root.kind == 2 ? @image-url("icons/apps/storage.svg")
+            : root.kind == 3 ? @image-url("icons/apps/network.svg")
+            : root.kind == 4 ? @image-url("icons/apps/hardware.svg")
+            : root.kind == 5 ? @image-url("icons/apps/services.svg")
+            : root.kind == 6 ? @image-url("icons/apps/system.svg")
+            : root.kind == 7 ? @image-url("icons/apps/console.svg")
+            : root.kind == 8 ? @image-url("icons/apps/workspace.svg")
+            : root.kind == 9 ? @image-url("icons/apps/window.svg")
+            : root.kind == 10 ? @image-url("icons/apps/power.svg")
+            : @image-url("icons/apps/logout.svg");
+    }
+}
+
+component LauncherTab inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    callback chosen();
+    height: 32px;
+    width: 126px;
+    border-radius: 7px;
+    background: active ? Theme.bg-light : touch.has-hover ? Theme.bg-light.with-alpha(0.5) : transparent;
+    Text {
+        text: root.label;
+        color: root.active ? Theme.fg-bright : Theme.fg;
+        font-size: 12px;
+        font-weight: root.active ? 600 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        accessible-role: button;
+        accessible-label: root.label;
+        clicked => { root.chosen(); }
+    }
+}
+
+export component AppLauncher inherits Rectangle {
+    in property <[MenuRow]> rows;
+    in-out property <int> selected: 0;
+    in-out property <int> section: 0;
+    callback query(string);
+    callback accepted(int);
+    callback dismissed();
+    callback pointer-moved(length, length);
+    background: #05070cb8;
+    init => { search.focus(); }
+
+    function choose() {
+        if (root.selected >= 0 && root.selected < root.rows.length) { root.accepted(root.selected); }
+    }
+    function switch-section(value: int) {
+        root.section = value;
+        root.selected = 0;
+        results.content-y = 0px;
+        root.query(search.text);
+        search.focus();
+    }
+    function reveal-selection() {
+        if (root.selected * 70px + results.content-y < 0px) {
+            results.content-y = -root.selected * 70px;
+        } else if (root.selected * 70px + 64px + results.content-y > results.visible-height) {
+            results.content-y = min(0px, results.visible-height - root.selected * 70px - 64px);
+        }
+    }
+    changed selected => { root.reveal-selection(); }
+
+    TouchArea {
+        pointer-event(e) => { root.pointer-moved(self.mouse-x, self.mouse-y); }
+        clicked => { root.dismissed(); }
+    }
+    panel := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: max(24px, min(72px, (parent.height - self.height) / 2));
+        width: min(660px, parent.width - 40px);
+        height: min(240px + max(1, min(root.rows.length, 8)) * 70px, parent.height - 64px);
+        border-radius: 16px;
+        background: Theme.bg;
+        border-width: 1px;
+        border-color: Theme.fg-dim.with-alpha(0.45);
+        // Consume clicks in the panel; only the backdrop dismisses it.
+        TouchArea { pointer-event(e) => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+        VerticalLayout {
+            padding: 20px;
+            padding-bottom: 0px;
+            spacing: 14px;
+            HorizontalLayout {
+                height: 42px;
+                spacing: 12px;
+                AppIcon { kind: 0; }
+                VerticalLayout {
+                    spacing: 3px;
+                    Text { text: "Applications"; color: Theme.fg-bright; font-size: 22px; font-weight: 700; }
+                    Text { text: "Monitor, connect, and manage your Pi."; color: Theme.fg; font-size: 11px; overflow: elide; }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Rectangle {
+                    width: 38px; height: 25px; border-radius: 5px;
+                    background: Theme.bg-light;
+                    Text { text: "Esc"; color: Theme.fg; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { mouse-cursor: pointer; accessible-role: button; accessible-label: "Close launcher"; clicked => { root.dismissed(); } }
+                }
+            }
+            Rectangle {
+                height: 48px;
+                border-radius: 9px;
+                background: Theme.bg-dark;
+                border-width: 1px;
+                border-color: search.has-focus ? Theme.accent.with-alpha(0.75) : Theme.muted;
+                HorizontalLayout {
+                    padding-left: 14px; padding-right: 12px; spacing: 12px;
+                    Text { text: "󰍉"; color: Theme.accent; font-size: 19px; vertical-alignment: center; }
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        Text { x: 0px; y: 0px; width: parent.width; height: parent.height; text: "Search apps or commands…"; visible: search.text == ""; color: Theme.fg-dim; font-size: 13px; horizontal-alignment: left; vertical-alignment: center; }
+                        search := TextInput {
+                            color: Theme.fg-bright;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            horizontal-alignment: left;
+                            single-line: true;
+                            accessible-label: "Search apps or commands";
+                            edited => { root.selected = 0; results.content-y = 0px; root.query(self.text); }
+                            accepted => { root.choose(); }
+                            key-pressed(e) => {
+                                if (e.text == Key.Escape) { root.dismissed(); return accept; }
+                                if (e.text == Key.DownArrow) { root.selected = min(root.selected + 1, root.rows.length - 1); return accept; }
+                                if (e.text == Key.UpArrow) { root.selected = max(root.selected - 1, 0); return accept; }
+                                if (e.text == Key.PageDown) { root.selected = min(root.selected + 5, root.rows.length - 1); return accept; }
+                                if (e.text == Key.PageUp) { root.selected = max(root.selected - 5, 0); return accept; }
+                                if (e.text == Key.Tab || e.text == Key.Backtab) { root.switch-section(1 - root.section); return accept; }
+                                reject
+                            }
+                        }
+                    }
+                    if search.text != "": Rectangle {
+                        width: 24px;
+                        Text { text: "×"; color: Theme.fg; font-size: 18px; horizontal-alignment: center; vertical-alignment: center; }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            accessible-role: button;
+                            accessible-label: "Clear search";
+                            clicked => { search.text = ""; root.selected = 0; results.content-y = 0px; root.query(""); search.focus(); }
+                        }
+                    }
+                }
+            }
+            HorizontalLayout {
+                height: 32px; spacing: 6px;
+                LauncherTab { label: "Apps"; active: root.section == 0; chosen => { root.switch-section(0); } }
+                LauncherTab { label: "Commands"; active: root.section == 1; chosen => { root.switch-section(1); } }
+                Rectangle { horizontal-stretch: 1; }
+                Text { text: search.text != "" ? "SEARCH RESULTS" : root.section == 0 ? "YOUR TOOLS" : "DESKTOP & SESSION"; color: Theme.fg-dim; font-size: 10px; vertical-alignment: center; }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                results := ScrollView {
+                    content-height: root.rows.length * 70px;
+                    content-width: self.visible-width;
+                    horizontal-scrollbar-policy: always-off;
+                    vertical-scrollbar-policy: as-needed;
+                    for row[i] in root.rows: Rectangle {
+                        y: i * 70px;
+                        height: 64px;
+                        width: results.visible-width;
+                        border-radius: 10px;
+                        background: i == root.selected ? Theme.accent.with-alpha(0.12) : transparent;
+                        border-width: 1px;
+                        border-color: i == root.selected ? Theme.accent.with-alpha(0.28) : transparent;
+                        HorizontalLayout {
+                            padding-left: 10px; padding-right: 14px; spacing: 13px;
+                            VerticalLayout { width: 42px; alignment: center; AppIcon { kind: row.icon; } }
+                            VerticalLayout {
+                                padding-top: 12px; padding-bottom: 12px; spacing: 4px;
+                                horizontal-stretch: 1;
+                                Text { text: row.label; color: Theme.fg-bright; font-size: 14px; font-weight: 600; overflow: elide; }
+                                Text { text: row.description; color: Theme.fg; font-size: 12px; overflow: elide; }
+                            }
+                            if row.running: VerticalLayout {
+                                width: 5px; alignment: center;
+                                Rectangle { width: 5px; height: 5px; border-radius: 3px; background: Theme.green; }
+                            }
+                            Text { text: row.hint; color: row.running ? Theme.green : Theme.fg-dim; font-size: 10px; vertical-alignment: center; }
+                            if i == root.selected: Text { text: "↵"; color: Theme.accent; font-size: 18px; vertical-alignment: center; }
+                        }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            accessible-role: button;
+                            accessible-label: row.label + ". " + row.description;
+                            pointer-event(e) => {
+                                root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                                root.selected = i;
+                            }
+                            clicked => { root.selected = i; root.choose(); }
+                        }
+                    }
+                }
+                if root.rows.length == 0: VerticalLayout {
+                    alignment: center;
+                    spacing: 12px;
+                    Text { text: "No matching apps or commands"; color: Theme.fg-bright; font-size: 15px; horizontal-alignment: center; }
+                    Text { text: "Try network, storage, or restart."; color: Theme.fg; font-size: 12px; horizontal-alignment: center; }
+                }
+            }
+            Rectangle {
+                height: 42px;
+                border-width: 0px;
+                Rectangle { x: 0px; y: 0px; width: parent.width; height: 1px; background: Theme.muted.with-alpha(0.5); }
+                HorizontalLayout {
+                    y: 1px;
+                    height: parent.height - 1px;
+                    spacing: 12px;
+                    Text { text: "↑↓  Navigate"; color: Theme.fg; font-size: 10px; vertical-alignment: center; }
+                    Text { text: "↵  Open"; color: Theme.fg; font-size: 10px; vertical-alignment: center; }
+                    Text { text: "Tab  Switch view"; color: Theme.fg; font-size: 10px; vertical-alignment: center; }
+                    Rectangle { horizontal-stretch: 1; }
+                    Text { text: root.rows.length == 1 ? "1 result" : "\{root.rows.length} results"; color: Theme.fg; font-size: 10px; vertical-alignment: center; }
+                }
+            }
+        }
+    }
+}

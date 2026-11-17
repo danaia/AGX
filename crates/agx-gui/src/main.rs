@@ -4,6 +4,7 @@
 //! Exit codes let a launcher script react to the user's choice:
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod keymap;
+mod launcher;
 mod wm;
 mod scene_model;
 mod login;
@@ -165,7 +166,7 @@ impl App {
             Cmd::Close => {
                 if let Some(k) = self.desk.focused() {
                     self.desk.close(k);
-                    self.toast(ui, &format!("Closed {}. Reopen it from the menu ({m}+Space).", k.title()));
+                    self.toast(ui, &format!("Closed {}. Reopen it from Apps ({m}+Space).", k.title()));
                 }
             }
             Cmd::ToggleSplit => self.desk.toggle_split(),
@@ -200,63 +201,6 @@ impl App {
             }
         }
         self.refresh(ui);
-    }
-
-    fn menu_items(&self) -> Vec<(String, String, Cmd)> {
-        let m = self.modk.name();
-        let mut items = vec![];
-        for n in 0..wm::WORKSPACES {
-            items.push((format!("Workspace {}", n + 1), format!("{m}+{}", n + 1), Cmd::Workspace(n)));
-        }
-        for k in Kind::ALL {
-            if !self.desk.is_open(k) {
-                items.push((format!("Open {}", k.title()), "closed panel".into(), Cmd::Open(k)));
-            }
-        }
-        if let Some(f) = self.desk.focused() {
-            let t = f.title();
-            items.push((format!("Close {t}"), format!("{m}+Q"), Cmd::Close));
-            items.push((format!("Float or tile {t}"), format!("{m}+T"), Cmd::ToggleFloat));
-            items.push((format!("Fullscreen {t}"), format!("{m}+F"), Cmd::Fullscreen));
-            items.push((format!("Maximize {t}"), "full width".into(), Cmd::Maximize));
-            items.push(("Toggle split".into(), format!("{m}+J"), Cmd::ToggleSplit));
-        }
-        items.push((
-            if self.desk.mode() == Mode::Tiled { "Window mode (float all)" } else { "Tile this workspace" }.into(),
-            format!("{m}+L"),
-            Cmd::CycleLayout,
-        ));
-        items.push(("Open TUI".into(), "terminal console".into(), Cmd::Tui));
-        items.push(("Sign out".into(), "return to login".into(), Cmd::Logout));
-        items.push(("Reboot".into(), "asks first".into(), Cmd::Reboot));
-        items.push(("Shut down".into(), "asks first".into(), Cmd::Shutdown));
-        items
-    }
-
-    fn set_menu_rows(&mut self, ui: &AppWindow, query: &str) {
-        let q = query.to_lowercase();
-        let (mut rows, mut cmds) = (vec![], vec![]);
-        for (label, hint, cmd) in self.menu_items() {
-            if label.to_lowercase().contains(&q) {
-                rows.push(MenuRow { label: label.into(), hint: hint.into() });
-                cmds.push(cmd);
-            }
-        }
-        ui.set_menu_rows(ModelRc::new(VecModel::from(rows)));
-        self.menu = cmds;
-    }
-
-    fn open_menu(&mut self, ui: &AppWindow) {
-        ui.set_session_open(false);
-        self.set_menu_rows(ui, "");
-        ui.set_menu_index(0);
-        ui.set_menu_open(true);
-    }
-
-    fn menu_accept(&mut self, ui: &AppWindow, index: i32) {
-        if let Some(cmd) = self.menu.get(index as usize).copied() {
-            self.run(ui, cmd);
-        }
     }
 
     fn confirm(&mut self, ui: &AppWindow, yes: bool) {

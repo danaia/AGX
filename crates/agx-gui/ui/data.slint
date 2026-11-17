@@ -5,7 +5,7 @@ import "fonts/JetBrainsMonoNerdFont-Bold.ttf";
 
 export struct NetRow { name: string, state: string, mac: string, ipv4: string }
 export struct HwRow { kind: string, name: string, state: string, detail: string }
-export struct MenuRow { label: string, hint: string }
+export struct MenuRow { label: string, description: string, hint: string, icon: int, app: bool, running: bool }
 // One window on the current workspace, already placed by the tiling engine.
 export struct Win {
     kind: int,

@@ -117,7 +117,15 @@ A cable straight between the workstation and the Pi's Ethernet port gives a fast
 
 ## Modifier
 
-On the appliance (`--features kms`, no compositor) the modifier is **Super**, as in Omarchy. In a desktop preview Super belongs to the compositor, so the default is **Alt**. Override it with `AGX_GUI_MOD=super|alt`. Below, `Mod` means that key. "A little" is Alt with Super (Ctrl with Alt); "a lot" is Ctrl with Super (Super with Alt).
+The main modifier is **Super** in both appliance and preview builds. **Super+Space** opens Applications. For a nested preview whose host compositor reserves Super, explicitly set `AGX_GUI_MOD=alt`; `AGX_GUI_MOD=super` selects the normal default. Below, `Mod` means that key. "A little" is Alt with Super (Ctrl with Alt); "a lot" is Ctrl with Super (Super with Alt).
+
+## Applications launcher
+
+**Super+Space** opens an app-first launcher. Apps lists all seven graphical tools plus Terminal Console, including running tools; selecting a running tool focuses it or brings it to the current workspace. Each app has an embedded vector icon, a description and a running indicator. **Commands** holds window actions, workspaces and session controls. Power actions retain their confirmation step.
+
+Type to search across apps and commands. Search recognises terms such as Wi-Fi, RAM, disk and reboot. Up/Down select a result, Page Up/Page Down move five results, Enter opens it, Tab switches Apps/Commands, and Escape closes the launcher. Mouse selection and scrolling work throughout the clipped results area. The panel adapts to the window height and shortens when search returns fewer results; unmatched queries show a useful no-results state. `/` remains a fallback shortcut when a VNC viewer intercepts Super. In Remmina, enable **Grab all keyboard events** to send Super shortcuts to ANGI while the viewer is focused.
+
+On November 16, 2026, the launcher passed visual checks at 1280×900, 720×700 and 640×400, including app search, command scrolling, empty results, mouse activation and reaching the last app by keyboard in a small window. The Pi preview confirmed Super+Space, Wi-Fi search, opening Network and small-window navigation. The workspace tests and 71 GUI tests passed. The tested executable is installed on the development Pi, and both saved ANGI Remmina profiles enable keyboard grab; Right Ctrl twice toggles the grab with the workstation's current Remmina shortcuts. The previous executable link is saved under `/root/agx-launcher-backup/`.
 
 ## Keyboard (same chords as Omarchy's `bindings/tiling.lua`)
 
@@ -137,7 +145,7 @@ On the appliance (`--features kms`, no compositor) the modifier is **Super**, as
 | Alt+Tab | Cycle window focus |
 | Mod+`-` and Mod+`=` | Narrow or widen by 100px (Shift: height) |
 | a little / a lot | 25px or 300px steps |
-| Mod+Space or `/` | Menu: workspaces, closed panels, window actions, TUI, reboot, shut down |
+| Super+Space (`Mod+Space` with an explicit override), or `/` | Applications launcher; Apps first, desktop/session actions under Commands |
 
 ## Mouse
 
