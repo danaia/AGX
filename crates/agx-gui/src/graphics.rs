@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(any(feature = "kms", test))]
 mod detection;
 #[cfg(any(feature = "kms", test))]
-mod kms_keys;
+mod kms_input;
 mod virtual_display;
 
 pub const ENVIRONMENT: [&str; 5] = [
@@ -96,7 +96,7 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
     }
     let selector = slint::BackendSelector::new().backend_name(backend.clone());
     #[cfg(feature = "kms")]
-    let selector = selector.with_libinput_event_hook(kms_keys::filter);
+    let selector = selector.with_libinput_event_hook(kms_input::filter);
     selector.select()?;
     SOFTWARE_CURSOR.store(backend == "linuxkms-software", Ordering::Relaxed);
     eprintln!("agx-gui: backend={backend}");
@@ -148,10 +148,10 @@ mod tests {
     }
 }
 
-/// Register the live window for local keys missing from Slint's LinuxKMS mapping.
+/// Register the live window for local input missing from Slint's LinuxKMS mapping.
 pub fn attach_input<C: slint::ComponentHandle + 'static>(ui: &C) {
     #[cfg(feature = "kms")]
-    kms_keys::attach(ui);
+    kms_input::attach(ui);
     #[cfg(not(feature = "kms"))]
     let _ = ui;
 }
