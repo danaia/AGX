@@ -235,6 +235,62 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
             .any(|(name, meta)| name == "space" && *meta),
         "closing the focused browser restores desktop Super shortcuts"
     );
+    for keysym in [32, 0xffeb] {
+        remote::input::dispatch(ui.window(), remote::input::Input::Key { down: false, keysym });
+    }
+    // A map tile opens details. Deletion needs a second activation, and Escape
+    // cancels confirmation without invoking the deletion callback.
+    let storage = ui.global::<StorageView>();
+    storage.set_sd_cells(ModelRc::new(slint::VecModel::from(vec![StorageCell {
+        path: "/home/test/Downloads/archive.zip".into(),
+        detail: "32 MiB file size".into(),
+        tint: slint::Color::from_rgb_u8(60, 110, 70),
+    }])));
+    let selected = Rc::new(RefCell::new(Vec::new()));
+    let received = selected.clone();
+    let weak = ui.as_weak();
+    storage.on_select_file(move |drive, index| {
+        received.borrow_mut().push((drive, index));
+        let ui = weak.upgrade().unwrap();
+        let storage = ui.global::<StorageView>();
+        storage.set_selected_path("/home/test/Downloads/archive.zip".into());
+        storage.set_selected_detail("32 MiB file size".into());
+        storage.set_selected_open(true);
+    });
+    let deletions = Rc::new(RefCell::new(0));
+    let received = deletions.clone();
+    storage.on_delete_file(move || *received.borrow_mut() += 1);
+    render();
+    let overview = app.desk.rect_of(Kind::Overview).unwrap();
+    // Use the actual model's desktop handler so a premature focus/stack update
+    // would destroy the pressed tile and lose the first click.
+    let live_app = Rc::new(RefCell::new(app));
+    let (weak, state) = (ui.as_weak(), live_app.clone());
+    ui.on_pointer(move |kind, button, x, y, ctrl, alt, shift, meta| {
+        state.borrow_mut().pointer(&weak.upgrade().unwrap(), kind, button, x, y, mods(ctrl, alt, shift, meta));
+    });
+    click(overview.x + 25., overview.y + 200.);
+    assert_eq!(*selected.borrow(), vec![(0, 0)]);
+    assert!(storage.get_selected_open());
+    render();
+    let key = |text: slint::SharedString| {
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+        ui.window().dispatch_event(WindowEvent::KeyReleased { text });
+    };
+    key(slint::platform::Key::Tab.into());
+    key(slint::platform::Key::Return.into());
+    assert!(storage.get_confirming());
+    assert_eq!(*deletions.borrow(), 0);
+    key(slint::platform::Key::Escape.into());
+    assert!(!storage.get_confirming());
+    assert_eq!(*deletions.borrow(), 0);
+    key(slint::platform::Key::Tab.into());
+    key(slint::platform::Key::Return.into());
+    assert!(storage.get_confirming());
+    key(slint::platform::Key::Tab.into());
+    key(slint::platform::Key::Return.into());
+    assert_eq!(*deletions.borrow(), 1);
+    storage.set_selected_open(false);
 }
 
 #[test]

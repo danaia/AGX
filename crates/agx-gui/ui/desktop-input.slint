@@ -2,6 +2,7 @@
 export component DesktopInput inherits TouchArea {
     in property <int> cursor: 0;
     in property <bool> hide-cursor: false;
+    in property <bool> forward-scroll: true;
     callback pointer(int, int, length, length, bool, bool, bool, bool);
     callback scroll(float, float, bool, bool, bool, bool);
     callback pointer-moved(length, length);
@@ -25,6 +26,7 @@ export component DesktopInput inherits TouchArea {
         root.pointer(2, 3, x, y, false, false, false, false);
     }
     scroll-event(e) => {
+        if !root.forward-scroll { return reject; }
         root.scroll(e.delta-x / 1px, e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
         accept
     }

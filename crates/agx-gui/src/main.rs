@@ -21,6 +21,7 @@ mod runtime;
 mod settings;
 mod session_refresh;
 mod system_ui;
+mod storage;
 use app::{App, session_action};
 use keymap::Mods;
 use slint::ComponentHandle;

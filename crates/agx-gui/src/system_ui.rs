@@ -77,7 +77,7 @@ fn percent(part: u64, whole: u64) -> f32 {
     }
 }
 
-fn bytes(n: u64) -> String {
+pub(super) fn bytes(n: u64) -> String {
     const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
     let mut value = n as f64;
     let mut unit = 0;

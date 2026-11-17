@@ -1,0 +1,89 @@
+import { Theme } from "data.slint";
+import { DesktopInput } from "desktop-input.slint";
+
+export struct StorageCell { tint: color, path: string, detail: string }
+export global StorageView {
+    in property <[StorageCell]> sd-cells;
+    in property <[StorageCell]> nvme-cells;
+    in property <string> sd-summary: "Scanning…";
+    in property <string> nvme-summary: "Scanning…";
+    in property <string> sd-status: "Reading mounted filesystems";
+    in property <string> nvme-status: "Reading mounted filesystems";
+    in property <string> selected-path;
+    in property <string> selected-detail;
+    in property <string> message;
+    in property <int> risk-level: 1;
+    in property <string> risk-label: "Medium risk";
+    in property <string> risk-reason: "Check that you no longer need this file or have another copy.";
+    in property <bool> busy: false;
+    in-out property <bool> selected-open: false;
+    in-out property <bool> confirming: false;
+    callback select-file(int, int);
+    callback delete-file();
+    callback refresh-files();
+    in property <bool> refreshing: false;
+}
+
+export component StorageMap inherits Rectangle {
+    in property <string> label;
+    in property <int> drive;
+    in property <string> summary;
+    in property <string> status;
+    in property <[StorageCell]> cells;
+    in property <int> cursor;
+    in property <bool> hide-cursor;
+    callback pointer(int, int, length, length, bool, bool, bool, bool);
+    callback pointer-moved(length, length);
+    private property <bool> window-gesture: false;
+    private property <int> columns: max(8, min(64, floor(self.width / 14px)));
+    private property <length> cell-size: self.width / root.columns;
+    private property <int> rows: max(2, ceil(root.cells.length / root.columns));
+    private property <int> raw-index: floor(grid-input.mouse-y / root.cell-size) * root.columns + floor(grid-input.mouse-x / root.cell-size);
+    out property <int> hovered-index: grid-input.has-hover && root.raw-index >= 0 && root.raw-index < root.cells.length ? root.raw-index : -1;
+    out property <string> hover-path: root.hovered-index >= 0 ? root.cells[root.hovered-index].path : "";
+    out property <string> hover-detail: root.hovered-index >= 0 ? root.cells[root.hovered-index].detail : "";
+    height: 40px + root.rows * root.cell-size;
+    VerticalLayout {
+        spacing: 4px;
+        HorizontalLayout {
+            height: 16px;
+            Text { text: root.label; color: #c5a38b; font-size: 12px; font-weight: 700; }
+            Text { text: root.summary; color: Theme.fg-dim; font-size: 11px; horizontal-alignment: right; overflow: elide; }
+        }
+        grid := Rectangle {
+            height: root.rows * root.cell-size;
+            background: #292021;
+            for cell[i] in root.cells: Rectangle {
+                x: mod(i, root.columns) * root.cell-size;
+                y: floor(i / root.columns) * root.cell-size;
+                width: root.cell-size - 1px;
+                height: root.cell-size - 1px;
+                background: cell.tint;
+                animate x, y { duration: 220ms; easing: ease-in-out; }
+                border-width: root.hovered-index == i ? 1px : 0px;
+                border-color: #ead0b7;
+                accessible-role: button;
+                accessible-label: cell.path + " · " + cell.detail;
+            }
+            if root.cells.length == 0: Text {
+                text: root.summary == "Scanning…" ? "Reading file sizes…" : root.summary == "Not mounted" ? "Not mounted" : "No files in this set · use Refresh files";
+                color: #947a6d; font-size: 11px;
+                vertical-alignment: center; horizontal-alignment: center;
+            }
+            grid-input := DesktopInput {
+                forward-scroll: false;
+                clicked => { if !root.window-gesture && root.hovered-index >= 0 { StorageView.select-file(root.drive, root.hovered-index); } }
+                cursor: root.hovered-index >= 0 ? 6 : root.cursor;
+                hide-cursor: root.hide-cursor;
+                pointer(k, b, x, y, c, a, s, m) => {
+                    if k == 0 { root.window-gesture = b != 0 || c || a || s || m; }
+                    // Plain tile clicks open details without rebuilding the window
+                    // stack on press. Modified gestures still reach the desktop.
+                    if root.window-gesture || k == 2 || k == 3 { root.pointer(k, b, x, y, c, a, s, m); }
+                }
+                pointer-moved(x, y) => { root.pointer-moved(x, y); }
+            }
+        }
+        Text { height: 16px; text: root.status; color: Theme.fg-dim; font-size: 10px; overflow: elide; }
+    }
+}

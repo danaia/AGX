@@ -1,4 +1,7 @@
 import { Theme, Sys } from "data.slint";
+import { StorageMap, StorageView } from "storage.slint";
+import { DesktopInput } from "desktop-input.slint";
+import { ScrollView, Button } from "std-widgets.slint";
 
 component Row inherits HorizontalLayout {
     in property <string> label;
@@ -41,22 +44,90 @@ component StateDot inherits Rectangle {
         : state == "down" || state == "missing" || state == "failed" ? Theme.red : Theme.yellow;
 }
 
-export component OverviewPanel inherits VerticalLayout {
-    padding: 12px;
-    spacing: 8px;
-    alignment: start;
-    Image {
-        source: @image-url("../../../brand/brand-mark-text.svg");
-        width: min(200px, parent.width - 24px);
-        height: self.width * 239 / 711;
-        image-fit: contain;
-        accessible-label: "ANGI";
+export component OverviewPanel inherits Rectangle {
+    in property <int> cursor;
+    in property <bool> hide-cursor;
+    callback pointer(int, int, length, length, bool, bool, bool, bool);
+    callback pointer-moved(length, length);
+    DesktopInput {
+        cursor: root.cursor;
+        hide-cursor: root.hide-cursor;
+        pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
     }
-    Row { label: "host"; value: Sys.hostname; }
-    Row { label: "board"; value: Sys.board; }
-    Row { label: "kernel"; value: Sys.kernel; }
-    Row { label: "uptime"; value: Sys.uptime; }
-    Row { label: "address"; value: Sys.primary-ip; tint: Theme.green; }
+    HorizontalLayout {
+        x: 12px; y: 12px;
+        width: max(0px, root.width - 54px); height: 112px;
+        spacing: 12px;
+        VerticalLayout {
+            spacing: 3px;
+            Row { label: "host"; value: Sys.hostname; }
+            Row { label: "board"; value: Sys.board; }
+            Row { label: "kernel"; value: Sys.kernel; }
+            Row { label: "uptime"; value: Sys.uptime; }
+            Row { label: "address"; value: Sys.primary-ip; tint: Theme.green; }
+        }
+        Image {
+            source: @image-url("../../../brand/brand-mark-text.svg");
+            width: root.width > 600px ? 170px : 100px;
+            image-fit: contain;
+            accessible-label: "ANGI";
+        }
+    }
+    Rectangle { x: 12px; y: 134px; width: max(0px, root.width - 24px); height: 1px; background: #3d3030; }
+    ScrollView {
+        x: 0px; y: 135px;
+        width: parent.width; height: max(0px, parent.height - 179px);
+        content-width: self.width;
+        horizontal-scrollbar-policy: always-off;
+        vertical-scrollbar-policy: always-off;
+        VerticalLayout {
+            padding: 12px;
+            padding-top: 10px;
+            spacing: 10px;
+            alignment: start;
+            sd-map := StorageMap {
+                label: "SD card"; drive: 0;
+                summary: StorageView.sd-summary;
+                status: StorageView.sd-status;
+                cells: StorageView.sd-cells;
+                cursor: root.cursor; hide-cursor: root.hide-cursor;
+                pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+                pointer-moved(x, y) => { root.pointer-moved(x, y); }
+            }
+            nvme-map := StorageMap {
+                label: "NVMe"; drive: 1;
+                summary: StorageView.nvme-summary;
+                status: StorageView.nvme-status;
+                cells: StorageView.nvme-cells;
+                cursor: root.cursor; hide-cursor: root.hide-cursor;
+                pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+                pointer-moved(x, y) => { root.pointer-moved(x, y); }
+            }
+            Text { text: "Your files ≥ 1 MiB · green < 10 MiB · amber 100 MiB · red ≥ 1 GiB · click for details"; color: #947a6d; font-size: 10px; wrap: word-wrap; }
+
+        }
+    }
+    if sd-map.hover-path != "" || nvme-map.hover-path != "": Rectangle {
+        x: 12px; y: max(0px, root.height - 40px);
+        width: max(0px, root.width - 72px); height: 32px;
+        VerticalLayout {
+            spacing: 2px;
+            Text { text: sd-map.hover-path != "" ? sd-map.hover-path : nvme-map.hover-path; color: Theme.fg; font-size: 11px; overflow: elide; }
+            Text { text: sd-map.hover-path != "" ? sd-map.hover-detail : nvme-map.hover-detail; color: Theme.fg-dim; font-size: 10px; overflow: elide; }
+        }
+    }
+    Button {
+        x: max(0px, root.width - self.width - 8px);
+        y: max(0px, root.height - self.height - 8px);
+        width: 40px; height: 32px;
+        icon: @image-url("icons/refresh.svg");
+        icon-size: 16px;
+        colorize-icon: true;
+        accessible-label: StorageView.refreshing ? "Refreshing files" : "Refresh files";
+        enabled: !StorageView.busy && !StorageView.refreshing;
+        clicked => { StorageView.refresh-files(); }
+    }
 }
 
 export component CpuPanel inherits VerticalLayout {
