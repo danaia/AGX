@@ -386,23 +386,6 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> slint::Timer {
         .browser_selection(&ui, index));
     web_hook!(on_dialog_response, |state, ui, accepted, value| state
         .browser_dialog(&ui, accepted, &value));
-    let (weak, state) = (ui.as_weak(), app.clone());
-    ui.on_browser_key(move |text, ctrl, alt, shift, meta, down| {
-        let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) else {
-            return false;
-        };
-        app.browser_key(
-            &ui,
-            &text,
-            crate::keymap::Mods {
-                ctrl,
-                alt,
-                shift,
-                meta,
-            },
-            down,
-        )
-    });
     gpu::install(ui, app);
     let timer = slint::Timer::default();
     let (weak, state) = (ui.as_weak(), app.clone());

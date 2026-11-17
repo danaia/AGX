@@ -1,5 +1,6 @@
 //! Root greeter only. A successful login execs a fresh, unprivileged session.
-use crate::{ComponentHandle, LoginWindow, Timer, graphics, remote};
+use crate::{ComponentHandle, LoginWindow, graphics, remote};
+use slint::Timer;
 use std::{
     cell::RefCell, ffi::CString, io, os::unix::process::CommandExt, process::Command, rc::Rc,
     time::Duration,

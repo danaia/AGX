@@ -1,0 +1,227 @@
+//! Desktop state, layout synchronization, commands and session actions.
+use crate::input::Drag;
+use crate::{
+    AppWindow, BOTTOM, EXIT_TUI, Sys, TOP, Terminal, browser, input,
+    keymap::{Cmd, ModKey, Mods},
+    quit,
+    scene_model::SceneModel,
+    terminal,
+    wm::{self, Desktop, Full, Kind, Mode, Rect},
+};
+use slint::{ComponentHandle, Model, Timer, VecModel};
+use std::process::Command;
+use std::{rc::Rc, time::Duration};
+pub(super) struct App {
+    pub(super) terminal: terminal::State,
+    pub(super) browser: browser::Browser,
+    pub(super) desk: Desktop,
+    pub(super) view: SceneModel,
+    pub(super) occupied: Rc<VecModel<bool>>,
+    pub(super) modk: ModKey,
+    pub(super) drag: Drag,
+    pub(super) mods: Mods,
+    pub(super) last: (f32, f32),
+    pub(super) target: Option<Kind>,
+    pub(super) ghost: Option<Rect>,
+    pub(super) cursor: i32,
+    pub(super) menu: Vec<Cmd>,
+    pub(super) pending: Option<Cmd>,
+    /// Logical size of the window as last laid out.
+    pub(super) size: (f32, f32),
+    pub(super) header_clicks: input::HeaderClicks,
+}
+
+pub(super) fn session_action(index: i32) -> Option<Cmd> {
+    [Cmd::Logout, Cmd::Tui, Cmd::Reboot, Cmd::Shutdown]
+        .get(index as usize)
+        .copied()
+}
+
+impl App {
+    pub(super) fn new() -> Self {
+        let screen = Rect::new(0.0, 0.0, 1280.0, 720.0);
+        let desk = Desktop::new(screen, Rect::new(0.0, TOP, 1280.0, 720.0 - TOP - BOTTOM));
+        let view = SceneModel::default();
+        view.sync(desk.scene(), None);
+        Self {
+            terminal: terminal::State::default(),
+            browser: browser::Browser::default(),
+            desk,
+            view,
+            occupied: Rc::new(VecModel::from(vec![false; wm::WORKSPACES])),
+            modk: ModKey::from_env(),
+            drag: Drag::None,
+            mods: Mods::default(),
+            last: (0.0, 0.0),
+            target: None,
+            ghost: None,
+            cursor: 0,
+            menu: vec![],
+            pending: None,
+            size: (1280.0, 720.0),
+            header_clicks: input::HeaderClicks::default(),
+        }
+    }
+
+    pub(super) fn resized(&mut self, ui: &AppWindow, w: f32, h: f32) {
+        if std::env::var_os("AGX_GUI_DEBUG").is_some() {
+            eprintln!("layout area {w}x{h}");
+        }
+        self.size = (w, h);
+        ui.global::<Sys>()
+            .set_screen_size(format!("{}x{}", w as i32, h as i32).into());
+        self.desk.set_area(
+            Rect::new(0.0, 0.0, w, h),
+            Rect::new(0.0, TOP, w, (h - TOP - BOTTOM).max(0.0)),
+        );
+        self.refresh(ui);
+    }
+
+    pub(super) fn refresh(&self, ui: &AppWindow) {
+        self.view.sync(self.desk.scene(), self.target);
+        let browser_visible = self
+            .view
+            .scene
+            .borrow()
+            .windows
+            .iter()
+            .any(|window| window.kind == Kind::Web && !window.collapsed);
+        let terminal_search = self.desk.focused() == Some(Kind::Terminal)
+            && ui.global::<Terminal>().get_search_visible()
+            && self
+                .view
+                .scene
+                .borrow()
+                .windows
+                .iter()
+                .any(|w| w.kind == Kind::Terminal && !w.collapsed);
+        if !terminal_search && (self.desk.focused() != Some(Kind::Web) || !browser_visible) {
+            ui.invoke_focus_desktop();
+        }
+        for i in 0..wm::WORKSPACES {
+            let occupied = self.desk.occupied(i);
+            if self.occupied.row_data(i) != Some(occupied) {
+                self.occupied.set_row_data(i, occupied);
+            }
+        }
+        ui.set_workspace(self.desk.current() as i32);
+        ui.set_windowed_mode(self.desk.mode() == Mode::Floating);
+        ui.set_layout_name(
+            match (self.desk.fullscreen_of(), self.desk.mode()) {
+                (Some((_, Full::Screen)), _) => "fullscreen",
+                (Some((_, Full::Maximized)), _) => "maximized",
+                (None, Mode::Tiled) => "tiled",
+                (None, Mode::Floating) => "windowed",
+            }
+            .into(),
+        );
+        ui.set_focus_title(self.desk.focused().map_or("", Kind::title).into());
+        ui.set_screen_full(self.view.scene.borrow().screen_full);
+        self.refresh_drag(ui);
+    }
+
+    pub(super) fn refresh_drag(&self, ui: &AppWindow) {
+        ui.set_dragging(!matches!(self.drag, Drag::None));
+        ui.set_cursor(self.cursor);
+        match self.ghost {
+            Some(g) => {
+                ui.set_ghost_x(g.x);
+                ui.set_ghost_y(g.y);
+                ui.set_ghost_w(g.w);
+                ui.set_ghost_h(g.h);
+                ui.set_ghost_visible(true);
+            }
+            None => ui.set_ghost_visible(false),
+        }
+    }
+
+    pub(super) fn toast(&self, ui: &AppWindow, text: &str) {
+        ui.set_toast(text.into());
+        let weak = ui.as_weak();
+        Timer::single_shot(Duration::from_secs(4), move || {
+            if let Some(ui) = weak.upgrade() {
+                ui.set_toast("".into());
+            }
+        });
+    }
+
+    // --- commands -----------------------------------------------------------
+    pub(super) fn run(&mut self, ui: &AppWindow, cmd: Cmd) {
+        self.header_clicks = input::HeaderClicks::default();
+        let m = self.modk.name();
+        match cmd {
+            Cmd::Focus(d) => self.desk.focus_dir(d),
+            Cmd::Swap(d) => self.desk.swap_dir(d),
+            Cmd::Close => {
+                if let Some(k) = self.desk.focused() {
+                    if k == Kind::Web && self.browser_request_close() {
+                        return;
+                    }
+                    self.desk.close(k);
+                    self.toast(
+                        ui,
+                        &format!("Closed {}. Reopen it from Apps ({m}+Space).", k.title()),
+                    );
+                }
+            }
+            Cmd::ToggleSplit => self.desk.toggle_split(),
+            Cmd::ToggleFloat => {
+                if let Some(note) = self.desk.toggle_float() {
+                    self.toast(ui, note);
+                }
+            }
+            Cmd::Fullscreen => self.desk.toggle_fullscreen(Full::Screen),
+            Cmd::Maximize => self.desk.toggle_fullscreen(Full::Maximized),
+            Cmd::CycleLayout => self.desk.cycle_layout(),
+            Cmd::Workspace(n) => self.desk.goto(n),
+            Cmd::MoveToWorkspace { ws, follow } => self.desk.move_to_workspace(ws, follow),
+            Cmd::NextWorkspace => self.desk.next_workspace(false),
+            Cmd::PrevWorkspace => self.desk.next_workspace(true),
+            Cmd::CycleFocus(back) => self.desk.cycle_focus(back),
+            Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
+            Cmd::Menu => self.open_menu(ui),
+            Cmd::Open(k) => self.desk.open(k),
+            Cmd::Tui => quit(EXIT_TUI),
+            Cmd::Logout => quit(0),
+            Cmd::Reboot | Cmd::Shutdown => {
+                ui.set_confirm_text(
+                    if cmd == Cmd::Reboot {
+                        "Reboot this Pi? Network sessions will close."
+                    } else {
+                        "Power off this Pi? Network sessions will close."
+                    }
+                    .into(),
+                );
+                self.pending = Some(cmd);
+            }
+        }
+        self.refresh(ui);
+    }
+
+    pub(super) fn confirm(&mut self, ui: &AppWindow, yes: bool) {
+        ui.set_confirm_text("".into());
+        let cmd = self.pending.take();
+        if yes {
+            power(ui, cmd);
+        }
+    }
+}
+
+fn power(ui: &AppWindow, cmd: Option<Cmd>) {
+    let verb = match cmd {
+        Some(Cmd::Reboot) => "reboot",
+        Some(Cmd::Shutdown) => "shutdown",
+        _ => return,
+    };
+    let sys = ui.global::<Sys>();
+    if cfg!(feature = "kms") {
+        // The CLI already confirms by flag; this GUI asked the user first.
+        match Command::new("agx").args([verb, "--yes"]).status() {
+            Ok(status) if status.success() => {}
+            Ok(status) => sys.set_warnings(format!("agx {verb} exited with {status}").into()),
+            Err(error) => sys.set_warnings(format!("agx {verb}: {error}").into()),
+        }
+    } else {
+        sys.set_warnings(format!("{verb} is disabled in the desktop preview").into());
+    }
+}

@@ -144,7 +144,12 @@ impl App {
             self.target = None;
             self.refresh(ui);
         }
-        if let Some(result) = self.browser_shortcut(ui, name, mods) { return result; }
+        if let Some(result) = self.terminal_shortcut(ui, name, mods) {
+            return result;
+        }
+        if let Some(result) = self.browser_shortcut(ui, name, mods) {
+            return result;
+        }
         match bind(name, mods, self.modk) {
             Some(cmd) => {
                 self.run(ui, cmd);
@@ -164,7 +169,14 @@ impl App {
         y: f32,
         mods: Mods,
     ) {
-        if self.browser_pointer(ui, kind, button, x, y, mods) { self.header_clicks.cancel(); return; }
+        if self.terminal_pointer(ui, kind, button, x, y, mods) {
+            self.header_clicks.cancel();
+            return;
+        }
+        if self.browser_pointer(ui, kind, button, x, y, mods) {
+            self.header_clicks.cancel();
+            return;
+        }
         match kind {
             0 => {
                 self.down(ui, button, x, y, mods);
@@ -396,7 +408,12 @@ impl App {
     }
 
     pub(super) fn scroll(&mut self, ui: &AppWindow, dx: f32, delta: f32, mods: Mods) {
-        if !self.modk.held(mods) && self.browser_scroll(dx, delta, mods) { return; }
+        if self.terminal_scroll(ui, delta, mods) {
+            return;
+        }
+        if !self.modk.held(mods) && self.browser_scroll(dx, delta, mods) {
+            return;
+        }
         if self.modk.held(mods) && delta != 0.0 {
             self.desk.next_workspace(delta > 0.0);
             self.refresh(ui);

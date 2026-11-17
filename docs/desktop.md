@@ -140,7 +140,7 @@ The main modifier is **Super** in both appliance and preview builds. **Super+Spa
 
 ## Applications launcher
 
-**Super+Space** opens an app-first launcher. Apps lists all seven graphical tools plus Terminal Console, including running tools; selecting a running tool focuses it or brings it to the current workspace. Each app has an embedded vector icon, a description and a running indicator. **Commands** holds window actions, workspaces and session controls. Power actions retain their confirmation step.
+**Super+Space** opens an app-first launcher. Apps lists the system tools, Web, native Terminal and System Console, including running tools; selecting a running tool focuses it or brings it to the current workspace. Each app has an embedded vector icon, a description and a running indicator. **Commands** holds window actions, workspaces and session controls. Power actions retain their confirmation step.
 
 Type to search across apps and commands. Search recognises terms such as Wi-Fi, RAM, disk and reboot. Up/Down select a result, Page Up/Page Down move five results, Enter opens it, Tab switches Apps/Commands, and Escape closes the launcher. Mouse selection and scrolling work throughout the clipped results area. The panel adapts to the window height and shortens when search returns fewer results; unmatched queries show a useful no-results state. `/` remains a fallback shortcut when a VNC viewer intercepts Super. In Remmina, enable **Grab all keyboard events** to send Super shortcuts to ANGI while the viewer is focused.
 
@@ -183,3 +183,5 @@ Verified on November 16, 2026 in both the software preview and on the Pi over VN
 Dwindle tiling: a new window splits the focused tile along its longer side. Gaps are 10px at the screen edge and 10px (2 × 5) between tiles, with 2px borders and square corners, matching Omarchy's Hyprland defaults. The focused window has the cyan-to-green border.
 
 Not implemented: window grouping (tabs), scratchpad, multiple monitors.
+
+Native **Terminal** opens with **Super+Enter** or from Apps. Its Alacritty engine provides shell emulation inside the existing window system, with Bash, tabs, searchable scrollback and CLI tools. See [Terminal](terminal.md) for shortcuts, runtime packaging and validation.

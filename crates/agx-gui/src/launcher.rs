@@ -55,24 +55,39 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             "Operating system and machine details",
             "settings info version kernel host",
         ),
-        ("Web", "Browse the web with WPE WebKit", "browser web internet website wpe webkit"),
+        (
+            "Web",
+            "Browse the web with WPE WebKit",
+            "browser web internet website wpe webkit",
+        ),
+        (
+            "Terminal",
+            "Native shell, tabs and searchable scrollback",
+            "terminal shell cli command bash ssh tmux",
+        ),
     ]) {
         entries.push(Entry {
             label: label.into(),
             description: description.into(),
             hint: if desktop.is_open(kind) { "Running" } else { "" }.into(),
             aliases,
-            icon: if kind == Kind::Web { 12 } else { kind.index() as i32 },
+            icon: if kind == Kind::Web {
+                12
+            } else if kind == Kind::Terminal {
+                7
+            } else {
+                kind.index() as i32
+            },
             app: true,
             running: desktop.is_open(kind),
             command: Cmd::Open(kind),
         });
     }
     entries.push(Entry {
-        label: "Terminal Console".into(),
+        label: "System Console".into(),
         description: "Switch to ANGI’s text-based tools".into(),
         hint: "TUI".into(),
-        aliases: "terminal console shell tui",
+        aliases: "console tui recovery",
         icon: 7,
         app: true,
         running: false,
@@ -254,7 +269,9 @@ mod tests {
         let mut desktop = desktop();
         desktop.close(Kind::Services);
         let apps = results(&desktop, "Super", "", 0);
-        assert_eq!(apps.len(), 9);
+        assert_eq!(apps.len(), Kind::ALL.len() + 1);
+        assert_eq!(results(&desktop, "Super", "terminal", 0)[0].command, Cmd::Open(Kind::Terminal));
+        assert!(!desktop.is_open(Kind::Terminal), "shells are started on demand");
         assert!(apps.iter().all(|entry| entry.app));
         assert_eq!(apps[0].command, Cmd::Open(Kind::Overview));
         assert!(
@@ -262,7 +279,10 @@ mod tests {
                 .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
         );
         assert!(!desktop.is_open(Kind::Web), "the engine app starts closed");
-        assert_eq!(results(&desktop, "Super", "webkit", 0)[0].command, Cmd::Open(Kind::Web));
+        assert_eq!(
+            results(&desktop, "Super", "webkit", 0)[0].command,
+            Cmd::Open(Kind::Web)
+        );
         desktop.open(Kind::Web);
         assert_eq!(desktop.focused(), Some(Kind::Web));
         desktop.close(Kind::Web);

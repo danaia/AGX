@@ -121,6 +121,7 @@ pub fn bind(key: &str, m: Mods, modk: ModKey) -> Option<Cmd> {
         "l" => Some(Cmd::CycleLayout),
         "tab" => Some(if m.shift { Cmd::PrevWorkspace } else { Cmd::NextWorkspace }),
         "space" => Some(Cmd::Menu),
+        "enter" => Some(Cmd::Open(Kind::Terminal)),
         // Omarchy binds the keys left of backspace: width, and with Shift height.
         "-" => Some(if m.shift { Cmd::Resize { dw: 0.0, dh: -step } } else { Cmd::Resize { dw: -step, dh: 0.0 } }),
         "=" => Some(if m.shift { Cmd::Resize { dw: 0.0, dh: step } } else { Cmd::Resize { dw: step, dh: 0.0 } }),
@@ -194,6 +195,7 @@ mod tests {
     #[test]
     fn super_space_opens_apps_and_alt_requires_an_explicit_override() {
         assert_eq!(bind("space", m(true, false, false, false), S), Some(Cmd::Menu));
+        assert_eq!(bind("enter", m(true, false, false, false), S), Some(Cmd::Open(Kind::Terminal)));
         assert_eq!(bind("space", m(false, true, false, false), S), None);
         assert_eq!(bind("q", m(false, false, false, false), S), None);
         assert_eq!(bind("3", m(false, false, false, false), S), Some(Cmd::Workspace(2)));

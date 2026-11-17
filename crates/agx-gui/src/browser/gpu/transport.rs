@@ -126,7 +126,7 @@ pub fn receive(socket: &OwnedFd) -> io::Result<Frame> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::fd::IntoRawFd;
+    use std::{io::Read, os::unix::net::UnixStream};
     fn descriptor() -> OwnedFd {
         std::fs::File::open("/dev/null").unwrap().into()
     }
@@ -140,13 +140,11 @@ mod tests {
         bytes[36..44].copy_from_slice(&1u64.to_be_bytes());
         assert_eq!(decode(&bytes, descriptor()).unwrap().width, 1280);
         bytes[20..24].copy_from_slice(&4u32.to_be_bytes());
-        let fd = descriptor().into_raw_fd();
-        assert!(decode(&bytes, unsafe { OwnedFd::from_raw_fd(fd) }).is_err());
-        assert_eq!(
-            unsafe { libc::fcntl(fd, libc::F_GETFD) },
-            -1,
-            "invalid frames close their fd"
-        );
+        let (mut reader, writer) = UnixStream::pair().unwrap();
+        assert!(decode(&bytes, writer.into()).is_err());
+        // Observe EOF on the resource, not a raw fd number which another
+        // concurrently running test may immediately reuse after close.
+        assert_eq!(reader.read(&mut [0u8; 1]).unwrap(), 0);
     }
     #[test]
     fn sequenced_packet_transfers_one_close_on_exec_descriptor() {

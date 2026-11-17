@@ -4,6 +4,8 @@ import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
 import { Web, WebOption, BrowserPanel } from "browser.slint";
 export { Web, WebOption }
+import { Terminal, TerminalRow, TerminalRun, TerminalPanel } from "terminal.slint";
+export { Terminal, TerminalRow, TerminalRun }
 import { BrowserPopup } from "browser-popup.slint";
 import { AppLauncher } from "launcher.slint";
 import { Cursor } from "cursor.slint";
@@ -34,7 +36,7 @@ component WindowFrame inherits Rectangle {
                 HorizontalLayout {
                     padding-left: 10px;
                     Text {
-                        text: win.kind == 7 ? Web.title : win.title;
+                        text: win.kind == 7 ? Web.title : win.kind == 8 ? Terminal.title : win.title;
                         color: win.focused ? Theme.accent : Theme.fg-dim;
                         font-weight: 700;
                         font-size: 12px;
@@ -57,6 +59,7 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 5: ServicesPanel { }
                 if win.kind == 6: SystemPanel { }
                 if win.kind == 7: BrowserPanel { active: win.focused; }
+                if win.kind == 8: TerminalPanel { active: win.focused; }
             }
         }
     }
@@ -212,6 +215,7 @@ export component AppWindow inherits Window {
     pure function key-name(t: string) -> string {
         t == Key.LeftArrow ? "left" : t == Key.RightArrow ? "right" : t == Key.UpArrow ? "up"
         : t == Key.DownArrow ? "down" : (t == Key.Tab || t == Key.Backtab) ? "tab" : t == " " ? "space"
+        : t == Key.PageUp ? "pageup" : t == Key.PageDown ? "pagedown"
         : t == Key.Escape ? "escape" : t == Key.Return ? "enter" : t.to-lowercase()
     }
 

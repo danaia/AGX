@@ -52,3 +52,9 @@ web-build:
 	./scripts/build-web.sh
 deploy-web: web-build gui-build
 	./scripts/deploy-web.sh
+
+.PHONY: terminal-build deploy-terminal
+terminal-build:
+	./scripts/build-terminal.sh
+deploy-terminal: terminal-build gui-build
+	./scripts/deploy-terminal.sh

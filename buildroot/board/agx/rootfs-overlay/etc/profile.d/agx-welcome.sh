@@ -1,3 +1,5 @@
+# Native Terminal supplies its own concise welcome, including tmux shells.
+[ "$TERM_PROGRAM" = ANGI ] && return
 # Keep the HDMI login shell concise; retain the existing SSH welcome.
 if [ "$(tty 2>/dev/null)" = /dev/tty1 ]; then
     case "$-" in *i*) printf '\n  ANGI OS  |  type agx --help for commands or agx tui for the dashboard.\n\n' ;; esac

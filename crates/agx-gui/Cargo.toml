@@ -31,6 +31,7 @@ zeroize = "1"
 libc = "0.2"
 signal-hook = "0.3"
 slint = { version = "1.18.1", default-features = false, features = ["std", "compat-1-2"] }
+alacritty_terminal = { version = "=0.26.0", default-features = false }
 
 [build-dependencies]
 slint-build = "1.18.1"
