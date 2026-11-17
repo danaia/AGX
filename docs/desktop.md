@@ -201,3 +201,7 @@ Dwindle tiling: a new window splits the focused tile along its longer side. Gaps
 Not implemented: window grouping (tabs), scratchpad, multiple monitors.
 
 Native **Terminal** opens with **Super+Enter** or from Apps. Its Alacritty engine provides shell emulation inside the existing window system, with Bash, tabs, searchable scrollback and CLI tools. See [Terminal](terminal.md) for shortcuts, runtime packaging and validation.
+
+Workspace 3 opens three independent Terminal windows in a tiled layout: one full-height terminal on the left and two stacked on the right. Hardware remains available in Apps. Choosing Terminal from Apps always adds a new window on the current workspace. Each terminal window has its own shell sessions, tabs, font size, selection and search state; there is no fixed application limit on terminal windows or tabs. Available memory and process resources determine practical capacity. Agent Angie uses a separate terminal window for Herdr.
+
+**Super+Return** opens a new terminal window in the focused terminal tab’s current working directory. New windows opened from Apps and new tabs inherit that directory too. With no terminal focused, a new terminal starts in your home directory.

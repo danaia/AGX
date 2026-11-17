@@ -1,0 +1,38 @@
+import { Theme } from "data.slint";
+import { LineEdit, Button } from "std-widgets.slint";
+
+export global AgentAngie {
+    callback activate();
+    callback submit(string);
+}
+
+export component AgentPanel inherits Rectangle {
+    in property <bool> active;
+    callback pointer-moved(length, length);
+    background: Theme.bg-dark;
+    changed active => { if (root.active) { prompt.focus(); } }
+    init => { if (root.active) { prompt.focus(); } }
+    TouchArea {
+        changed mouse-x => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        changed mouse-y => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { AgentAngie.activate(); } }
+    }
+    VerticalLayout {
+        x: max(20px, (parent.width - 660px) / 2);
+        y: max(24px, (parent.height - 250px) / 2);
+        width: min(660px, parent.width - 40px);
+        height: 220px;
+        spacing: 16px;
+        Text { text: "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; }
+        Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
+        Text { text: "Describe your idea and Agent Angie will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
+        prompt := LineEdit {
+            placeholder-text: "Describe what you want to build…";
+            accepted => { if (self.text != "") { AgentAngie.submit(self.text); } }
+        }
+        HorizontalLayout {
+            Rectangle { horizontal-stretch: 1; }
+            Button { text: "Start building"; clicked => { if (prompt.text != "") { AgentAngie.submit(prompt.text); } } }
+        }
+    }
+}

@@ -26,14 +26,14 @@ def main():
     if args == ["status"]:
         status()
         return
-    if args != ["angi"]:
+    if args != ["angi"] and not (len(args) == 3 and args[:2] == ["angi", "--prompt"] and args[2].strip()):
         print("Usage: agent angi | agent status | agent tell ROLE MESSAGE | agent inbox")
         return
     if os.getuid() == 0:
         raise RuntimeError("Run agent angi as your desktop account. Use angi-root for privileged work.")
     state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
-    action, brief = welcome((state / "current").exists())
+    action, brief = ("start", args[2].strip()) if len(args) == 3 else welcome((state / "current").exists())
     if action == "connect":
         os.execvp("opencode", ["opencode", "/var/lib/agx-data/angi-dev"])
     elif action == "resume":

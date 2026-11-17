@@ -104,15 +104,49 @@ pub(super) struct Session {
     sender: EventLoopSender,
     worker: Option<JoinHandle<()>>,
     child_handle: OwnedFd,
+    child_pid: i32,
 }
 impl Session {
     pub fn new(size: Size) -> io::Result<Self> {
-        Self::start(size, false)
+        Self::in_directory(size, None)
+    }
+    pub fn in_directory(size: Size, directory: Option<std::path::PathBuf>) -> io::Result<Self> {
+        Self::start(size, None, directory)
+    }
+    pub fn working_directory(&self) -> Option<std::path::PathBuf> {
+        let alive = || {
+            let mut descriptor = libc::pollfd {
+                fd: self.child_handle.as_raw_fd(),
+                events: libc::POLLIN,
+                revents: 0,
+            };
+            unsafe { libc::poll(&mut descriptor, 1, 0) == 0 }
+        };
+        if !alive() {
+            return None;
+        }
+        let directory = std::fs::read_link(format!("/proc/{}/cwd", self.child_pid)).ok()?;
+        (alive() && directory.is_dir()).then_some(directory)
     }
     pub fn opencode(size: Size) -> io::Result<Self> {
-        Self::start(size, true)
+        Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }
-    fn start(size: Size, opencode: bool) -> io::Result<Self> {
+    pub fn agent(size: Size, prompt: String) -> io::Result<Self> {
+        Self::start(
+            size,
+            Some((
+                "/usr/bin/agent",
+                vec!["angi".into(), "--prompt".into(), prompt],
+                "Agent Angie",
+            )),
+            None,
+        )
+    }
+    fn start(
+        size: Size,
+        command: Option<(&str, Vec<String>, &str)>,
+        directory: Option<std::path::PathBuf>,
+    ) -> io::Result<Self> {
         if unsafe { libc::geteuid() } == 0 {
             return Err(io::Error::other(
                 "Open Terminal from a signed-in ANGI session.",
@@ -150,15 +184,16 @@ impl Session {
         } else {
             vec!["-l".into()]
         };
-        let program = if opencode {
-            *signals.title.lock().unwrap() = "OpenCode".into();
-            tty::Shell::new("/usr/bin/opencode".into(), vec![])
+        let starting = command.is_some();
+        let program = if let Some((program, arguments, title)) = command {
+            *signals.title.lock().unwrap() = title.into();
+            tty::Shell::new(program.into(), arguments)
         } else {
             tty::Shell::new(shell.clone(), args)
         };
         let options = tty::Options {
             shell: Some(program),
-            working_directory: std::env::var_os("HOME").map(Into::into),
+            working_directory: directory.or_else(|| std::env::var_os("HOME").map(Into::into)),
             env: [
                 ("SHELL".into(), shell),
                 ("TERM".into(), "xterm-256color".into()),
@@ -190,10 +225,11 @@ impl Session {
             term,
             signals,
             size,
-            starting: opencode,
+            starting,
             sender,
             worker: Some(worker),
             child_handle,
+            child_pid: pid,
         })
     }
     pub fn write(&self, bytes: Vec<u8>) {
@@ -258,6 +294,34 @@ impl Drop for Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn new_sessions_inherit_the_live_shell_directory_after_cd() {
+        if unsafe { libc::geteuid() } == 0 {
+            return;
+        }
+        let size = Size {
+            cols: 80,
+            lines: 24,
+        };
+        let shell = Session::start(size, Some(("/bin/sh", vec!["-c".into(), "read -r start; cd /usr; read -r finish".into()], "Directory test")), Some(std::path::PathBuf::from("/tmp"))).unwrap();
+        let wait_for = |session: &Session, expected: &str| {
+            for _ in 0..100 {
+                if session.working_directory().as_deref() == Some(std::path::Path::new(expected)) {
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            panic!(
+                "shell directory did not become {expected}: {:?}",
+                session.working_directory()
+            );
+        };
+        wait_for(&shell, "/tmp");
+        shell.write(b"\r".to_vec());
+        wait_for(&shell, "/usr");
+        let inherited = Session::in_directory(size, shell.working_directory()).unwrap();
+        wait_for(&inherited, "/usr");
+    }
     #[test]
     fn closing_a_tab_terminates_a_shell_that_ignores_hangup() {
         if unsafe { libc::geteuid() } == 0 {

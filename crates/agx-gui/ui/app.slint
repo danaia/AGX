@@ -4,13 +4,15 @@ import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
 import { Web, WebOption, BrowserPanel } from "browser.slint";
 export { Web, WebOption }
-import { Terminal, TerminalRow, TerminalRun, TerminalPanel } from "terminal.slint";
-export { Terminal, TerminalRow, TerminalRun }
+import { Terminal, TerminalRow, TerminalRun, TerminalPanel, TerminalView } from "terminal.slint";
+export { Terminal, TerminalRow, TerminalRun, TerminalView }
 import { BrowserPopup } from "browser-popup.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { StorageView, StorageCell } from "storage.slint";
 import { StorageDialog } from "storage-dialog.slint";
 export { StorageView, StorageCell }
+import { AgentPanel, AgentAngie } from "agent.slint";
+export { AgentAngie }
 import { SettingsPanel, MouseSettings } from "settings.slint";
 export { MouseSettings }
 import { AppLauncher } from "launcher.slint";
@@ -47,7 +49,7 @@ component WindowFrame inherits Rectangle {
                 HorizontalLayout {
                     padding-left: 10px;
                     Text {
-                        text: win.kind == 7 ? Web.title : win.kind == 8 ? Terminal.title : win.title;
+                        text: win.kind == 7 ? Web.title : win.kind == 8 || win.kind >= 11 ? Terminal.windows[win.kind == 8 ? 0 : win.kind - 10].title : win.title;
                         color: win.focused ? Theme.accent : Theme.fg-dim;
                         font-weight: 700;
                         font-size: 12px;
@@ -69,7 +71,7 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 5: ServicesPanel { }
                 if win.kind == 6: SystemPanel { }
                 if win.kind == 7: BrowserPanel { active: win.focused; }
-                if win.kind == 8: TerminalPanel { active: win.focused; }
+                if win.kind == 8 || win.kind >= 11: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 10; }
             }
         }
     }
@@ -87,6 +89,16 @@ component WindowFrame inherits Rectangle {
         cursor: root.cursor; hide-cursor: root.hide-cursor;
         pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 10 && !win.collapsed: AgentPanel {
+        x: 6px; y: 28px;
+        width: max(0px, parent.width - 12px);
+        height: max(0px, parent.height - 34px);
+        active: root.win.focused;
+        pointer-moved(x, y) => {
+            root.pointer(2, 3, x, y, false, false, false, false);
+            root.pointer-moved(x, y);
+        }
     }
     if win.kind == 9 && !win.collapsed: SettingsPanel {
         x: 6px; y: 28px;

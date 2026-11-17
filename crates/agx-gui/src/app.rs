@@ -13,6 +13,10 @@ use std::process::Command;
 use std::{rc::Rc, time::Duration};
 pub(super) struct App {
     pub(super) terminal: terminal::State,
+    pub(super) terminal_kind: Kind,
+    pub(super) terminal_windows: std::collections::HashMap<Kind, terminal::State>,
+    pub(super) next_terminal: u32,
+    pub(super) terminal_views: Rc<VecModel<crate::TerminalView>>,
     pub(super) browser: browser::Browser,
     pub(super) desk: Desktop,
     pub(super) view: SceneModel,
@@ -45,6 +49,10 @@ impl App {
         view.sync(desk.scene(), None);
         Self {
             terminal: terminal::State::default(),
+            terminal_kind: Kind::Terminal,
+            terminal_windows: Default::default(),
+            next_terminal: 3,
+            terminal_views: Default::default(),
             browser: browser::Browser::default(),
             desk,
             view,
@@ -86,7 +94,7 @@ impl App {
             .windows
             .iter()
             .any(|window| window.kind == Kind::Web && !window.collapsed);
-        let terminal_search = self.desk.focused() == Some(Kind::Terminal)
+        let terminal_search = self.desk.focused().is_some_and(Kind::is_terminal)
             && ui.global::<Terminal>().get_search_visible()
             && self
                 .view
@@ -94,9 +102,10 @@ impl App {
                 .borrow()
                 .windows
                 .iter()
-                .any(|w| w.kind == Kind::Terminal && !w.collapsed);
+                .any(|w| w.kind.is_terminal() && !w.collapsed);
         if !terminal_search
             && self.desk.focused() != Some(Kind::Settings)
+            && self.desk.focused() != Some(Kind::AgentAngie)
             && (self.desk.focused() != Some(Kind::Web) || !browser_visible)
         {
             ui.invoke_focus_desktop();
@@ -183,6 +192,7 @@ impl App {
             Cmd::CycleFocus(back) => self.desk.cycle_focus(back),
             Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
             Cmd::Menu => self.open_menu(ui),
+            Cmd::Open(Kind::Terminal) => self.terminal_new_window(ui),
             Cmd::Open(k) => {
                 self.desk.open(k);
                 if k == Kind::Settings {

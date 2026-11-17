@@ -17,3 +17,7 @@ The public product name is **ANGI** (pronounced "Angie"). Anything a person sees
 
 Keep **AGX** for technical identifiers: the `agx` command and its help text, `agx-*` crates and binaries, service and group names, file paths and environment variables (`/usr/share/agx`, `AGX_*`), Buildroot package names, (the GitHub repository itself is now `danaia/ANGI`). Do not rename identifiers when changing visible text, and do not change visible text to an identifier. When adding a user-visible string, write ANGI.
 
+
+## Development device deployment
+
+The user authorizes deploying requested changes to the established development Pi, refreshing the authenticated desktop or rebooting when needed, and verifying the result as part of the task. Use the repository's documented deployment and recovery procedures, preserve user data, and report the checks performed.

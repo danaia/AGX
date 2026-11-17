@@ -5,9 +5,10 @@ mod render;
 mod session;
 #[cfg(test)]
 mod tests;
+mod windows;
 use crate::{
     App, AppWindow, Terminal, TerminalRow,
-    wm::{BORDER, HEADER, Kind, Rect},
+    wm::{BORDER, HEADER, Rect},
 };
 use alacritty_terminal::{
     grid::Scroll,
@@ -20,6 +21,8 @@ use slint::{ComponentHandle, Model, ModelRc, Timer, TimerMode, VecModel};
 use std::{cell::RefCell, rc::Rc, sync::atomic::Ordering, time::Duration};
 #[derive(Default)]
 pub(super) struct State {
+    snapshot: Option<crate::TerminalView>,
+    start_directory: Option<std::path::PathBuf>,
     sessions: Vec<Session>,
     active: usize,
     rows: Rc<VecModel<TerminalRow>>,
@@ -84,13 +87,13 @@ impl State {
     }
 }
 impl App {
-    fn terminal_tick(&mut self, ui: &AppWindow) {
-        if !self.desk.is_open(Kind::Terminal) {
+    fn terminal_tick(&mut self, ui: &AppWindow) -> bool {
+        if !self.desk.is_open(self.terminal_kind) {
             if !self.terminal.sessions.is_empty() || self.terminal.attempted {
                 self.terminal = State::default();
                 ui.global::<Terminal>().set_rows(ModelRc::default());
             }
-            return;
+            return false;
         }
         let placed = self
             .view
@@ -98,7 +101,7 @@ impl App {
             .borrow()
             .windows
             .iter()
-            .find(|w| w.kind == Kind::Terminal && !w.collapsed)
+            .find(|w| w.kind == self.terminal_kind && !w.collapsed)
             .copied();
         let Some(placed) = placed else {
             if self.terminal.last_focus {
@@ -111,7 +114,7 @@ impl App {
             }
             self.terminal.captured = false;
             self.terminal.mouse_button = None;
-            return;
+            return false;
         };
         if self.terminal.sessions.is_empty() && !self.terminal.attempted {
             self.terminal_action(ui, 0, 0);
@@ -124,10 +127,10 @@ impl App {
         );
         let state = &mut self.terminal;
         let Some(session) = state.sessions.get_mut(state.active) else {
-            return;
+            return true;
         };
         session.resize(size);
-        let focused = self.desk.focused() == Some(Kind::Terminal) && !ui.get_menu_open();
+        let focused = self.desk.focused() == Some(self.terminal_kind) && !ui.get_menu_open();
         if focused != state.last_focus {
             if session.term.lock().mode().contains(TermMode::FOCUS_IN_OUT) {
                 session.write(if focused { b"\x1b[I" } else { b"\x1b[O" }.to_vec());
@@ -137,11 +140,11 @@ impl App {
         }
         global.set_focused(focused);
         if !session.signals.dirty.swap(false, Ordering::AcqRel) {
-            return;
+            return false;
         }
         let Some(term) = session.term.try_lock_unfair() else {
             session.signals.dirty.store(true, Ordering::Release);
-            return;
+            return false;
         };
         let rows = render::rows(&term);
         if session.starting
@@ -151,17 +154,11 @@ impl App {
             session.starting = false;
         }
         global.set_busy(session.starting);
-        if state.previous.len() != rows.len() {
-            state
-                .rows
-                .set_vec(rows.iter().map(|r| render::model(r)).collect::<Vec<_>>());
-        } else {
-            for (i, row) in rows.iter().enumerate() {
-                if state.previous[i] != *row {
-                    state.rows.set_row_data(i, render::model(row));
-                }
-            }
-        }
+        // Each window snapshot publishes a new row model when its content changes.
+        // Nested Slint models otherwise retain glyph bindings from an earlier snapshot.
+        state.rows = Rc::new(VecModel::from(
+            rows.iter().map(|r| render::model(r)).collect::<Vec<_>>(),
+        ));
         state.previous = rows;
         let content = term.renderable_content();
         let y = content.cursor.point.line.0 + content.display_offset as i32;
@@ -192,15 +189,46 @@ impl App {
         drop(term);
         global.set_rows(ModelRc::from(state.rows.clone()));
         state.tabs(ui);
+        true
     }
     pub(crate) fn terminal_open_opencode(&mut self, ui: &AppWindow) {
         if !std::path::Path::new("/usr/bin/opencode").is_file() {
             self.toast(ui, "OpenCode is not installed.");
             return;
         }
-        self.desk.open(Kind::Terminal);
+        self.terminal_select(ui, crate::wm::Kind::Terminal);
+        self.desk.open(self.terminal_kind);
         self.refresh(ui);
         self.terminal_action(ui, 10, 0);
+    }
+    pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String) {
+        if prompt.trim().is_empty() {
+            return;
+        }
+        self.terminal_select(ui, crate::wm::Kind::Terminal);
+        self.desk.open(self.terminal_kind);
+        self.refresh(ui);
+        let global = ui.global::<Terminal>();
+        let rect = self
+            .view
+            .scene
+            .borrow()
+            .windows
+            .iter()
+            .find(|w| w.kind == self.terminal_kind)
+            .map(|w| w.rect)
+            .unwrap_or(Rect::new(0., 0., 800., 500.));
+        let (_, size) = geometry(rect, global.get_font_size(), global.get_search_visible());
+        self.terminal.attempted = true;
+        match Session::agent(size, prompt) {
+            Ok(session) => {
+                self.terminal.sessions.push(session);
+                self.terminal.active = self.terminal.sessions.len() - 1;
+                global.set_error("".into());
+                global.set_busy(true);
+            }
+            Err(error) => global.set_error(format!("Unable to start Agent Angie: {error}").into()),
+        }
     }
     fn terminal_action(&mut self, ui: &AppWindow, action: i32, index: i32) {
         let global = ui.global::<Terminal>();
@@ -214,10 +242,6 @@ impl App {
         }
         match action {
             0 | 10 => {
-                if self.terminal.sessions.len() >= 8 {
-                    self.toast(ui, "Terminal supports up to eight tabs.");
-                    return;
-                }
                 self.terminal.attempted = true;
                 let rect = self
                     .view
@@ -225,14 +249,22 @@ impl App {
                     .borrow()
                     .windows
                     .iter()
-                    .find(|w| w.kind == Kind::Terminal)
+                    .find(|w| w.kind == self.terminal_kind)
                     .map(|w| w.rect)
                     .unwrap_or(Rect::new(0., 0., 800., 500.));
                 let (_, size) = geometry(rect, global.get_font_size(), global.get_search_visible());
                 match if action == 10 {
                     Session::opencode(size)
                 } else {
-                    Session::new(size)
+                    match self
+                        .terminal
+                        .current()
+                        .and_then(Session::working_directory)
+                        .or_else(|| self.terminal.start_directory.clone())
+                    {
+                        Some(directory) => Session::in_directory(size, Some(directory)),
+                        None => Session::new(size),
+                    }
                 } {
                     Ok(s) => {
                         self.terminal.sessions.push(s);
@@ -252,7 +284,7 @@ impl App {
             2 if index >= 0 && (index as usize) < self.terminal.sessions.len() => {
                 self.terminal.sessions.remove(index as usize);
                 if self.terminal.sessions.is_empty() {
-                    self.desk.close(Kind::Terminal);
+                    self.desk.close(self.terminal_kind);
                     self.terminal = State::default();
                     global.set_rows(ModelRc::default());
                     self.refresh(ui);
@@ -377,7 +409,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     let (weak, state) = (ui.as_weak(), app.clone());
     timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
         if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
-            app.terminal_tick(&ui);
+            app.terminal_windows_tick(&ui);
         }
     });
     timer

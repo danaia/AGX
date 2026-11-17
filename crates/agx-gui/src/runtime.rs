@@ -1,8 +1,7 @@
 //! Window creation, callback wiring, timers and background system sampling.
 use crate::system_ui::{apply, apply_omarchy_theme, local_time};
 use crate::{
-    App, AppWindow, Sys, browser, graphics, keymap::Cmd, mods, remote, session_action,
-    terminal,
+    App, AppWindow, Sys, browser, graphics, keymap::Cmd, mods, remote, session_action, terminal,
 };
 use agx_core::Sampler;
 use slint::{ComponentHandle, ModelRc, Timer, TimerMode};
@@ -70,6 +69,23 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
             a.run(&ui, cmd);
         }
     });
+    {
+        let (weak, state) = (ui.as_weak(), app.clone());
+        ui.global::<crate::AgentAngie>().on_activate(move || {
+            if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
+                app.desk.focus(crate::wm::Kind::AgentAngie);
+                app.refresh(&ui);
+            }
+        });
+    }
+    {
+        let (weak, state) = (ui.as_weak(), app.clone());
+        ui.global::<crate::AgentAngie>().on_submit(move |prompt| {
+            if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
+                app.terminal_open_agent(&ui, prompt.to_string());
+            }
+        });
+    }
     hook!(on_settings_open, |a, ui| a
         .run(&ui, Cmd::Open(crate::wm::Kind::Settings)));
     {

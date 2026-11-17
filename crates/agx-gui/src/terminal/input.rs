@@ -4,7 +4,7 @@ use crate::{
     App, AppWindow, Terminal,
     input::Drag,
     keymap::Mods,
-    wm::{BORDER, HEADER, Hit, Kind},
+    wm::{BORDER, HEADER, Hit},
 };
 use alacritty_terminal::{
     grid::Scroll,
@@ -20,7 +20,12 @@ impl App {
         name: &str,
         mods: Mods,
     ) -> Option<bool> {
-        if self.desk.focused() != Some(Kind::Terminal) || self.modk.held(mods) || ui.get_menu_open()
+        if let Some(kind) = self.desk.focused().filter(|k| k.is_terminal()) {
+            self.terminal_select(ui, kind);
+        }
+        if self.desk.focused() != Some(self.terminal_kind)
+            || self.modk.held(mods)
+            || ui.get_menu_open()
         {
             return None;
         }
@@ -65,7 +70,10 @@ impl App {
         mods: Mods,
         down: bool,
     ) -> bool {
-        if self.desk.focused() != Some(Kind::Terminal)
+        if let Some(kind) = self.desk.focused().filter(|k| k.is_terminal()) {
+            self.terminal_select(ui, kind);
+        }
+        if self.desk.focused() != Some(self.terminal_kind)
             || self.modk.held(mods)
             || ui.get_menu_open()
             || ui.global::<Terminal>().get_search_visible()
@@ -125,15 +133,21 @@ impl App {
         if !matches!(self.drag, Drag::None) || self.modk.held(mods) {
             return false;
         }
+        let hit = self.view.scene.borrow().hit(x, y);
+        if let Hit::Body(kind) = hit {
+            if kind.is_terminal() && !self.terminal.captured {
+                self.terminal_select(ui, kind);
+            }
+        }
         let scene = self.view.scene.borrow();
-        let body = matches!(scene.hit(x, y), Hit::Body(Kind::Terminal));
+        let body = matches!(scene.hit(x, y), Hit::Body(k) if k == self.terminal_kind);
         if !body && !self.terminal.captured {
             return false;
         }
         let Some(placed) = scene
             .windows
             .iter()
-            .find(|w| w.kind == Kind::Terminal && !w.collapsed)
+            .find(|w| w.kind == self.terminal_kind && !w.collapsed)
         else {
             return false;
         };
@@ -141,7 +155,7 @@ impl App {
         drop(scene);
         self.last = (x, y);
         if kind == 0 {
-            self.desk.focus(Kind::Terminal);
+            self.desk.focus(self.terminal_kind);
             self.refresh(ui);
         }
         let global = ui.global::<Terminal>();
@@ -288,7 +302,7 @@ impl App {
         if self.modk.held(mods)
             || !matches!(
                 self.view.scene.borrow().hit(self.last.0, self.last.1),
-                Hit::Body(Kind::Terminal)
+                Hit::Body(k) if k == self.terminal_kind
             )
         {
             return false;
@@ -308,7 +322,7 @@ impl App {
         let mode = *s.term.lock().mode();
         if mode.intersects(TermMode::MOUSE_MODE) && !mods.shift {
             let scene = self.view.scene.borrow();
-            let Some(p) = scene.windows.iter().find(|p| p.kind == Kind::Terminal) else {
+            let Some(p) = scene.windows.iter().find(|p| p.kind == self.terminal_kind) else {
                 return true;
             };
             let (area, size) = geometry(

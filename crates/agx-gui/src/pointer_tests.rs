@@ -76,6 +76,19 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     render();
     click(1246.0, 17.0);
     render();
+    {
+        let mut terminals = App::new();
+        terminals.run(&ui, Cmd::Open(Kind::Terminal));
+        let first = terminals.desk.focused().unwrap();
+        ui.global::<Terminal>().set_font_size(19.);
+        for _ in 0..11 { terminals.run(&ui, Cmd::Open(Kind::Terminal)); }
+        assert_eq!(terminals.desk.scene().windows.len(), 16);
+        assert_ne!(terminals.desk.focused(), Some(first));
+        assert_eq!(ui.global::<Terminal>().get_font_size(), 14.);
+        terminals.terminal_select(&ui, first);
+        assert_eq!(ui.global::<Terminal>().get_font_size(), 19.);
+        ui.global::<Terminal>().set_font_size(14.);
+    }
     let settings_app = Rc::new(RefCell::new(App::new()));
     ui.set_wins(ModelRc::from(settings_app.borrow().view.windows.clone()));
     {

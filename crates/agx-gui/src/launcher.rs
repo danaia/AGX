@@ -70,6 +70,11 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             "Mouse, pointer and desktop preferences",
             "settings preferences mouse sensitivity acceleration scrolling",
         ),
+        (
+            "Agent Angie",
+            "Build with Agent Angie",
+            "agent angie herdr build",
+        ),
     ]) {
         entries.push(Entry {
             label: label.into(),

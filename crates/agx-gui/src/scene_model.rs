@@ -132,9 +132,9 @@ mod tests {
         assert_eq!(view.windows.row_count(), 1);
         assert_eq!(
             view.windows.row_data(0).unwrap().kind,
-            Kind::Network.index() as i32
+            Kind::AgentAngie.index() as i32
         );
-        desk.close(Kind::Network);
+        desk.close(Kind::AgentAngie);
         view.sync(desk.scene(), None);
         assert_eq!(view.windows.row_count(), 0);
         desk.goto(0);

@@ -111,7 +111,9 @@ fn desk() -> Desktop {
     let mut desktop = Desktop::new(screen, Rect::new(0.0, 34.0, 1200.0, 740.0));
     for i in 0..WORKSPACES {
         desktop.goto(i);
-        desktop.cycle_layout();
+        if desktop.mode() != Mode::Tiled {
+            desktop.cycle_layout();
+        }
     }
     desktop.goto(0);
     for kind in [Kind::Settings, Kind::Overview, Kind::Cpu, Kind::Memory] {
@@ -126,7 +128,6 @@ fn desk() -> Desktop {
         workspace.has_windowed_layout = false;
     }
     desktop
-
 }
 fn rect(d: &Desktop, k: Kind) -> Rect {
     d.rect_of(k).unwrap()
@@ -145,8 +146,10 @@ fn default_desktop_opens_the_reference_layout_in_windowed_mode() {
         assert!(scene.handles.is_empty());
         assert_eq!(d.focused(), Some(Kind::Memory));
         let (s, o, c, m) = (
-            rect(&d, Kind::Settings), rect(&d, Kind::Overview),
-            rect(&d, Kind::Cpu), rect(&d, Kind::Memory),
+            rect(&d, Kind::Settings),
+            rect(&d, Kind::Overview),
+            rect(&d, Kind::Cpu),
+            rect(&d, Kind::Memory),
         );
         assert_eq!(s.x, GAP_OUT);
         assert!((s.h - (height - 60. - 2. * GAP_OUT)).abs() < 0.01);
@@ -157,7 +160,7 @@ fn default_desktop_opens_the_reference_layout_in_windowed_mode() {
         assert!((m.right() - (width - GAP_OUT)).abs() < 0.01);
         for i in 0..WORKSPACES {
             d.goto(i);
-            assert_eq!(d.mode(), Mode::Floating);
+            assert_eq!(d.mode(), if i == 2 { Mode::Tiled } else { Mode::Floating });
         }
         d.goto(0);
         d.cycle_layout();
@@ -169,14 +172,21 @@ fn default_desktop_opens_the_reference_layout_in_windowed_mode() {
 #[test]
 fn initial_windows_follow_display_size_but_custom_positions_survive() {
     let mut d = Desktop::new(
-        Rect::new(0., 0., 1280., 720.), Rect::new(0., 34., 1280., 660.),
+        Rect::new(0., 0., 1280., 720.),
+        Rect::new(0., 34., 1280., 660.),
     );
-    d.set_area(Rect::new(0., 0., 1920., 1080.), Rect::new(0., 34., 1920., 1020.));
+    d.set_area(
+        Rect::new(0., 0., 1920., 1080.),
+        Rect::new(0., 34., 1920., 1020.),
+    );
     assert!((rect(&d, Kind::Memory).right() - 1910.).abs() < 0.01);
     assert!((rect(&d, Kind::Settings).bottom() - 1044.).abs() < 0.01);
     d.move_floating(Kind::Overview, 30., 40.);
     let custom = rect(&d, Kind::Overview);
-    d.set_area(Rect::new(0., 0., 2560., 1440.), Rect::new(0., 34., 2560., 1380.));
+    d.set_area(
+        Rect::new(0., 0., 2560., 1440.),
+        Rect::new(0., 34., 2560., 1380.),
+    );
     assert_eq!(rect(&d, Kind::Overview), custom);
     assert!((rect(&d, Kind::Memory).right() - 2550.).abs() < 0.01);
 }
@@ -184,11 +194,11 @@ fn initial_windows_follow_display_size_but_custom_positions_survive() {
 #[test]
 fn opening_splits_the_focused_tile_along_its_long_side() {
     let mut d = desk();
-    d.cur = 1; // only Network
-    let before = rect(&d, Kind::Network);
+    d.cur = 1; // Agent Angie
+    let before = rect(&d, Kind::AgentAngie);
     assert!(before.w > before.h);
     d.open(Kind::Hardware);
-    let (n, h) = (rect(&d, Kind::Network), rect(&d, Kind::Hardware));
+    let (n, h) = (rect(&d, Kind::AgentAngie), rect(&d, Kind::Hardware));
     assert!(n.right() <= h.x, "wide tile splits side by side");
     assert_eq!(d.focused(), Some(Kind::Hardware));
 }
@@ -343,7 +353,7 @@ fn move_window_between_workspaces() {
     assert_eq!(d.current(), 0);
     d.goto(2);
     assert!(d.rect_of(Kind::Cpu).is_some());
-    assert!(d.rect_of(Kind::Hardware).is_some());
+    assert!(d.rect_of(Kind::TerminalWindow(0)).is_some());
     d.goto(0);
     assert!(d.rect_of(Kind::Cpu).is_none());
     d.focus(Kind::Overview);
@@ -354,7 +364,7 @@ fn move_window_between_workspaces() {
 #[test]
 fn closed_panels_reopen_on_the_current_workspace() {
     let mut d = desk();
-    d.close(Kind::Network);
+    d.close(Kind::AgentAngie);
     assert!(!d.occupied(1));
     d.open(Kind::Network);
     assert!(d.rect_of(Kind::Network).is_some());
@@ -446,4 +456,21 @@ fn settings_tiles_floats_moves_workspaces_and_reopens_once() {
     assert!(!d.is_open(Kind::Settings));
     d.open(Kind::Settings);
     assert_eq!(d.focused(), Some(Kind::Settings));
+}
+
+#[test]
+fn third_workspace_has_three_independent_terminal_tiles() {
+    let mut d = desk();
+    d.goto(2);
+    assert_eq!(d.mode(), Mode::Tiled);
+    assert!(!d.is_open(Kind::Hardware));
+    let left = rect(&d, Kind::TerminalWindow(0));
+    let top = rect(&d, Kind::TerminalWindow(1));
+    let bottom = rect(&d, Kind::TerminalWindow(2));
+    assert!(left.right() <= top.x && top.bottom() <= bottom.y);
+    assert_eq!(top.x, bottom.x);
+    assert_eq!(left.y, top.y);
+    assert!((left.bottom() - bottom.bottom()).abs() < 0.01);
+    d.close(Kind::TerminalWindow(1));
+    assert!(d.is_open(Kind::TerminalWindow(0)) && d.is_open(Kind::TerminalWindow(2)));
 }

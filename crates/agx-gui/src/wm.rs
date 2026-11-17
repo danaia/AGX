@@ -94,9 +94,11 @@ pub enum Kind {
     Web,
     Terminal,
     Settings,
+    AgentAngie,
+    TerminalWindow(u32),
 }
 impl Kind {
-    pub const ALL: [Kind; 10] = [
+    pub const ALL: [Kind; 11] = [
         Kind::Overview,
         Kind::Cpu,
         Kind::Memory,
@@ -107,9 +109,16 @@ impl Kind {
         Kind::Web,
         Kind::Terminal,
         Kind::Settings,
+        Kind::AgentAngie,
     ];
+    pub fn is_terminal(self) -> bool {
+        matches!(self, Self::Terminal | Self::TerminalWindow(_))
+    }
     pub fn index(self) -> usize {
-        self as usize
+        match self {
+            Self::TerminalWindow(id) => 11 + id as usize,
+            other => Self::ALL.iter().position(|kind| *kind == other).unwrap(),
+        }
     }
     pub fn title(self) -> &'static str {
         match self {
@@ -121,8 +130,9 @@ impl Kind {
             Kind::Services => "Services",
             Kind::System => "System",
             Kind::Web => "Web",
-            Kind::Terminal => "Terminal",
+            Kind::Terminal | Kind::TerminalWindow(_) => "Terminal",
             Kind::Settings => "Settings",
+            Kind::AgentAngie => "Agent Angie",
         }
     }
 }
@@ -163,7 +173,15 @@ struct Workspace {
 }
 impl Workspace {
     fn empty() -> Self {
-        Self { tree: None, floats: vec![], z: vec![], mode: Mode::Tiled, focus: None, full: None, has_windowed_layout: false }
+        Self {
+            tree: None,
+            floats: vec![],
+            z: vec![],
+            mode: Mode::Tiled,
+            focus: None,
+            full: None,
+            has_windowed_layout: false,
+        }
     }
 }
 
@@ -222,7 +240,9 @@ impl Desktop {
     pub fn set_area(&mut self, screen: Rect, usable: Rect) {
         // Follow display sizing for windows still in their original layout. Once
         // moved or resized, a floating window keeps its user-chosen geometry.
-        let unchanged: Vec<_> = self.ws.iter()
+        let unchanged: Vec<_> = self
+            .ws
+            .iter()
             .filter(|w| w.mode == Mode::Floating)
             .flat_map(|w| self.tiled(w).0)
             .filter(|(k, r)| self.float_rect.get(k) == Some(r))
@@ -283,7 +303,13 @@ impl Desktop {
                 Full::Maximized => self.usable.inset(GAP_OUT),
             };
             return Scene {
-                windows: vec![Placed { kind: k, rect, floating: false, focused: true, collapsed: false }],
+                windows: vec![Placed {
+                    kind: k,
+                    rect,
+                    floating: false,
+                    focused: true,
+                    collapsed: false,
+                }],
                 handles: vec![],
                 screen_full: f == Full::Screen,
             };
@@ -296,16 +322,36 @@ impl Desktop {
             Mode::Tiled => {
                 for k in &w.z {
                     if let Some(r) = tiled.get(k) {
-                        windows.push(Placed { kind: *k, rect: *r, floating: false, focused: focused(*k), collapsed: false });
+                        windows.push(Placed {
+                            kind: *k,
+                            rect: *r,
+                            floating: false,
+                            focused: focused(*k),
+                            collapsed: false,
+                        });
                     }
                 }
                 for k in &w.z {
                     if w.floats.contains(k) {
-                        let rect = self.float_rect.get(k).copied().unwrap_or_else(|| self.default_float(0));
-                        windows.push(Placed { kind: *k, rect: self.visible_float_rect(*k, rect), floating: true, focused: focused(*k), collapsed: self.is_collapsed(*k) });
+                        let rect = self
+                            .float_rect
+                            .get(k)
+                            .copied()
+                            .unwrap_or_else(|| self.default_float(0));
+                        windows.push(Placed {
+                            kind: *k,
+                            rect: self.visible_float_rect(*k, rect),
+                            floating: true,
+                            focused: focused(*k),
+                            collapsed: self.is_collapsed(*k),
+                        });
                     }
                 }
-                Scene { windows, handles, screen_full: false }
+                Scene {
+                    windows,
+                    handles,
+                    screen_full: false,
+                }
             }
             Mode::Floating => {
                 for (n, k) in w.z.iter().enumerate() {
@@ -315,15 +361,26 @@ impl Desktop {
                         .copied()
                         .or_else(|| tiled.get(k).copied())
                         .unwrap_or_else(|| self.default_float(n));
-                    windows.push(Placed { kind: *k, rect: self.visible_float_rect(*k, rect), floating: true, focused: focused(*k), collapsed: self.is_collapsed(*k) });
+                    windows.push(Placed {
+                        kind: *k,
+                        rect: self.visible_float_rect(*k, rect),
+                        floating: true,
+                        focused: focused(*k),
+                        collapsed: self.is_collapsed(*k),
+                    });
                 }
-                Scene { windows, handles: vec![], screen_full: false }
+                Scene {
+                    windows,
+                    handles: vec![],
+                    screen_full: false,
+                }
             }
         }
     }
 
     pub fn rect_of(&self, k: Kind) -> Option<Rect> {
-        if self.fullscreen_of().is_none() && self.is_floating(k)
+        if self.fullscreen_of().is_none()
+            && self.is_floating(k)
             && let Some(rect) = self.float_rect.get(&k)
         {
             return Some(self.visible_float_rect(k, *rect));
@@ -372,9 +429,15 @@ impl Desktop {
         let mut order: Vec<Kind> = self.ws[self.cur].z.clone();
         order.sort_by_key(|k| k.index());
         let Some(f) = self.focused() else { return };
-        let Some(pos) = order.iter().position(|k| *k == f) else { return };
+        let Some(pos) = order.iter().position(|k| *k == f) else {
+            return;
+        };
         let n = order.len();
-        let next = if back { (pos + n - 1) % n } else { (pos + 1) % n };
+        let next = if back {
+            (pos + n - 1) % n
+        } else {
+            (pos + 1) % n
+        };
         self.focus(order[next]);
     }
 
@@ -414,7 +477,9 @@ impl Desktop {
     }
     fn attach(&mut self, ws: usize, k: Kind) {
         let n = self.ws[ws].z.len();
-        let anchor = self.ws[ws].focus.filter(|f| self.ws[ws].tree.as_ref().is_some_and(|t| t.contains(*f)));
+        let anchor = self.ws[ws]
+            .focus
+            .filter(|f| self.ws[ws].tree.as_ref().is_some_and(|t| t.contains(*f)));
         let axis = anchor
             .and_then(|a| {
                 let saved = self.cur;
@@ -423,7 +488,13 @@ impl Desktop {
                 self.cur = saved;
                 r
             })
-            .map_or(Axis::Horizontal, |r| if r.w >= r.h { Axis::Horizontal } else { Axis::Vertical });
+            .map_or(Axis::Horizontal, |r| {
+                if r.w >= r.h {
+                    Axis::Horizontal
+                } else {
+                    Axis::Vertical
+                }
+            });
         let mut next = self.next_split;
         let w = &mut self.ws[ws];
         match (&mut w.tree, anchor) {
@@ -474,7 +545,11 @@ impl Desktop {
     }
     pub fn next_workspace(&mut self, back: bool) {
         let n = WORKSPACES;
-        self.goto(if back { (self.cur + n - 1) % n } else { (self.cur + 1) % n });
+        self.goto(if back {
+            (self.cur + n - 1) % n
+        } else {
+            (self.cur + 1) % n
+        });
     }
 
     // --- layout operations ------------------------------------------------
@@ -509,7 +584,9 @@ impl Desktop {
         }
     }
     pub fn resize_window(&mut self, k: Kind, dw: f32, dh: f32) {
-        if self.is_collapsed(k) { return; }
+        if self.is_collapsed(k) {
+            return;
+        }
         if self.is_floating(k) {
             let mut r = self.rect_of(k).unwrap_or(self.default_float(0));
             r.w = (r.w + dw).max(MIN_W);
@@ -522,7 +599,10 @@ impl Desktop {
             if delta == 0.0 {
                 continue;
             }
-            let found = self.ws[self.cur].tree.as_ref().and_then(|t| t.find_split(area, k, axis));
+            let found = self.ws[self.cur]
+                .tree
+                .as_ref()
+                .and_then(|t| t.find_split(area, k, axis));
             if let Some((id, in_a, len)) = found
                 && let Some(t) = &mut self.ws[self.cur].tree
                 && let Some(r) = t.ratio_of(id)
@@ -535,7 +615,10 @@ impl Desktop {
     #[cfg(test)]
     fn set_ratio_for(&mut self, k: Kind, ratio: f32) {
         let area = self.usable.inset(GAP_OUT - GAP_IN);
-        let found = self.ws[self.cur].tree.as_ref().and_then(|t| t.find_split(area, k, Axis::Horizontal));
+        let found = self.ws[self.cur]
+            .tree
+            .as_ref()
+            .and_then(|t| t.find_split(area, k, Axis::Horizontal));
         if let (Some((id, _, _)), Some(t)) = (found, &mut self.ws[self.cur].tree) {
             t.set_ratio(id, ratio);
         }
@@ -557,7 +640,6 @@ impl Desktop {
         self.scene().hit(x, y)
     }
 }
-
 
 fn leaves_of(n: &Node, out: &mut Vec<Kind>) {
     match n {

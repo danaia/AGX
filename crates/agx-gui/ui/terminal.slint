@@ -3,7 +3,9 @@ import { Theme } from "data.slint";
 import { LineEdit } from "std-widgets.slint";
 export struct TerminalRun { col: int, cells: int, text: string, fg: color, bg: color, bold: bool, italic: bool, underline: bool, strike: bool }
 export struct TerminalRow { runs: [TerminalRun] }
+export struct TerminalView { rows: [TerminalRow], tabs: [string], active-tab: int, title: string, status: string, error: string, busy: bool, clipboard: string, font-size: float, cursor-col: int, cursor-row: int, cursor-visible: bool, focused: bool, search-visible: bool, query: string, copy-serial: int, paste-serial: int, search-serial: int }
 export global Terminal {
+    in-out property <[TerminalView]> windows;
     in-out property <[TerminalRow]> rows;
     in-out property <[string]> tabs;
     in-out property <int> active-tab;
@@ -37,22 +39,24 @@ component Tool inherits Rectangle {
 }
 export component TerminalPanel inherits Rectangle {
     in property <bool> active;
-    property <length> cw: Terminal.font-size * 0.6px;
-    property <length> ch: ceil(Terminal.font-size * 1.36) * 1px;
-    property <int> copy-request: Terminal.copy-serial;
-    property <int> paste-request: Terminal.paste-serial;
-    changed copy-request => { clipboard.select-all(); clipboard.copy(); }
-    changed paste-request => { clipboard.text = ""; clipboard.paste(); Terminal.paste(clipboard.text); }
+    in property <int> window-id;
+    in property <TerminalView> view: Terminal.windows[root.window-id];
+    property <length> cw: root.view.font-size * 0.6px;
+    property <length> ch: ceil(root.view.font-size * 1.36) * 1px;
+    property <int> copy-request: root.view.copy-serial;
+    property <int> paste-request: root.view.paste-serial;
+    changed copy-request => { if (root.active) { clipboard.select-all(); clipboard.copy(); } }
+    changed paste-request => { if (root.active) { clipboard.text = ""; clipboard.paste(); Terminal.paste(clipboard.text); } }
     background: #11141c; clip: true;
     Rectangle {
         x: 0; y: 0; height: 34px; width: parent.width; background: Theme.bg-dark;
-        for label[index] in Terminal.tabs: Rectangle {
-            property <length> tab-width: min(180px, max(1px, (parent.width - 108px) / max(1,Terminal.tabs.length)));
+        for label[index] in root.view.tabs: Rectangle {
+            property <length> tab-width: min(180px, max(1px, (parent.width - 108px) / max(1,root.view.tabs.length)));
             x: 4px + index * self.tab-width; y: 4px;
             width: self.tab-width - 3px; height: 26px;
-            background: index == Terminal.active-tab ? Theme.bg-light : transparent;
+            background: index == root.view.active-tab ? Theme.bg-light : transparent;
             border-radius: 4px;
-            Text { x: 8px; width: parent.width - 28px; text: parent.width < 60px ? "" + (index + 1) : label; overflow: elide; color: index == Terminal.active-tab ? Theme.accent : Theme.fg-dim; vertical-alignment: center; font-size: 12px; }
+            Text { x: 8px; width: parent.width - 28px; text: parent.width < 60px ? "" + (index + 1) : label; overflow: elide; color: index == root.view.active-tab ? Theme.accent : Theme.fg-dim; vertical-alignment: center; font-size: 12px; }
             if self.width > 50px: Text { x: parent.width - 20px; width: 20px; text: "×"; color: Theme.muted; horizontal-alignment: center; vertical-alignment: center; }
         }
         Tool { x: parent.width - 96px; y: 4px; label: "+"; action: 0; }
@@ -60,14 +64,14 @@ export component TerminalPanel inherits Rectangle {
         Tool { x: parent.width - 32px; y: 4px; label: "↓"; action: 6; }
     }
 
-    if Terminal.search-visible: Rectangle {
+    if root.view.search-visible: Rectangle {
         y: 34px; height: 36px; width: parent.width; background: Theme.bg-light;
-        property <int> focus-request: Terminal.search-serial;
+        property <int> focus-request: root.view.search-serial;
         changed focus-request => { query.focus(); }
         HorizontalLayout {
             padding: 3px; spacing: 3px;
             query := LineEdit {
-                text <=> Terminal.query; placeholder-text: "Search scrollback (regular expression)";
+                text: root.view.query; edited => { Terminal.query = self.text; } placeholder-text: "Search scrollback (regular expression)";
                 accepted => { Terminal.search(self.text,false); }
                 init => { self.focus(); }
             }
@@ -77,33 +81,33 @@ export component TerminalPanel inherits Rectangle {
         }
     }
     area := Rectangle {
-        x: 8px; y: Terminal.search-visible ? 78px : 42px;
+        x: 8px; y: root.view.search-visible ? 78px : 42px;
         width: parent.width - 16px; height: parent.height - self.y - 26px;
         clip: true;
-        for row[y] in Terminal.rows: Rectangle {
+        for row[y] in root.view.rows: Rectangle {
             y: y * root.ch; height: root.ch; width: parent.width;
             for run in row.runs: Rectangle {
                 x: run.col * root.cw; width: run.cells * root.cw; height: root.ch;
                 background: run.bg;
-                Text { text: run.text; color: run.fg; font-family: "JetBrainsMono Nerd Font"; font-size: Terminal.font-size * 1px; font-weight: run.bold ? 700 : 400; font-italic: run.italic; vertical-alignment: center; }
+                Text { text: run.text; color: run.fg; font-family: "JetBrainsMono Nerd Font"; font-size: root.view.font-size * 1px; font-weight: run.bold ? 700 : 400; font-italic: run.italic; vertical-alignment: center; }
                 if run.underline: Rectangle { y: parent.height - 2px; height: 1px; width: parent.width; background: run.fg; }
                 if run.strike: Rectangle { y: parent.height / 2; height: 1px; width: parent.width; background: run.fg; }
             }
         }
-        if Terminal.cursor-visible: Rectangle {
-            x: Terminal.cursor-col * root.cw; y: Terminal.cursor-row * root.ch;
+        if root.view.cursor-visible: Rectangle {
+            x: root.view.cursor-col * root.cw; y: root.view.cursor-row * root.ch;
             width: root.cw; height: root.ch; border-width: 1px; border-color: Theme.accent;
             background: root.active ? #b8f66c35 : transparent;
         }
-        if Terminal.busy && Terminal.error == "": Rectangle {
+        if root.view.busy && root.view.error == "": Rectangle {
             background: #11141c;
             Text { text: "Starting OpenCode…"; color: Theme.fg-dim; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
         }
-        if Terminal.error != "": Text { text: Terminal.error; color: Theme.red; wrap: word-wrap; }
+        if root.view.error != "": Text { text: root.view.error; color: Theme.red; wrap: word-wrap; }
     }
     Text {
         x: 8px; y: parent.height - 23px; width: parent.width - 16px; height: 20px;
-        text: Terminal.status; color: Theme.muted; font-size: 10px; overflow: elide; vertical-alignment: center;
+        text: root.view.status; color: Theme.muted; font-size: 10px; overflow: elide; vertical-alignment: center;
     }
     clipboard := TextInput { visible: false; text <=> Terminal.clipboard; }
     function copy() { clipboard.select-all(); clipboard.copy(); }
