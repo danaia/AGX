@@ -138,9 +138,9 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
     }
     command(
         if desktop.mode() == Mode::Tiled {
-            "Float all windows"
+            "Windowed mode"
         } else {
-            "Tile all windows"
+            "Tiled mode"
         }
         .into(),
         "Change the layout of this workspace".into(),

@@ -138,7 +138,7 @@ On November 16, 2026, the launcher passed visual checks at 1280×900, 720×700 a
 | Mod+T | Float or tile the window |
 | Mod+F | Fullscreen (bars hidden) |
 | Mod+(a little)+F | Maximize (full width) |
-| Mod+L | Window mode: float every window in place, with title bars; press again to tile |
+| Mod+L | Toggle tiled/windowed mode; the header's layout label is also clickable |
 | Mod+1..5 | Switch workspace (plain 1..5 also works) |
 | Mod+Shift+1..5 | Move the window to a workspace and follow it; add "a little" to stay |
 | Mod+Tab, Mod+Shift+Tab | Next, previous workspace |
@@ -148,6 +148,10 @@ On November 16, 2026, the launcher passed visual checks at 1280×900, 720×700 a
 | Super+Space (`Mod+Space` with an explicit override), or `/` | Applications launcher; Apps first, desktop/session actions under Commands |
 
 ## Mouse
+
+Click **tiled** / **windowed** in the top bar to switch layout. Windowed mode lets you freely move windows by their title bars and resize their edges. The first switch preserves the current tiled positions; later switches restore your previous floating positions. Double-click a floating window's title bar to collapse its body into a movable header, then double-click again to restore its full size at the new position. A drag does not count as a double-click. Returning to tiled mode expands collapsed windows, and opening a collapsed app from Applications expands it too. Display resizing keeps floating title bars reachable.
+
+Verified on November 16, 2026 in both the software preview and on the Pi over VNC: clicking the layout label, collapsing to a 30-pixel header, moving that header, restoring the full body, returning to tiled, and restoring the saved floating position all passed. The workspace suite and 77 GUI tests passed, including double-click timing, drag rejection, collapse hit testing and keeping headers reachable after a display resize. The development Pi runs the tested executable; the previous executable link is retained under `/root/agx-windowed-backup/`.
 
 - Click a window to focus it; click a workspace number to switch.
 - Drag a title bar to move a window. A tiled window shows a ghost and swaps with the tile it is dropped on; a floating window moves freely.

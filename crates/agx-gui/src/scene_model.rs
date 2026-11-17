@@ -28,6 +28,7 @@ impl SceneModel {
                 h: p.rect.h,
                 focused: p.focused,
                 floating: p.floating,
+                collapsed: p.collapsed,
                 target: target == Some(p.kind),
             })
             .collect();

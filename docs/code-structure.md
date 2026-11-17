@@ -30,6 +30,8 @@ Existing large files should be evaluated when touched, rather than forcing unrel
 
 The GUI launcher has its own boundaries: `src/launcher.rs` owns the app catalogue, search ranking, secondary commands and model updates; `ui/launcher.slint` owns the responsive overlay, keyboard navigation and scrolling; `ui/icons/apps/` contains its embedded vector icons. `main.rs` calls the launcher methods without owning their implementation.
 
+Desktop gestures live in `src/input.rs`, including keyboard routing, drag lifecycle and title-bar double-click recognition. `wm.rs` retains the desktop model, workspace membership and scene composition; `wm/tiling.rs` owns split-tree algorithms, `wm/scene.rs` spatial queries and hit testing, `wm/windowed.rs` floating geometry, collapse/restore and layout transitions, and `wm/tests.rs` the model behavior suite. The remaining `main.rs` and `wm.rs` review-sized files stay focused on their existing state/composition roles; unrelated startup and data collection remain a staged backlog.
+
 Some feature/service files remain large and are candidates for later focused passes. This library refactor does not claim to have segmented the entire repository.
 
 `scripts/trace-gui.py` owns workstation-side diagnostic collection, bounded log storage, SSH reconnection, and collector cleanup. It reads the Pi's existing logs and process state without changing GUI or system configuration.

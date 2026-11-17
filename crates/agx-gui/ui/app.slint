@@ -13,6 +13,7 @@ export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
 component WindowFrame inherits Rectangle {
     in property <Win> win;
     in property <bool> dragging;
+    clip: true;
     animate x, y, width, height { duration: root.dragging ? 0ms : 110ms; easing: ease-out; }
     background: win.target ? @linear-gradient(45deg, Theme.magenta, Theme.yellow)
         : win.focused ? @linear-gradient(45deg, #33ccff, #00ff99)
@@ -42,7 +43,7 @@ component WindowFrame inherits Rectangle {
                     Text { text: "󰖭"; color: win.focused ? Theme.red : Theme.fg-dim; width: 26px; horizontal-alignment: center; vertical-alignment: center; }
                 }
             }
-            Rectangle {
+            if !win.collapsed: Rectangle {
                 vertical-stretch: 1;
                 clip: true;
                 if win.kind == 0: OverviewPanel { }
@@ -149,6 +150,7 @@ export component AppWindow inherits Window {
     in property <string> layout-name: "tiled";
     in property <string> focus-title: "";
     in property <string> mod-name: "Super";
+    in property <bool> windowed-mode: false;
     in property <string> clock: "";
     in property <string> toast: "";
     in property <bool> screen-full: false;
@@ -183,6 +185,7 @@ export component AppWindow inherits Window {
     callback menu-accept(int);
     callback confirm(bool);
     callback session-action(int);
+    callback layout-toggle();
 
     function track-cursor(x: length, y: length) {
         root.cursor-x = x;
@@ -287,7 +290,20 @@ export component AppWindow inherits Window {
                     active: root.workspace == i;
                     occupied: occupied;
                 }
-                Text { text: "  " + root.layout-name; color: Theme.magenta; vertical-alignment: center; }
+                Rectangle {
+                    width: mode-label.preferred-width + 26px;
+                    background: mode-button.has-hover ? Theme.bg-light : transparent;
+                    border-radius: 5px;
+                    accessible-role: button;
+                    accessible-label: root.windowed-mode ? "Switch to tiled mode" : "Switch to windowed mode";
+                    mode-label := Text { text: root.windowed-mode ? "windowed" : "tiled"; color: Theme.magenta; horizontal-alignment: center; vertical-alignment: center; }
+                    mode-button := TouchArea {
+                        mouse-cursor: MouseCursor.pointer;
+                        pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        clicked => { root.layout-toggle(); root-keys.focus(); }
+                    }
+                }
                 Text { text: "  " + root.focus-title; color: Theme.fg-dim; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 Text { text: "󰍛 \{Math.round(Sys.cpu-percent)}%"; color: Theme.cyan; vertical-alignment: center; }
                 Text { text: "  󰘚 \{Math.round(Sys.mem-percent)}%"; color: Theme.magenta; vertical-alignment: center; }
@@ -330,7 +346,8 @@ export component AppWindow inherits Window {
                 spacing: 18px;
                 Text {
                     text: root.toast != "" ? root.toast
-                        : "\{root.mod-name}+Space apps   +arrows focus   +Q close   +T float   +F full   +L window mode   +1-5 workspace";
+                        : root.windowed-mode ? "\{root.mod-name}+Space apps   Double-click header: collapse/restore   Drag header: move   \{root.mod-name}+L tiled"
+                        : "\{root.mod-name}+Space apps   +arrows focus   +Q close   +T float   +F full   +L tiled/windowed   +1-5 workspace";
                     color: root.toast != "" ? Theme.yellow : Theme.fg-dim;
                     font-size: 12px;
                     vertical-alignment: center;

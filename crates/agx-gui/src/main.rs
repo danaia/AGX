@@ -4,6 +4,7 @@
 //! Exit codes let a launcher script react to the user's choice:
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod keymap;
+mod input;
 mod launcher;
 mod wm;
 mod scene_model;
@@ -12,7 +13,10 @@ mod graphics;
 mod remote;
 
 use agx_core::{Sampler, Snapshot};
-use keymap::{Cmd, ModKey, Mods, bind};
+use keymap::{Cmd, ModKey, Mods};
+use input::Drag;
+#[cfg(test)]
+use input::Motion;
 use slint::{ComponentHandle, Model, ModelRc, Timer, TimerMode, VecModel};
 use scene_model::SceneModel;
 use std::{
@@ -23,7 +27,7 @@ use std::{
     sync::atomic::{AtomicI32, Ordering},
     time::Duration,
 };
-use wm::{Button, Desktop, Edges, Full, Hit, Kind, Mode, Rect};
+use wm::{Desktop, Full, Kind, Mode, Rect};
 
 slint::include_modules!();
 
@@ -33,17 +37,6 @@ const TOP: f32 = 34.0;
 const BOTTOM: f32 = 26.0;
 static EXIT_CODE: AtomicI32 = AtomicI32::new(0);
 
-enum Drag {
-    None,
-    /// Tiled windows are dragged as a ghost and swapped on drop; floating ones move.
-    Move { kind: Kind, tiled: bool, start: (f32, f32) },
-    ResizeTiled { kind: Kind, sx: f32, sy: f32 },
-    ResizeFloat { kind: Kind, edges: Edges },
-    Split { split: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Motion { Cursor, Overlay, Geometry }
 
 struct App {
     desk: Desktop,
@@ -60,14 +53,9 @@ struct App {
     pending: Option<Cmd>,
     /// Logical size of the window as last laid out.
     size: (f32, f32),
+    header_clicks: input::HeaderClicks,
 }
 
-fn owner(hit: Hit) -> Option<Kind> {
-    match hit {
-        Hit::Button(k, _) | Hit::Header(k) | Hit::Edge(k, _) | Hit::Body(k) => Some(k),
-        Hit::Handle(_) | Hit::None => None,
-    }
-}
 
 fn session_action(index: i32) -> Option<Cmd> {
     [Cmd::Logout, Cmd::Tui, Cmd::Reboot, Cmd::Shutdown].get(index as usize).copied()
@@ -93,6 +81,7 @@ impl App {
             menu: vec![],
             pending: None,
             size: (1280.0, 720.0),
+            header_clicks: input::HeaderClicks::default(),
         }
     }
 
@@ -118,12 +107,13 @@ impl App {
             }
         }
         ui.set_workspace(self.desk.current() as i32);
+        ui.set_windowed_mode(self.desk.mode() == Mode::Floating);
         ui.set_layout_name(
             match (self.desk.fullscreen_of(), self.desk.mode()) {
                 (Some((_, Full::Screen)), _) => "fullscreen",
                 (Some((_, Full::Maximized)), _) => "maximized",
                 (None, Mode::Tiled) => "tiled",
-                (None, Mode::Floating) => "window mode",
+                (None, Mode::Floating) => "windowed",
             }
             .into(),
         );
@@ -159,6 +149,7 @@ impl App {
 
     // --- commands -----------------------------------------------------------
     fn run(&mut self, ui: &AppWindow, cmd: Cmd) {
+        self.header_clicks = input::HeaderClicks::default();
         let m = self.modk.name();
         match cmd {
             Cmd::Focus(d) => self.desk.focus_dir(d),
@@ -211,188 +202,6 @@ impl App {
         }
     }
 
-    fn key(&mut self, ui: &AppWindow, name: &str, mods: Mods) -> bool {
-        // A key press always ends a drag, so a lost button release cannot strand one.
-        if !matches!(self.drag, Drag::None) {
-            self.drag = Drag::None;
-            self.ghost = None;
-            self.target = None;
-            self.refresh(ui);
-        }
-        match bind(name, mods, self.modk) {
-            Some(cmd) => {
-                self.run(ui, cmd);
-                true
-            }
-            None => false,
-        }
-    }
-
-    // --- pointer ------------------------------------------------------------
-    fn pointer(&mut self, ui: &AppWindow, kind: i32, button: i32, x: f32, y: f32, mods: Mods) {
-        match kind {
-            0 => {
-                self.down(ui, button, x, y, mods);
-                self.refresh(ui);
-            }
-            1 | 3 => {
-                // A release can carry a newer position than the last move event.
-                if kind == 1 { self.moved(x, y); }
-                self.up(x, y, kind == 1);
-                self.refresh(ui);
-            }
-            _ => match self.moved(x, y) {
-                Motion::Cursor => ui.set_cursor(self.cursor),
-                Motion::Overlay => {
-                    self.view.target(self.target);
-                    self.refresh_drag(ui);
-                }
-                Motion::Geometry => {
-                    self.view.sync(self.desk.scene(), self.target);
-                    self.refresh_drag(ui);
-                }
-            },
-        }
-    }
-
-    fn begin_move(&mut self, k: Kind, x: f32, y: f32) {
-        if self.desk.fullscreen_of().is_some() {
-            return;
-        }
-        self.drag = Drag::Move { kind: k, tiled: !self.desk.is_floating(k), start: (x, y) };
-    }
-
-    fn begin_resize(&mut self, k: Kind, x: f32, y: f32) {
-        if self.desk.fullscreen_of().is_some() {
-            return;
-        }
-        self.drag = if self.desk.is_floating(k) {
-            Drag::ResizeFloat { kind: k, edges: Edges { right: true, bottom: true, ..Default::default() } }
-        } else {
-            let (cx, cy) = self.view.scene.borrow().rect_of(k).map_or((x, y), |r| r.center());
-            Drag::ResizeTiled { kind: k, sx: if x < cx { -1.0 } else { 1.0 }, sy: if y < cy { -1.0 } else { 1.0 } }
-        };
-    }
-
-    fn down(&mut self, ui: &AppWindow, button: i32, x: f32, y: f32, mods: Mods) {
-        self.mods = mods;
-        self.last = (x, y);
-        // The top bar's workspace buttons: 30px wide at a 32px pitch, from x = 10.
-        if button == 0 && y < TOP && !matches!(self.desk.fullscreen_of(), Some((_, Full::Screen))) {
-            let i = ((x - 10.0) / 32.0).floor();
-            if i >= 0.0 && (x - 10.0 - i * 32.0) < 30.0 && (i as usize) < wm::WORKSPACES {
-                self.run(ui, Cmd::Workspace(i as usize));
-            }
-            return;
-        }
-        let hit = self.view.scene.borrow().hit(x, y);
-        let held = self.modk.held(mods);
-        match button {
-            0 => {
-                if held && let Some(k) = owner(hit) {
-                    self.desk.focus(k);
-                    self.begin_move(k, x, y);
-                    return;
-                }
-                match hit {
-                    Hit::Button(k, b) => {
-                        self.desk.focus(k);
-                        self.run(
-                            ui,
-                            match b {
-                                Button::Float => Cmd::ToggleFloat,
-                                Button::Full => Cmd::Fullscreen,
-                                Button::Close => Cmd::Close,
-                            },
-                        );
-                    }
-                    Hit::Header(k) => {
-                        self.desk.focus(k);
-                        self.begin_move(k, x, y);
-                    }
-                    Hit::Edge(k, e) => {
-                        self.desk.focus(k);
-                        self.drag = Drag::ResizeFloat { kind: k, edges: e };
-                    }
-                    Hit::Handle(h) => self.drag = Drag::Split { split: h.split },
-                    Hit::Body(k) => self.desk.focus(k),
-                    Hit::None => {}
-                }
-            }
-            1 => {
-                if held && let Some(k) = owner(hit) {
-                    self.desk.focus(k);
-                    self.begin_resize(k, x, y);
-                } else if let Hit::Header(k) = hit {
-                    self.desk.focus(k);
-                    self.open_menu(ui);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn moved(&mut self, x: f32, y: f32) -> Motion {
-        let (dx, dy) = (x - self.last.0, y - self.last.1);
-        self.last = (x, y);
-        match self.drag {
-            Drag::None => self.cursor = self.hover(x, y),
-            Drag::Move { kind, tiled: false, .. } => self.desk.move_floating(kind, dx, dy),
-            Drag::Move { kind, tiled: true, start } => {
-                self.ghost = self.view.scene.borrow().rect_of(kind).map(|r| Rect::new(r.x + x - start.0, r.y + y - start.1, r.w, r.h));
-                self.target = self.view.scene.borrow().tile_at(x, y).filter(|t| *t != kind);
-            }
-            Drag::ResizeTiled { kind, sx, sy } => self.desk.resize_window(kind, sx * dx, sy * dy),
-            Drag::ResizeFloat { kind, edges } => self.desk.resize_floating_edges(kind, edges, dx, dy),
-            Drag::Split { split } => {
-                if let Some(r) = self.view.scene.borrow().handle_ratio(split, x, y) {
-                    self.desk.set_split(split, r);
-                }
-            }
-        }
-        match self.drag {
-            Drag::None => Motion::Cursor,
-            Drag::Move { tiled: true, .. } => Motion::Overlay,
-            _ => Motion::Geometry,
-        }
-    }
-
-    fn up(&mut self, x: f32, y: f32, commit: bool) {
-        if commit
-            && let Drag::Move { kind, tiled: true, .. } = self.drag
-            && let Some(t) = self.view.scene.borrow().tile_at(x, y).filter(|t| *t != kind)
-        {
-            self.desk.swap(kind, t);
-        }
-        self.drag = Drag::None;
-        self.ghost = None;
-        self.target = None;
-        self.cursor = self.hover(x, y);
-    }
-
-    fn hover(&self, x: f32, y: f32) -> i32 {
-        if y < TOP {
-            return 6;
-        }
-        match self.view.scene.borrow().hit(x, y) {
-            Hit::Header(_) => 1,
-            Hit::Button(..) => 6,
-            Hit::Handle(h) => if h.axis == wm::Axis::Horizontal { 2 } else { 3 },
-            Hit::Edge(_, e) => match (e.left || e.right, e.top || e.bottom) {
-                (true, true) => if (e.left && e.top) || (e.right && e.bottom) { 4 } else { 5 },
-                (true, false) => 2,
-                _ => 3,
-            },
-            _ => 0,
-        }
-    }
-
-    fn scroll(&mut self, ui: &AppWindow, delta: f32, mods: Mods) {
-        if self.modk.held(mods) && delta != 0.0 {
-            self.desk.next_workspace(delta > 0.0);
-            self.refresh(ui);
-        }
-    }
 }
 
 fn mods(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Mods {
@@ -521,6 +330,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     hook!(on_session_action, |a, ui, index| {
         if let Some(cmd) = session_action(index) { a.run(&ui, cmd); }
     });
+    hook!(on_layout_toggle, |a, ui| a.run(&ui, Cmd::CycleLayout));
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change
