@@ -12,10 +12,25 @@ SOCKET = "/run/tailscale/tailscaled.sock"
 RELAY = "http://127.0.0.1:1234/v1"
 TARGET = Path("/var/lib/agx-data/tailscale/config/lmstudio-target")
 LOGIN = re.compile(r"https://login\.tailscale\.com/\S+")
+# Preferences this device must always have. `tailscale up` resets any preference it is not given, so
+# every `up` repeats them. Shields up is the one that matters: in userspace mode, incoming tailnet
+# connections would otherwise reach this device's loopback services, such as the password-less VNC.
+SAFE = ("--shields-up=true", "--accept-dns=false", "--accept-routes=false", "--hostname=agx")
 
 
 def run(*arguments, timeout=15):
     return subprocess.run([TAILSCALE, "--socket", SOCKET, *arguments], capture_output=True, text=True, timeout=timeout)
+
+
+def shielded():
+    """True once incoming tailnet connections are blocked, re-applying the preference if it was lost."""
+    try:
+        if json.loads(run("debug", "prefs", timeout=8).stdout).get("ShieldsUp") is True:
+            return True
+        run("set", *SAFE, timeout=8)
+        return json.loads(run("debug", "prefs", timeout=8).stdout).get("ShieldsUp") is True
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return False
 
 
 def state():
@@ -28,6 +43,8 @@ def state():
         return {"ready": False, "login": False, "text": "Tailscale is not running. It starts with the device; restart it from Services."}
     backend = data.get("BackendState")
     if backend == "Running":
+        if not shielded():
+            return {"ready": False, "login": False, "text": "Tailscale could not be locked down against incoming connections, so ANGI will not use it."}
         name = ((data.get("Self") or {}).get("DNSName") or "").rstrip(".")
         return {"ready": True, "login": False, "text": f"Connected to Tailscale as {name or 'this device'}."}
     if backend == "NeedsLogin":
@@ -40,7 +57,7 @@ def state():
 def login():
     """Start sign-in as the desktop user. Returns the page to approve it on, or None if no sign-in is needed."""
     try:
-        result = run("up", "--timeout=10s", timeout=25)
+        result = run("up", *SAFE, "--timeout=10s", timeout=25)
     except subprocess.TimeoutExpired:
         raise RuntimeError("Tailscale did not respond. Try again.")
     except OSError:

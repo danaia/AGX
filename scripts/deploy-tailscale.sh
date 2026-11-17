@@ -69,6 +69,6 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do [ -S /run/tailscale/tailscaled.sock ] && break
 # Safe preferences, set once as root and kept in the daemon's state: nothing can connect in,
 # the Pi's DNS and routes are never changed, and the desktop user may sign in without root.
 tailscale --socket=/run/tailscale/tailscaled.sock set --shields-up=true --accept-dns=false --accept-routes=false \
-    --hostname=angi --operator="$OPERATOR"
+    --hostname=agx --operator="$OPERATOR"
 tailscale --socket=/run/tailscale/tailscaled.sock status 2>&1 | head -3 || true
 INSTALL

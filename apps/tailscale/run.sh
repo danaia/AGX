@@ -27,6 +27,14 @@ relay=$!
 echo "$relay" > "$relay_pid"
 /usr/sbin/tailscaled --tun=userspace-networking --state="$base/state/tailscaled.state" --socket="$socket" &
 daemon=$!
+# Re-assert the safe preferences once the daemon answers, in case any were reset by a sign-in.
+(
+    n=0
+    until /usr/bin/tailscale --socket="$socket" set --shields-up=true --accept-dns=false --accept-routes=false 2>/dev/null; do
+        n=$((n + 1)); [ "$n" -gt 30 ] && break
+        sleep 1
+    done
+) &
 trap 'kill "$daemon" "$relay" 2>/dev/null' TERM INT
 wait "$daemon"
 status=$?
