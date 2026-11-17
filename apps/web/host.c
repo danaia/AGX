@@ -55,12 +55,15 @@ int main(int argc, char **argv)
 {
     g_set_prgname("agx-web");
     g_set_application_name("ANGI Web");
-    if (argc != 5 || strcmp(argv[1], "--control-fd") || strcmp(argv[3], "--frame-fd")) {
+    if ((argc != 5 && argc != 7) || strcmp(argv[1], "--control-fd") || strcmp(argv[3], "--frame-fd")
+        || (argc == 7 && strcmp(argv[5], "--gpu-fd"))) {
         g_printerr("agx-web is an embedding host; open Web from ANGI Applications.\n");
         return 2;
     }
     if (!geteuid()) { g_printerr("agx-web: refusing to run web content as root\n"); return 1; }
     int control = descriptor(argv[2]), frame = descriptor(argv[4]);
+    int gpu_fd = argc == 7 ? descriptor(argv[6]) : -1;
+    if (argc == 7 && (gpu_fd < 0 || gpu_fd == control || gpu_fd == frame || fcntl(gpu_fd, F_SETFD, FD_CLOEXEC))) return 2;
     struct stat info;
     if (control < 0 || frame < 0 || control == frame || fstat(frame, &info) || (size_t)info.st_size != WEB_FRAME_BYTES) return 2;
     if (fcntl(control, F_SETFD, FD_CLOEXEC)) return 1;
@@ -68,7 +71,7 @@ int main(int argc, char **argv)
     close(frame);
     if (pixels == MAP_FAILED) { perror("agx-web: frame mapping"); return 1; }
     signal(SIGPIPE, SIG_IGN);
-    WebHost host = { .control = control, .pixels = pixels };
+    WebHost host = { .control = control, .pixels = pixels, .gpu_fd = gpu_fd, .use_gpu = gpu_fd >= 0 };
     host.loop = g_main_loop_new(NULL, FALSE);
     host.input = g_byte_array_new();
     g_autofree char *data_dir = NULL, *cache_dir = NULL, *shader_dir = NULL;
@@ -139,5 +142,6 @@ int main(int argc, char **argv)
     g_main_loop_unref(host.loop);
     munmap(pixels, WEB_FRAME_BYTES);
     close(control);
+    if (gpu_fd >= 0) close(gpu_fd);
     return host.failed ? 1 : 0;
 }

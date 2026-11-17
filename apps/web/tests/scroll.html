@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>GPU scrolling benchmark</title>
+<style>
+body{margin:0;background:#111827;color:#eef4ff;font:18px sans-serif}
+#grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px}
+.card{height:260px;padding:22px;background:linear-gradient(140deg,#253350,#426b72);border:1px solid #7e94ac;border-radius:18px;box-shadow:0 8px 12px #0005}
+.bar{height:70px;background:linear-gradient(90deg,#b8f66c,#56cbdf);margin-top:20px;border-radius:12px}
+</style>
+<div id="grid"></div>
+<script>
+for(let i=0;i<240;i++){
+  let e=document.createElement('div');e.className='card';e.innerHTML='<h2>ANGI Web '+i+'</h2><p>Native scrolling benchmark. Text, gradients, shadows and composited page movement.</p><div class="bar"></div>';grid.append(e);
+}
+let prior=0,dir=1;
+function frame(t){
+  if(prior){scrollBy(0,dir*Math.min(t-prior,50));if(scrollY>=document.documentElement.scrollHeight-innerHeight-2)dir=-1;if(scrollY<=0)dir=1}
+  prior=t;requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame)
+</script>

@@ -62,7 +62,8 @@ static WPEBufferFormats *display_formats(WPEDisplay *display)
 {
     WPEDRMDevice *device = display_drm(display);
     WPEBufferFormatsBuilder *builder = wpe_buffer_formats_builder_new(device);
-    wpe_buffer_formats_builder_append_group(builder, device, WPE_BUFFER_FORMAT_USAGE_MAPPING);
+    WebHost *host = g_object_get_data(G_OBJECT(display), "angi-host");
+    wpe_buffer_formats_builder_append_group(builder, device, host->use_gpu ? WPE_BUFFER_FORMAT_USAGE_RENDERING : WPE_BUFFER_FORMAT_USAGE_MAPPING);
     wpe_buffer_formats_builder_append_format(builder, DRM_FORMAT_ARGB8888, DRM_FORMAT_MOD_LINEAR);
     wpe_buffer_formats_builder_append_format(builder, DRM_FORMAT_XRGB8888, DRM_FORMAT_MOD_LINEAR);
     WPEBufferFormats *formats = wpe_buffer_formats_builder_end(builder);
@@ -83,6 +84,8 @@ static void angi_display_class_init(AngiDisplayClass *klass)
     display->get_egl_display = display_egl;
     display->get_drm_device = display_drm;
     display->get_preferred_buffer_formats = display_formats;
+    /* No use_explicit_sync vfunc: WebKit waits for its producer fence before
+     * render_buffer. The GUI ACK waits for its own GPU copy to complete. */
 }
 static void angi_display_init(AngiDisplay *display) { (void)display; }
 WPEDisplay *angi_display_new(WebHost *host)
@@ -112,6 +115,12 @@ static gboolean publish(WebHost *host, WPEBuffer *buffer, GError **error)
             g_set_error_literal(error, WPE_VIEW_ERROR, WPE_VIEW_ERROR_RENDER_FAILED, "Unsupported web buffer format");
             return FALSE;
         }
+    }
+    if (host->use_gpu && WPE_IS_BUFFER_DMA_BUF(buffer)
+        && wpe_buffer_dma_buf_get_n_planes(WPE_BUFFER_DMA_BUF(buffer)) == 1) {
+        ++host->sequence;
+        host->in_flight = g_object_ref(buffer);
+        return web_gpu_publish(host, buffer, width, height);
     }
     GBytes *bytes = wpe_buffer_import_to_pixels(buffer, error);
     if (!bytes) return FALSE;
@@ -151,6 +160,20 @@ gboolean web_render(WebHost *host, WPEView *view, WPEBuffer *buffer, GError **er
         return TRUE;
     }
     return publish(host, buffer, error);
+}
+void web_gpu_fallback(WebHost *host, uint64_t sequence)
+{
+    if (!host->in_flight || sequence != host->sequence) return;
+    host->use_gpu = FALSE;
+    /* Republish this still-owned buffer as CPU pixels. Do not release it back
+     * to WebKit until the GUI ACKs the replacement CPU frame. */
+    g_autoptr(WPEBuffer) buffer = g_steal_pointer(&host->in_flight);
+    g_autoptr(GError) error = NULL;
+    if (!publish(host, buffer, &error)) {
+        web_error(host, error ? error->message : "Web CPU fallback failed");
+        wpe_view_buffer_rendered(host->view, buffer);
+        wpe_view_buffer_released(host->view, buffer);
+    }
 }
 void web_ack(WebHost *host, uint64_t sequence)
 {

@@ -1,5 +1,6 @@
 //! Browser lifecycle and desktop integration. WPE stays out of the GUI process.
 mod engine;
+mod gpu;
 mod input;
 mod protocol;
 mod storage;
@@ -103,7 +104,7 @@ impl App {
         if !browser.attempted {
             browser.attempted = true;
             web.set_error("".into());
-            match Engine::start() {
+            match Engine::start(ui) {
                 Ok(engine) => {
                     browser.engine = Some(engine);
                     browser.starting = Some(Instant::now());
@@ -140,7 +141,11 @@ impl App {
         if let Some(engine) = &browser.engine {
             let mut updates = {
                 let mut state = engine.updates.lock().unwrap();
-                std::mem::take(&mut *state)
+                // GPU frames are consumed with the GL context current, never by this timer.
+                let gpu = state.gpu.take();
+                let updates = std::mem::take(&mut *state);
+                state.gpu = gpu;
+                updates
             };
             if updates.close_requested {
                 drop(scene);
@@ -203,6 +208,7 @@ impl App {
                     web.set_frame_width(frame.pixels.width() as i32);
                     web.set_frame_height(frame.pixels.height() as i32);
                     web.set_frame(Image::from_rgba8(frame.pixels));
+                    gpu::trace_cpu_frame();
                     web.set_ready(true);
                 }
                 browser.send(11, frame.sequence.to_be_bytes().to_vec());
@@ -397,6 +403,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> slint::Timer {
             down,
         )
     });
+    gpu::install(ui, app);
     let timer = slint::Timer::default();
     let (weak, state) = (ui.as_weak(), app.clone());
     timer.start(

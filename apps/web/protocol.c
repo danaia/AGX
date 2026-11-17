@@ -115,6 +115,7 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
         g_autofree char *text = g_strndup((const char *)p + 1, size - 1);
         web_dialog_response(host, p[0] != 0, text); return TRUE;
     }
+    case 16: if (size != 8) return FALSE; web_gpu_fallback(host, u64(p)); return TRUE;
     case 15: if (size) return FALSE; webkit_web_view_try_close(host->web); return TRUE;
     default: return FALSE;
     }

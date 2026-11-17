@@ -17,6 +17,8 @@ typedef struct {
     WebKitOptionMenu *menu;
     WebKitScriptDialog *dialog;
     int control;
+    int gpu_fd;
+    gboolean use_gpu;
     guint8 *pixels;
     GByteArray *input;
     WPEBuffer *in_flight;
@@ -33,6 +35,8 @@ void web_dialog_response(WebHost *host, gboolean accepted, const char *text);
 
 WPEDisplay *angi_display_new(WebHost *host);
 gboolean web_render(WebHost *host, WPEView *view, WPEBuffer *buffer, GError **error);
+gboolean web_gpu_publish(WebHost *host, WPEBuffer *buffer, int width, int height);
+void web_gpu_fallback(WebHost *host, uint64_t sequence);
 void web_ack(WebHost *host, uint64_t sequence);
 void web_discard_buffers(WebHost *host);
 gboolean web_send(WebHost *host, guint8 kind, const void *data, size_t size);

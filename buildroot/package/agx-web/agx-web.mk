@@ -8,7 +8,7 @@ AGX_WEB_DEPENDENCIES = agx-webkit dejavu
 
 define AGX_WEB_BUILD_CMDS
 	$(TARGET_CC) $(TARGET_CFLAGS) -std=gnu11 -DAGX_WEB_APPLIANCE=1 -Wall -Wextra \
-		$(@D)/host.c $(@D)/platform.c $(@D)/protocol.c $(@D)/dialogs.c $(@D)/storage.c \
+		$(@D)/host.c $(@D)/platform.c $(@D)/protocol.c $(@D)/dialogs.c $(@D)/storage.c $(@D)/gpu.c \
 		`$(PKG_CONFIG_HOST_BINARY) --cflags --libs wpe-webkit-2.0 libdrm` \
 		$(TARGET_LDFLAGS) -o $(@D)/agx-web
 endef

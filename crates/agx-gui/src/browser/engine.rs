@@ -1,5 +1,9 @@
 //! Lazy helper process, shared frame storage and bounded off-thread IPC.
-use super::protocol::{self, FRAME_BYTES, HEIGHT, WIDTH};
+use super::{
+    gpu,
+    protocol::{self, FRAME_BYTES, HEIGHT, WIDTH},
+};
+use slint::ComponentHandle;
 use slint::{Rgba8Pixel, SharedPixelBuffer};
 use std::{
     fs::File,
@@ -24,6 +28,7 @@ pub struct Frame {
 #[derive(Default)]
 pub struct Updates {
     pub frame: Option<Frame>,
+    pub gpu: Option<gpu::transport::Frame>,
     pub title: Option<String>,
     pub uri: Option<String>,
     pub status: Option<(u8, u8)>,
@@ -42,7 +47,7 @@ pub struct Engine {
     pub updates: Arc<Mutex<Updates>>,
 }
 impl Engine {
-    pub fn start() -> io::Result<Self> {
+    pub fn start(ui: &crate::AppWindow) -> io::Result<Self> {
         if unsafe { libc::geteuid() } == 0 {
             return Err(io::Error::other("Open Web from a signed-in user session."));
         }
@@ -69,6 +74,11 @@ impl Engine {
         {
             return Err(io::Error::last_os_error());
         }
+        let gpu_pair = if gpu::available() {
+            Some(gpu::transport::pair()?)
+        } else {
+            None
+        };
         let socket = peer.as_raw_fd();
         let executable =
             std::env::var_os("AGX_WEB_HOST").unwrap_or_else(|| "/usr/libexec/agx-web".into());
@@ -87,6 +97,12 @@ impl Engine {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .process_group(0);
+        let mut inherited = vec![socket, fd];
+        if let Some((_, gpu_peer)) = &gpu_pair {
+            let gpu_fd = gpu_peer.as_raw_fd();
+            command.args(["--gpu-fd", &gpu_fd.to_string()]);
+            inherited.push(gpu_fd);
+        }
         let parent_pid = unsafe { libc::getpid() };
         unsafe {
             command.pre_exec(move || {
@@ -96,8 +112,8 @@ impl Engine {
                 if libc::getppid() != parent_pid {
                     return Err(io::Error::from_raw_os_error(libc::ECHILD));
                 }
-                for descriptor in [socket, fd] {
-                    if libc::fcntl(descriptor, libc::F_SETFD, 0) < 0 {
+                for descriptor in &inherited {
+                    if libc::fcntl(*descriptor, libc::F_SETFD, 0) < 0 {
                         return Err(io::Error::last_os_error());
                     }
                 }
@@ -119,6 +135,37 @@ impl Engine {
                 ));
             }
         });
+        if let Some((gpu_socket, gpu_peer)) = gpu_pair {
+            drop(gpu_peer);
+            let shared = updates.clone();
+            let weak = ui.as_weak();
+            thread::spawn(move || {
+                loop {
+                    match gpu::transport::receive(&gpu_socket) {
+                        Ok(frame) => {
+                            let mut state = shared.lock().unwrap();
+                            if state.gpu.is_some() {
+                                state.error = Some("Web sent an unacknowledged GPU frame".into());
+                                state.dead = true;
+                                break;
+                            }
+                            state.gpu = Some(frame);
+                            drop(state);
+                            // Queue a native draw immediately; do not wait on the 33ms CPU poll.
+                            let _ = weak.upgrade_in_event_loop(|ui| ui.window().request_redraw());
+                        }
+                        Err(error) => {
+                            if error.kind() != io::ErrorKind::UnexpectedEof {
+                                let mut state = shared.lock().unwrap();
+                                state.error = Some(format!("Web GPU transport stopped: {error}"));
+                                state.dead = true;
+                            }
+                            break;
+                        }
+                    }
+                }
+            });
+        }
         let (tx, rx) = mpsc::sync_channel::<(u8, Vec<u8>)>(128);
         thread::spawn(move || {
             let mut control = control;
@@ -134,6 +181,10 @@ impl Engine {
             tx,
             updates,
         })
+    }
+    #[cfg(feature = "kms")]
+    pub(super) fn commands(&self) -> SyncSender<(u8, Vec<u8>)> {
+        self.tx.clone()
     }
     pub fn send(&self, kind: u8, data: Vec<u8>) {
         // A stuck engine must never block the UI thread or grow an unbounded input queue.
