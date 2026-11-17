@@ -30,6 +30,11 @@ pub const DISPLAY_ACCESS: &str = "/usr/libexec/agx-display-access";
 fn display_access() -> Definition {
     Definition::new("display-access", "/bin/sh", &[DISPLAY_ACCESS], false)
 }
+/// Tailscale in userspace mode, for Agent Angie's LM Studio; see apps/tailscale/run.sh.
+pub const TAILSCALE: &str = "/usr/libexec/agx-tailscale/run";
+fn tailscale() -> Definition {
+    Definition::new("tailscale", "/bin/sh", &[TAILSCALE], true)
+}
 fn console_definition(gui: bool) -> Definition {
     if gui {
         Definition::new("console", "/usr/bin/agx-gui", &["--login"], false)
@@ -113,6 +118,10 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
         // Only images that ship the script (the desktop) run this service.
         if std::path::Path::new(DISPLAY_ACCESS).is_file() {
             services.push(display_access());
+        }
+        // Likewise only where scripts/deploy-tailscale.sh installed it.
+        if std::path::Path::new(TAILSCALE).is_file() {
+            services.push(tailscale());
         }
     }
     services.push(Definition::new("network", "/usr/sbin/agx-netd", &[], true));
@@ -520,6 +529,17 @@ mod tests {
             );
             std::thread::sleep(Duration::from_millis(20));
         }
+    }
+    #[test]
+    fn tailscale_is_a_controllable_service_run_through_its_script() {
+        let definition = tailscale();
+        assert_eq!(definition.name, "tailscale");
+        assert_eq!(definition.program, "/bin/sh");
+        assert_eq!(definition.args, [TAILSCALE]);
+        assert!(definition.controllable);
+        // Defined only where deploy-tailscale.sh installed the script, never by default.
+        let present = definitions(true).iter().any(|service| service.name == "tailscale");
+        assert_eq!(present, std::path::Path::new(TAILSCALE).is_file());
     }
     #[test]
     fn desktop_console_enters_greeter_and_headless_keeps_getty() {

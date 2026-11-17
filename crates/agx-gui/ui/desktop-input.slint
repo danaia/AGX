@@ -19,12 +19,10 @@ export component DesktopInput inherits TouchArea {
             e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
             x, y, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
     }
-    moved => {
-        let x = self.absolute-position.x + self.mouse-x;
-        let y = self.absolute-position.y + self.mouse-y;
-        root.pointer-moved(x, y);
-        root.pointer(2, 3, x, y, false, false, false, false);
-    }
+    // pointer-event includes motion, both hovering and while grabbed. Handling
+    // moved as well would dispatch each drag twice: after the first callback
+    // moves the frame, its new absolute position plus the old local mouse
+    // position invents a second movement and makes the window jump.
     scroll-event(e) => {
         if !root.forward-scroll { return reject; }
         root.scroll(e.delta-x / 1px, e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);

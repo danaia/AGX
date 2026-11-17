@@ -14,6 +14,7 @@ mod scene_model;
 mod terminal;
 mod wm;
 
+mod agent_providers;
 mod app;
 #[cfg(test)]
 mod pointer_tests;

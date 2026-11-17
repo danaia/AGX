@@ -43,6 +43,7 @@ dependencies = [
  "input",
  "libc",
  "libloading",
+ "serde_json",
  "signal-hook 0.3.18",
  "slint",
  "slint-build",

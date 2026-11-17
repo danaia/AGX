@@ -74,3 +74,5 @@ deploy-agent:
 	./scripts/deploy-agent.sh
 agent-test:
 	python3 scripts/test-agent-mail.py
+	python3 scripts/test-agent-models.py
+	python3 scripts/test-agent-providers.py

@@ -95,3 +95,38 @@ These checks did not rebuild a complete OS image or require an HDMI monitor.
 
 Upstream: [Herdr 0.9.5](https://github.com/herdrdev/herdr/releases/tag/v0.9.5)
 and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
+
+
+## Provider setup on workspace 2
+
+The three cards below the build prompt open provider setup panels. OpenAI uses
+OpenCode’s browser OAuth flow for a ChatGPT subscription. Finish sign-in in the
+browser, then return to Agent Angie; the panel checks stored authentication and
+shows the provider’s coding models. Closing the browser does not itself finish
+sign-in. Choose each role’s model independently; preferences are saved privately
+and applied to new builds, while existing sessions retain their configuration.
+
+Apple Intelligence uses [Local LLM Server](https://apps.apple.com/us/app/local-llm-server/id6757007308)
+on an Apple Intelligence device. Enable Apple Intelligence, wait for its model
+to download, start the app’s OpenAI-compatible server in LAN mode, and keep it
+running on the same trusted network as ANGI. Enter the app’s device address and
+port, rather than localhost; ANGI queries `/v1/models` before saving it. The
+current setup supports servers without optional Bearer-token authentication.
+The app offers optional API keys; use a trusted network for this setup.
+
+The third card is LM Studio, a model served from your own computer and reached privately over
+Tailscale. See [Tailscale for LM Studio](tailscale.md) for the setup, the userspace-networking
+design and the safety settings. Claude subscription sign-in works only in the unmodified Claude Code
+application, so ANGI no longer offers a Claude card; see [Anthropic’s authentication guidance](https://code.claude.com/docs/en/legal-and-compliance).
+
+Agent Angie builds with **one service at a time**. A card whose service is connected shows **Use**;
+the card in use shows an **ACTIVE** label and a green outline, and **Use** on another card switches
+new builds to it. Each card's bottom-right footer lists the models chosen for the orchestrator,
+builder and tester roles (dimmed while that service is not in use). Model choices are kept per
+service, so switching away and back restores them, but only the active service's models and
+server configuration reach new builds; models can be chosen only for the active service. The
+choice is stored with the model preferences and, until one is made, follows the saved models.
+
+Provider setup can be checked without real accounts using
+`python3 scripts/test-agent-providers.py` and
+`python3 scripts/test-agent-models.py`.

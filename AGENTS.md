@@ -21,3 +21,13 @@ Keep **AGX** for technical identifiers: the `agx` command and its help text, `ag
 ## Development device deployment
 
 The user authorizes deploying requested changes to the established development Pi, refreshing the authenticated desktop or rebooting when needed, and verifying the result as part of the task. Use the repository's documented deployment and recovery procedures, preserve user data, and report the checks performed.
+
+## Pi access and control (Claude and Codex)
+
+For Pi access, remote commands, file transfer, desktop control, deployment or recovery, read and follow [.agents/skills/angi-pi-ethernet/SKILL.md](.agents/skills/angi-pi-ethernet/SKILL.md) and [docs/pi-ethernet.md](docs/pi-ethernet.md) before connecting. These are the shared procedure for both agents; Claude discovers the same skill through `.claude/skills/angi-pi-ethernet`.
+
+- Use direct RJ45 Ethernet: workstation `10.78.0.1/24` on `enp1s0`, Pi `root@10.78.0.2` on `eth0`. USB `10.77.0.2` is the recorded SSH host-key alias, not the Ethernet destination. Wi-Fi is an explicit recovery alternative.
+- Use the existing Ed25519 key and strict host-key checking. Set the documented `AGX_SSH_*` variables before deployment; older scripts otherwise default to USB.
+- Control the desktop through the existing OpenSSH VNC tunnel at `127.0.0.1:5941`. Keep Pi VNC bound to loopback and Remmina's built-in SSH tunnel disabled.
+- Distinguish workstation commands from Pi commands. The Pi runs Buildroot with Rust init, not systemd; workstation tunnel services use `systemctl --user` only on the workstation.
+- Verify the route and SSH identity before mutation. Follow the guide's bounded recovery sequence on failure; do not silently change transports, credentials, host-key trust or network configuration.

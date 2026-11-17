@@ -304,6 +304,84 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     key(slint::platform::Key::Return.into());
     assert_eq!(*deletions.borrow(), 1);
     storage.set_selected_open(false);
+    floating_drag_tracks_each_physical_move(&ui, &render);
+}
+
+// Exercise Slint's actual grabbed TouchArea, including layout/render between events.
+// Model-only pointer tests cannot catch duplicate callbacks in moving coordinates.
+fn floating_drag_tracks_each_physical_move(ui: &AppWindow, render: &impl Fn()) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let app = Rc::new(RefCell::new(App::new()));
+    app.borrow_mut().desk.focus(Kind::Cpu);
+    ui.set_wins(ModelRc::from(app.borrow().view.windows.clone()));
+    app.borrow().refresh(ui);
+    let motions = Rc::new(RefCell::new(Vec::new()));
+    let (weak, state, received) = (ui.as_weak(), app.clone(), motions.clone());
+    ui.on_pointer(move |kind, button, x, y, ctrl, alt, shift, meta| {
+        if kind == 2 { received.borrow_mut().push((x, y)); }
+        state.borrow_mut().pointer(&weak.upgrade().unwrap(), kind, button, x, y, mods(ctrl, alt, shift, meta));
+    });
+    render();
+    let rect = app.borrow().desk.rect_of(Kind::Cpu).unwrap();
+    let start = slint::LogicalPosition::new(rect.x + 50., rect.y + 14.);
+    ui.window().dispatch_event(WindowEvent::PointerMoved { position: start });
+    ui.window().dispatch_event(WindowEvent::PointerPressed {
+        position: start, button: PointerEventButton::Left,
+    });
+    motions.borrow_mut().clear();
+    for step in 1..=60 {
+        let distance = if step <= 30 { step } else { 60 - step } as f32;
+        let dx = distance * 3.25;
+        let dy = distance * 1.5;
+        let position = slint::LogicalPosition::new(start.x + dx, start.y + dy);
+        ui.window().dispatch_event(WindowEvent::PointerMoved { position });
+        render();
+        assert_eq!(motions.borrow().len(), step, "one desktop update per physical move");
+        assert_eq!(motions.borrow()[step - 1], (position.x, position.y));
+        let moved = app.borrow().desk.rect_of(Kind::Cpu).unwrap();
+        assert_eq!((moved.x, moved.y), (rect.x + dx, rect.y + dy), "window stays anchored to the pointer");
+    }
+    ui.window().dispatch_event(WindowEvent::PointerReleased {
+        position: start, button: PointerEventButton::Left,
+    });
+    assert!(matches!(app.borrow().drag, crate::input::Drag::None));
+
+    // The same moving-coordinate bug also amplified top/left edge resizing.
+    let start = slint::LogicalPosition::new(rect.x, rect.y);
+    ui.window().dispatch_event(WindowEvent::PointerPressed {
+        position: start, button: PointerEventButton::Left,
+    });
+    motions.borrow_mut().clear();
+    let end = slint::LogicalPosition::new(start.x - 40., start.y - 30.);
+    ui.window().dispatch_event(WindowEvent::PointerMoved { position: end });
+    render();
+    assert_eq!(&*motions.borrow(), &[(end.x, end.y)]);
+    let resized = app.borrow().desk.rect_of(Kind::Cpu).unwrap();
+    assert_eq!((resized.x, resized.y, resized.w, resized.h),
+        (rect.x - 40., rect.y - 30., rect.w + 40., rect.h + 30.));
+    ui.window().dispatch_event(WindowEvent::PointerReleased {
+        position: end, button: PointerEventButton::Left,
+    });
+
+    app.borrow_mut().desk.cycle_layout();
+    app.borrow().refresh(ui);
+    render();
+    let rect = app.borrow().desk.rect_of(Kind::Cpu).unwrap();
+    let start = slint::LogicalPosition::new(rect.x + 50., rect.y + 14.);
+    ui.window().dispatch_event(WindowEvent::PointerPressed {
+        position: start, button: PointerEventButton::Left,
+    });
+    motions.borrow_mut().clear();
+    let end = slint::LogicalPosition::new(start.x + 20., start.y + 10.);
+    ui.window().dispatch_event(WindowEvent::PointerMoved { position: end });
+    render();
+    assert_eq!(&*motions.borrow(), &[(end.x, end.y)]);
+    assert_eq!(app.borrow().ghost, Some(wm::Rect::new(rect.x + 20., rect.y + 10., rect.w, rect.h)));
+    assert_eq!(app.borrow().desk.rect_of(Kind::Cpu), Some(rect));
+    ui.window().dispatch_event(WindowEvent::PointerReleased {
+        position: end, button: PointerEventButton::Left,
+    });
+    assert!(app.borrow().ghost.is_none());
 }
 
 #[test]

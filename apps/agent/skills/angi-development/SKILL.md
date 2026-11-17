@@ -14,6 +14,13 @@ without root. Apply this capability to the user's requested work.
 
 ## Find the system
 
+- When running on the Pi, operate locally; do not run workstation connection
+  setup or SSH back into this device. For workstation-side access, Claude and
+  Codex share `.agents/skills/angi-pi-ethernet/SKILL.md` and
+  `docs/pi-ethernet.md` in the source checkout. Direct RJ45 Ethernet uses Pi
+  `10.78.0.2/24` on `eth0` and workstation `10.78.0.1/24`; `10.77.0.2` is the
+  separate USB recovery address and recorded SSH host-key alias. Preserve
+  Ethernet and SSH access during native installation.
 - Source checkout: `/var/lib/agx-data/angi-dev`. Read its `AGENTS.md` and
   `docs/code-structure.md` before editing source.
 - Public name: ANGI. Keep `agx`, `AGX_*`, crate names and system paths as

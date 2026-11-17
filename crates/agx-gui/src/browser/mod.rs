@@ -201,7 +201,7 @@ impl App {
                 }
                 browser.send(6, vec![u8::from(visible)]);
                 browser.visible = visible;
-                browser.send(2, protocol::HOME.as_bytes().to_vec());
+                browser.send(2, web.get_address().as_bytes().to_vec());
             }
             if let Some(frame) = updates.frame.take() {
                 if visible {

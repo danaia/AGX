@@ -1,6 +1,9 @@
 import { Theme } from "data.slint";
 import { LineEdit, Button } from "std-widgets.slint";
 
+import { AgentProviders, CardModels, ProviderCards, ProviderPanel } from "agent-providers.slint";
+export { AgentProviders, CardModels }
+
 export global AgentAngie {
     callback activate();
     callback submit(string);
@@ -10,17 +13,21 @@ export component AgentPanel inherits Rectangle {
     in property <bool> active;
     callback pointer-moved(length, length);
     background: Theme.bg-dark;
-    changed active => { if (root.active) { prompt.focus(); } }
-    init => { if (root.active) { prompt.focus(); } }
+    changed active => { if (root.active && !AgentProviders.open) { prompt.focus(); } }
+    init => { if (root.active && !AgentProviders.open) { prompt.focus(); } }
     TouchArea {
         changed mouse-x => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         changed mouse-y => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         pointer-event(e) => { if (e.kind == PointerEventKind.down) { AgentAngie.activate(); } }
     }
+    content := Rectangle {
+    x: 0px; y: 0px;
+    width: AgentProviders.open ? max(0px, parent.width - min(440px, parent.width * 0.48)) : parent.width;
+    height: parent.height;
     VerticalLayout {
-        x: max(20px, (parent.width - 660px) / 2);
-        y: max(24px, (parent.height - 250px) / 2);
-        width: min(660px, parent.width - 40px);
+        x: max(20px, (content.width - 660px) / 2);
+        y: max(24px, (content.height - 390px) / 2);
+        width: min(660px, content.width - 40px);
         height: 220px;
         spacing: 16px;
         Text { text: "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; }
@@ -34,5 +41,13 @@ export component AgentPanel inherits Rectangle {
             Rectangle { horizontal-stretch: 1; }
             Button { text: "Start building"; clicked => { if (prompt.text != "") { AgentAngie.submit(prompt.text); } } }
         }
+    }
+    ProviderCards {
+        x: 24px; y: max(270px, content.height - 176px);
+        width: max(0px, content.width - 48px); height: 150px;
+    }
+    }
+    if AgentProviders.open: ProviderPanel {
+        x: content.width; width: parent.width - content.width; height: parent.height;
     }
 }

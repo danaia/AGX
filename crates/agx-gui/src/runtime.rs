@@ -121,6 +121,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     let _terminal_watch = terminal::install(&ui, &app);
     let _browser_watch = browser::install(&ui, &app);
+    let _provider_watch = crate::agent_providers::install(&ui, &app);
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change

@@ -7,6 +7,7 @@ import sys
 import time
 
 from messaging import ROLES, database
+from models import active, active_selections
 
 SOURCE = Path("/var/lib/agx-data/angi-dev")
 ASSETS = Path("/usr/share/agx/agent")
@@ -59,6 +60,7 @@ def start_server(name, run):
 
 
 def role_config():
+    choices = active_selections()
     profiles = {}
     for role in ROLES:
         profiles[f"angi-{role}"] = {
@@ -66,7 +68,15 @@ def role_config():
             "prompt": (ASSETS / f"profiles/{role}.md").read_text(),
             "permission": {"*": "allow", "task": "deny"},
         }
-    return json.dumps({"agent": profiles, "share": "disabled", "autoupdate": False})
+        if role in choices:
+            profiles[f"angi-{role}"]["model"] = choices[role]
+    from providers import apple_config, lmstudio_config
+    config = {"agent": profiles, "share": "disabled", "autoupdate": False}
+    service = active()
+    local = {"apple": apple_config, "lmstudio": lmstudio_config}.get(service)
+    if local and local():
+        config["provider"] = {service: local()}
+    return json.dumps(config)
 
 
 def launch(state, brief):

@@ -1,4 +1,5 @@
 """Command dispatch for the native ANGI development swarm."""
+import json
 import os
 from pathlib import Path
 import sys
@@ -6,6 +7,7 @@ import sys
 from messaging import inbox, send
 from session import launch, resume, status, dispatch
 from ui import welcome
+from models import activate, active, catalog, save, selections
 
 
 def main():
@@ -14,6 +16,25 @@ def main():
     os.environ.pop("LD_LIBRARY_PATH", None)
     os.environ.pop("PYTHONHOME", None)
     args = sys.argv[1:]
+    if args == ["provider-bridge"]:
+        from providers import bridge
+        bridge()
+        return
+    if args == ["models"]:
+        print(json.dumps(selections()))
+        return
+    if len(args) == 2 and args[0] == "models":
+        print(json.dumps(catalog(args[1])))
+        return
+    if args == ["provider"]:
+        print(json.dumps(active()))
+        return
+    if len(args) == 2 and args[0] == "provider":
+        print(json.dumps(activate(args[1])))
+        return
+    if len(args) == 3 and args[0] == "model":
+        print(json.dumps(save(args[1], args[2])))
+        return
     if args and args[0] == "_dispatch":
         dispatch(Path(args[1]))
         return
