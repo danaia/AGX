@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>ANGI Web smoke</title>
+<style>
+body{margin:0;background:#eef4fc;color:#172333;font:20px "DejaVu Sans",sans-serif;height:1600px}h1{position:absolute;left:20px;top:12px;margin:0;font-size:24px}input,button{position:absolute;top:64px;height:36px;font:18px sans-serif}input{left:20px;width:240px;box-sizing:border-box}button{left:280px;width:140px}#animate{left:440px;width:170px}canvas{position:absolute;left:20px;top:128px}#gl{position:absolute;left:20px;top:224px}a{position:absolute;left:20px;top:290px}footer{position:absolute;left:20px;top:1510px}
+</style>
+<h1 id="size"></h1><input id="text" placeholder="Type here"><button id="click">Click me</button><button id="animate">Animate</button><canvas width="300" height="80"></canvas><p id="gl"></p><a href="second.html">Navigation test</a><select style="position:absolute;left:20px;top:350px;width:200px;font:20px sans-serif" onchange="document.title='Selected: '+this.value"><option>One</option><option>Two</option><optgroup label="More"><option>Three</option></optgroup></select><button style="left:240px;top:350px;width:180px" onclick="document.title='Prompt: '+prompt('Enter a test value','hello')">Test prompt</button><button style="left:440px;top:350px;width:180px" onclick="onbeforeunload=e=>{e.preventDefault();e.returnValue=String()};document.title='Protected changes'">Protect changes</button><footer>End of page · scroll works</footer>
+<script>
+function size(){document.querySelector('#size').textContent=innerWidth+' × '+innerHeight;document.title='ANGI '+innerWidth+'x'+innerHeight}onresize=size;size();
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d');ctx.fillStyle='#237449';ctx.fillRect(0,0,300,80);ctx.fillStyle='white';ctx.font='24px sans-serif';ctx.fillText('Canvas works',15,48);
+document.querySelector('#gl').textContent=document.createElement('canvas').getContext('webgl')?'WebGL works':'WebGL unavailable';
+document.querySelector('#text').oninput=e=>document.title='Input: '+e.target.value;
+document.querySelector('#click').onclick=e=>{e.target.textContent='Clicked';document.title='Clicked'};
+let active=false,frames=0;function frame(){if(!active)return;ctx.fillStyle=frames%2?'#237449':'#3344bb';ctx.fillRect(0,0,300,80);ctx.fillStyle='white';ctx.fillText('Frame '+ ++frames,15,48);document.title='Frames '+frames;requestAnimationFrame(frame)}
+document.querySelector('#animate').onclick=e=>{active=!active;e.target.textContent=active?'Stop animation':'Animate';if(active)requestAnimationFrame(frame)};
+</script>

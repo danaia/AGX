@@ -1,0 +1,28 @@
+From: ANGI build integration
+Subject: [PATCH] Stringify the embedded product branding token
+
+The external package passes the ANGI product token through CMake without
+embedding shell quotes. Convert that token to a C++ literal at its use site.
+This keeps the user-agent branding separate from technical package names.
+
+Upstream-Status: Inappropriate [ANGI-specific build branding]
+---
+--- a/Source/WebCore/platform/glib/UserAgentGLib.cpp
++++ b/Source/WebCore/platform/glib/UserAgentGLib.cpp
+@@ -30,6 +30,7 @@
+ #include "HTTPParsers.h"
+ #include "UserAgentQuirks.h"
+ #include <wtf/NeverDestroyed.h>
++#include <wtf/StdLibExtras.h>
+ #include <wtf/URL.h>
+ #include <wtf/glib/ChassisType.h>
+ #include <wtf/text/MakeString.h>
+@@ -88,7 +89,7 @@
+     else {
+         uaString.append(platformForUAString(), "; "_s);
+ #if defined(USER_AGENT_BRANDING)
+-        uaString.append(USER_AGENT_BRANDING "; "_s);
++        uaString.append(STRINGIZE_VALUE_OF(USER_AGENT_BRANDING) "; "_s);
+ #endif
+         uaString.append(platformVersionForUAString());
+     }

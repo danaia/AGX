@@ -10,7 +10,7 @@
 //! viewer stays connected across the sign-in instead of having to reconnect.
 mod frame;
 mod handoff;
-mod input;
+pub(crate) mod input;
 mod resize;
 mod rfb;
 mod server;

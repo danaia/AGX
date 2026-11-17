@@ -46,3 +46,9 @@ gui-build:
 	PKG_CONFIG=$(CURDIR)/output/host/bin/pkg-config PKG_CONFIG_ALLOW_CROSS=1 ./scripts/cargo.sh build --manifest-path crates/agx-gui/Cargo.toml --release --target aarch64-unknown-linux-gnu --no-default-features --features kms
 deploy-gui: gui-build init-build
 	./scripts/deploy-gui.sh
+
+.PHONY: web-build deploy-web
+web-build:
+	./scripts/build-web.sh
+deploy-web: web-build gui-build
+	./scripts/deploy-web.sh

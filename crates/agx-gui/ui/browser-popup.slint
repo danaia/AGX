@@ -1,0 +1,87 @@
+// WPE delegates form menus and script dialogs to the embedder.
+import { Theme } from "data.slint";
+import { Web } from "browser.slint";
+import { Button, LineEdit, ScrollView } from "std-widgets.slint";
+export component BrowserPopup inherits Rectangle {
+    callback pointer-moved(length, length);
+    property <int> selection: Web.option-index;
+    background: #05070c99;
+    clip: true;
+    function choose() {
+        if (root.selection >= 0 && root.selection < Web.options.length && Web.options[root.selection].enabled) { Web.selection(root.selection); }
+    }
+    function reveal() {
+        if (root.selection * 36px + options.content-y < 0px) { options.content-y = -root.selection * 36px; }
+        else if (root.selection * 36px + 36px + options.content-y > options.visible-height) {
+            options.content-y = min(0px, options.visible-height - root.selection * 36px - 36px);
+        }
+    }
+    changed selection => { root.reveal(); }
+    init => { if (Web.popup-kind == 2 && Web.dialog-type == 2) { prompt.focus(); prompt.select-all(); } else { keys.focus(); } root.reveal(); }
+    tracker := TouchArea {
+        moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        pointer-event(e) => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        keys := FocusScope {
+            key-pressed(e) => {
+                if (e.modifiers.meta) { return reject; }
+                if (e.text == Key.Escape) {
+                    if (Web.popup-kind == 1) { Web.selection(-1); } else { Web.dialog-response(false, ""); }
+                    return accept;
+                }
+                if (Web.popup-kind == 1) {
+                    if (e.text == Key.DownArrow) { root.selection = mod(root.selection + 1, Web.options.length); return accept; }
+                    if (e.text == Key.UpArrow) { root.selection = mod(root.selection + Web.options.length - 1, Web.options.length); return accept; }
+                    if (e.text == Key.Return) { root.choose(); return accept; }
+                } else if (e.text == Key.Return) { Web.dialog-response(true, Web.dialog-value); return accept; }
+                reject
+            }
+            TouchArea { clicked => { if (Web.popup-kind == 1) { Web.selection(-1); } } }
+            Rectangle {
+                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                width: min(560px, parent.width - 40px);
+                height: min(Web.popup-kind == 1 ? min(460px, 168px + Web.options.length * 36px) : Web.dialog-type == 2 ? 300px : 260px, parent.height - 32px);
+                background: Theme.bg; border-radius: 12px; border-width: 1px; border-color: Theme.fg-dim;
+                TouchArea { }
+                VerticalLayout {
+                    padding: 20px; spacing: 12px;
+                    Text { text: Web.popup-kind == 1 ? "Choose an option" : Web.dialog-type == 3 ? "Leave this page?" : "Website message"; color: Theme.fg-bright; font-size: 20px; font-weight: 700; }
+                    Text { text: Web.site; color: Theme.fg-dim; font-size: 11px; overflow: elide; }
+                    options := ScrollView {
+                        visible: Web.popup-kind == 1;
+                        min-height: 0px; max-height: self.visible ? 100000px : 0px;
+                        vertical-stretch: self.visible ? 1 : 0;
+                        content-height: Web.options.length * 36px;
+                        content-width: self.visible-width;
+                        for option[i] in Web.options: Rectangle {
+                            y: i * 36px; width: options.visible-width; height: 36px;
+                            background: root.selection == i ? Theme.bg-light : transparent;
+                            Text { x: 10px; width: parent.width - 20px; text: (option.selected ? "✓  " : "   ") + option.label; color: option.enabled ? Theme.fg : Theme.muted; vertical-alignment: center; overflow: elide; }
+                            TouchArea {
+                                enabled: option.enabled;
+                                mouse-cursor: MouseCursor.pointer;
+                                moved => { root.selection = i; root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                                clicked => { Web.selection(i); }
+                            }
+                        }
+                    }
+                    if Web.popup-kind == 2: ScrollView {
+                        vertical-stretch: 1;
+                        content-width: self.visible-width;
+                        Text { width: parent.width; text: Web.dialog-message; color: Theme.fg; wrap: word-wrap; }
+                    }
+                    prompt := LineEdit {
+                        visible: Web.popup-kind == 2 && Web.dialog-type == 2;
+                        min-height: 0px; max-height: self.visible ? 36px : 0px;
+                        text <=> Web.dialog-value;
+                        accepted => { Web.dialog-response(true, self.text); }
+                    }
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Button { text: Web.popup-kind == 1 ? "Cancel" : Web.dialog-type == 3 ? "Stay" : "Cancel"; visible: Web.popup-kind == 1 || Web.dialog-type != 0; clicked => { if (Web.popup-kind == 1) { Web.selection(-1); } else { Web.dialog-response(false, ""); } } }
+                        Button { text: Web.popup-kind == 1 ? "Choose" : Web.dialog-type == 3 ? "Leave" : "OK"; clicked => { if (Web.popup-kind == 1) { root.choose(); } else { Web.dialog-response(true, Web.dialog-value); } } }
+                    }
+                }
+            }
+        }
+    }
+}

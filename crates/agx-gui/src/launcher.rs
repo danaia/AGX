@@ -55,13 +55,14 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             "Operating system and machine details",
             "settings info version kernel host",
         ),
+        ("Web", "Browse the web with WPE WebKit", "browser web internet website wpe webkit"),
     ]) {
         entries.push(Entry {
             label: label.into(),
             description: description.into(),
             hint: if desktop.is_open(kind) { "Running" } else { "" }.into(),
             aliases,
-            icon: kind.index() as i32,
+            icon: if kind == Kind::Web { 12 } else { kind.index() as i32 },
             app: true,
             running: desktop.is_open(kind),
             command: Cmd::Open(kind),
@@ -253,13 +254,19 @@ mod tests {
         let mut desktop = desktop();
         desktop.close(Kind::Services);
         let apps = results(&desktop, "Super", "", 0);
-        assert_eq!(apps.len(), 8);
+        assert_eq!(apps.len(), 9);
         assert!(apps.iter().all(|entry| entry.app));
         assert_eq!(apps[0].command, Cmd::Open(Kind::Overview));
         assert!(
             apps.iter()
                 .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
         );
+        assert!(!desktop.is_open(Kind::Web), "the engine app starts closed");
+        assert_eq!(results(&desktop, "Super", "webkit", 0)[0].command, Cmd::Open(Kind::Web));
+        desktop.open(Kind::Web);
+        assert_eq!(desktop.focused(), Some(Kind::Web));
+        desktop.close(Kind::Web);
+        assert!(!desktop.is_open(Kind::Web));
         desktop.goto(4);
         desktop.open(Kind::Overview);
         assert_eq!(desktop.focused(), Some(Kind::Overview));

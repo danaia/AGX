@@ -2,6 +2,9 @@
 // draws what it places and forwards raw keyboard and pointer input to it.
 import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
+import { Web, WebOption, BrowserPanel } from "browser.slint";
+export { Web, WebOption }
+import { BrowserPopup } from "browser-popup.slint";
 import { AppLauncher } from "launcher.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
@@ -31,7 +34,7 @@ component WindowFrame inherits Rectangle {
                 HorizontalLayout {
                     padding-left: 10px;
                     Text {
-                        text: win.title;
+                        text: win.kind == 7 ? Web.title : win.title;
                         color: win.focused ? Theme.accent : Theme.fg-dim;
                         font-weight: 700;
                         font-size: 12px;
@@ -53,6 +56,7 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 4: HardwarePanel { }
                 if win.kind == 5: ServicesPanel { }
                 if win.kind == 6: SystemPanel { }
+                if win.kind == 7: BrowserPanel { active: win.focused; }
             }
         }
     }
@@ -143,6 +147,7 @@ export component AppWindow inherits Window {
     min-width: 640px;
     min-height: 400px;
     forward-focus: root-keys;
+    public function focus-desktop() { root-keys.focus(); }
 
     in property <[Win]> wins: [];
     in property <[bool]> ws-occupied: [false, false, false, false, false];
@@ -178,8 +183,9 @@ export component AppWindow inherits Window {
         && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
+    callback browser-key(string, bool, bool, bool, bool, bool) -> bool;
     callback pointer(int, int, length, length, bool, bool, bool, bool);
-    callback scroll(float, bool, bool, bool, bool);
+    callback scroll(float, float, bool, bool, bool, bool);
     callback resized(length, length);
     callback menu-query(string);
     callback menu-accept(int);
@@ -216,6 +222,11 @@ export component AppWindow inherits Window {
             if (root.key(root.key-name(e.text), e.modifiers.control, e.modifiers.alt, e.modifiers.shift || e.text == Key.Backtab, e.modifiers.meta)) {
                 return accept;
             }
+            if (root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, true)) { return accept; }
+            reject
+        }
+        key-released(e) => {
+            if (!root.session-open && root.confirm-text == "" && root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
             reject
         }
 
@@ -252,7 +263,7 @@ export component AppWindow inherits Window {
                     : root.cursor == 1 ? MouseCursor.move : root.cursor == 2 ? MouseCursor.col-resize
                     : root.cursor == 3 ? MouseCursor.row-resize : root.cursor == 4 ? MouseCursor.nwse-resize
                     : root.cursor == 5 ? MouseCursor.nesw-resize
-                    : root.cursor == 6 ? MouseCursor.pointer : MouseCursor.default;
+                    : root.cursor == 6 ? MouseCursor.pointer : root.cursor == 7 ? MouseCursor.text : MouseCursor.default;
                 pointer-event(e) => {
                     root.cursor-x = self.mouse-x;
                     root.cursor-y = self.mouse-y;
@@ -270,7 +281,7 @@ export component AppWindow inherits Window {
                     root.pointer(2, 3, self.mouse-x, self.mouse-y, false, false, false, false);
                 }
                 scroll-event(e) => {
-                    root.scroll(e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
+                    root.scroll(e.delta-x / 1px, e.delta-y / 1px, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta);
                     accept
                 }
             }
@@ -356,6 +367,10 @@ export component AppWindow inherits Window {
             }
         }
 
+        if Web.popup-visible && Web.popup-kind != 0: BrowserPopup {
+            x: Web.popup-x; y: Web.popup-y; width: Web.popup-w; height: Web.popup-h;
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+        }
         if root.menu-open: AppLauncher {
             rows: root.menu-rows;
             selected <=> root.menu-index;

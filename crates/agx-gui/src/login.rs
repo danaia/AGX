@@ -85,6 +85,9 @@ fn exec_session(username: &str, handoff: Option<remote::Exec>) -> io::Error {
     if uid < 1000 {
         return io::Error::other("An ANGI administrator account is required");
     }
+    if let Err(error) = crate::browser::prepare_user_storage(uid, gid) {
+        eprintln!("agx-gui: Web storage is unavailable: {error}");
+    }
     let mut session = Command::new("/usr/bin/agx");
     session
         .arg("desktop")

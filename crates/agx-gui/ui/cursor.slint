@@ -15,6 +15,18 @@ export component Cursor inherits Rectangle {
         commands: "M 0 0 L 0 16 L 4 12.5 L 7 19 L 9.5 18 L 6.5 11.5 L 11.5 11.5 Z";
         fill: #ffffff; stroke: #000000; stroke-width: 1px;
     }
+    if root.shape == 7: Path {
+        x: -4px; y: -9px; width: 8px; height: 18px;
+        viewbox-width: 8; viewbox-height: 18;
+        commands: "M 0 0 L 8 0 M 4 0 L 4 18 M 0 18 L 8 18";
+        fill: transparent; stroke: #ffffff; stroke-width: 4px;
+    }
+    if root.shape == 7: Path {
+        x: -4px; y: -9px; width: 8px; height: 18px;
+        viewbox-width: 8; viewbox-height: 18;
+        commands: "M 0 0 L 8 0 M 4 0 L 4 18 M 0 18 L 8 18";
+        fill: transparent; stroke: #000000; stroke-width: 2px;
+    }
     if root.shape >= 1 && root.shape <= 5: Image {
         x: -12px * root.magnification; y: -12px * root.magnification;
         width: 24px * root.magnification; height: 24px * root.magnification;

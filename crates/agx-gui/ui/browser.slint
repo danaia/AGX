@@ -1,0 +1,101 @@
+// Native chrome; the web engine supplies only the page pixels.
+import { Theme } from "data.slint";
+import { LineEdit } from "std-widgets.slint";
+export struct WebOption { label: string, enabled: bool, selected: bool }
+export global Web {
+    in-out property <image> frame;
+    in-out property <int> frame-width: 0;
+    in-out property <int> frame-height: 0;
+    in-out property <string> title: "Web";
+    in-out property <string> site: "file:///usr/share/agx/web/start.html";
+    in-out property <string> address: "file:///usr/share/agx/web/start.html";
+    in-out property <string> error;
+    in-out property <bool> ready: false;
+    in-out property <bool> loading: false;
+    in-out property <float> progress: 0;
+    in-out property <bool> can-back: false;
+    in-out property <bool> can-forward: false;
+    in-out property <bool> address-focused: false;
+    in-out property <int> focus-serial: 0;
+    in-out property <int> popup-kind: 0;
+    in-out property <bool> popup-visible: false;
+    in-out property <length> popup-x;
+    in-out property <length> popup-y;
+    in-out property <length> popup-w;
+    in-out property <length> popup-h;
+    in-out property <[WebOption]> options;
+    in-out property <int> option-index: 0;
+    in-out property <int> dialog-type: 0;
+    in-out property <string> dialog-message;
+    in-out property <string> dialog-value;
+    callback selection(int);
+    callback dialog-response(bool, string);
+    callback action(int);
+    callback navigate(string);
+}
+component NavigationIcon inherits Rectangle {
+    in property <int> action;
+    in property <bool> available: true;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    background: Theme.bg-light;
+    accessible-role: button;
+    accessible-label: action == 0 ? "Back" : action == 1 ? "Forward" : action == 2 ? "Reload" : "Home";
+    Text {
+        text: root.action == 0 ? "←" : root.action == 1 ? "→" : root.action == 2 ? "↻" : "⌂";
+        color: root.available ? Theme.fg : Theme.muted;
+        font-family: "DejaVu Sans";
+        font-size: 19px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+export component BrowserPanel inherits Rectangle {
+    in property <bool> active;
+    property <int> request: Web.focus-serial;
+    function set-focus() {
+        if (root.active) {
+            if (Web.address-focused) { address.focus(); address.select-all(); }
+            else { page-focus.focus(); }
+        }
+    }
+    changed request => { root.set-focus(); }
+    changed active => { root.set-focus(); }
+    init => { root.set-focus(); }
+    background: #f7f9fc;
+    clip: true;
+    Rectangle {
+        x: 0; y: 0;
+        width: parent.width;
+        height: 44px;
+        background: Theme.bg-dark;
+        NavigationIcon { x: 8px; y: 7px; action: 0; available: Web.can-back; }
+        NavigationIcon { x: 40px; y: 7px; action: 1; available: Web.can-forward; }
+        NavigationIcon { x: 72px; y: 7px; action: 2; }
+        NavigationIcon { x: 104px; y: 7px; action: 3; }
+        address := LineEdit {
+            x: 144px; y: 6px; width: max(1px, parent.width - 152px); height: 32px;
+            text <=> Web.address;
+            placeholder-text: "Enter a website address";
+            accepted => { Web.navigate(self.text); }
+        }
+        if Web.loading: Rectangle {
+            y: 42px; height: 2px; width: parent.width * max(0.04, Web.progress);
+            background: Theme.accent;
+        }
+    }
+    page-focus := FocusScope {
+        x: 0; width: parent.width;
+        y: 44px; height: parent.height - 44px;
+        Image { x: 0; y: 0; width: Web.frame-width * 1px; height: Web.frame-height * 1px; source: Web.frame; image-fit: fill; }
+        if !Web.ready || Web.error != "": Rectangle {
+            background: Theme.bg;
+            VerticalLayout {
+                alignment: center; padding: 24px; spacing: 12px;
+                Text { text: Web.error == "" ? "Opening Web…" : "Unable to display this page"; color: Theme.fg-bright; font-size: 18px; horizontal-alignment: center; wrap: word-wrap; }
+                Text { text: Web.error; color: Theme.fg-dim; horizontal-alignment: center; wrap: word-wrap; }
+            }
+        }
+    }
+}

@@ -4,6 +4,7 @@
 //! Exit codes let a launcher script react to the user's choice:
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod keymap;
+mod browser;
 mod input;
 mod launcher;
 mod wm;
@@ -39,6 +40,7 @@ static EXIT_CODE: AtomicI32 = AtomicI32::new(0);
 
 
 struct App {
+    browser: browser::Browser,
     desk: Desktop,
     view: SceneModel,
     occupied: Rc<VecModel<bool>>,
@@ -68,6 +70,7 @@ impl App {
         let view = SceneModel::default();
         view.sync(desk.scene(), None);
         Self {
+            browser: browser::Browser::default(),
             desk,
             view,
             occupied: Rc::new(VecModel::from(vec![false; wm::WORKSPACES])),
@@ -100,6 +103,11 @@ impl App {
 
     fn refresh(&self, ui: &AppWindow) {
         self.view.sync(self.desk.scene(), self.target);
+        let browser_visible = self.view.scene.borrow().windows.iter()
+            .any(|window| window.kind == Kind::Web && !window.collapsed);
+        if self.desk.focused() != Some(Kind::Web) || !browser_visible {
+            ui.invoke_focus_desktop();
+        }
         for i in 0..wm::WORKSPACES {
             let occupied = self.desk.occupied(i);
             if self.occupied.row_data(i) != Some(occupied) {
@@ -156,6 +164,7 @@ impl App {
             Cmd::Swap(d) => self.desk.swap_dir(d),
             Cmd::Close => {
                 if let Some(k) = self.desk.focused() {
+                    if k == Kind::Web && self.browser_request_close() { return; }
                     self.desk.close(k);
                     self.toast(ui, &format!("Closed {}. Reopen it from Apps ({m}+Space).", k.title()));
                 }
@@ -209,6 +218,16 @@ fn mods(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Mods {
 }
 
 fn main() -> ExitCode {
+    if std::env::args().nth(1).as_deref() == Some("--help") {
+        println!("ANGI desktop\nUsage: agx-gui [--login | --login-preview | --cursor-preview | --prepare-web-storage]");
+        return ExitCode::SUCCESS;
+    }
+    if std::env::args().nth(1).as_deref() == Some("--prepare-web-storage") {
+        return match browser::prepare_accounts() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => { eprintln!("agx-gui: cannot prepare Web storage: {error}"); ExitCode::FAILURE }
+        };
+    }
     prepare_display();
     if let Err(error) = graphics::initialize() {
         eprintln!("agx-gui: {error}");
@@ -322,7 +341,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     hook!(on_pointer, |a, ui, kind, button, x, y, ctrl, alt, shift, meta| {
         a.pointer(&ui, kind, button, x, y, mods(ctrl, alt, shift, meta))
     });
-    hook!(on_scroll, |a, ui, delta, ctrl, alt, shift, meta| a.scroll(&ui, delta, mods(ctrl, alt, shift, meta)));
+    hook!(on_scroll, |a, ui, dx, delta, ctrl, alt, shift, meta| a.scroll(&ui, dx, delta, mods(ctrl, alt, shift, meta)));
     hook!(on_resized, |a, ui, w, h| a.resized(&ui, w, h));
     hook!(on_menu_query, |a, ui, query| a.set_menu_rows(&ui, &query));
     hook!(on_menu_accept, |a, ui, index| a.menu_accept(&ui, index));
@@ -331,6 +350,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(cmd) = session_action(index) { a.run(&ui, cmd); }
     });
     hook!(on_layout_toggle, |a, ui| a.run(&ui, Cmd::CycleLayout));
+    let _browser_watch = browser::install(&ui, &app);
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change
@@ -607,6 +627,33 @@ mod pointer_tests {
         ui.window().dispatch_event(WindowEvent::KeyPressed { text: slint::platform::Key::Escape.into() });
         assert!(!ui.get_session_open(), "Escape dismisses without choosing an action");
         assert_eq!(*selected.borrow(), vec![1]);
+        render();
+        let wheel = Rc::new(RefCell::new(Vec::new()));
+        let received = wheel.clone();
+        ui.on_scroll(move |dx, dy, _, _, _, _| received.borrow_mut().push((dx, dy)));
+        remote::input::dispatch(ui.window(), remote::input::Input::Pointer {
+            x: 600, y: 500,
+            action: remote::input::PointerAction::Scroll { dx: 1, dy: 1 },
+        });
+        assert_eq!(*wheel.borrow(), vec![(-60.0, 60.0)], "RFB right/up wheels reach the desktop in Slint's content-motion coordinates");
+        let mut app = App::new();
+        ui.set_wins(ModelRc::from(app.view.windows.clone()));
+        app.desk.open(Kind::Web);
+        app.refresh(&ui);
+        render();
+        let keys = Rc::new(RefCell::new(Vec::new()));
+        let received = keys.clone();
+        ui.on_key(move |name, _, _, _, meta| {
+            received.borrow_mut().push((name.to_string(), meta));
+            true
+        });
+        app.desk.close(Kind::Web);
+        app.refresh(&ui);
+        render();
+        remote::input::dispatch(ui.window(), remote::input::Input::Key { down: true, keysym: 0xffeb });
+        remote::input::dispatch(ui.window(), remote::input::Input::Key { down: true, keysym: 32 });
+        assert!(keys.borrow().iter().any(|(name, meta)| name == "space" && *meta),
+            "closing the focused browser restores desktop Super shortcuts");
     }
 
     #[test]

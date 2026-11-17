@@ -153,7 +153,7 @@ pub fn dispatch(window: &slint::Window, input: Input) {
                 // Slint's own backends report 60 logical pixels per wheel notch.
                 PointerAction::Scroll { dx, dy } => WindowEvent::PointerScrolled {
                     position,
-                    delta_x: f32::from(dx) * 60.0,
+                    delta_x: -f32::from(dx) * 60.0,
                     delta_y: f32::from(dy) * 60.0,
                 },
             });
