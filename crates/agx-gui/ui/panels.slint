@@ -1,5 +1,6 @@
 import { Theme, Sys } from "data.slint";
 import { StorageMap, StorageView } from "storage.slint";
+import { MemoryProcesses } from "memory-processes.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { ScrollView, Button } from "std-widgets.slint";
 
@@ -147,10 +148,21 @@ export component CpuPanel inherits VerticalLayout {
 }
 
 export component MemoryPanel inherits VerticalLayout {
+    callback pointer-moved(length, length);
     padding: 12px;
     spacing: 10px;
     alignment: start;
-    Meter { label: "memory"; percent: Sys.mem-percent; detail: Sys.mem-detail; tint: Theme.magenta; }
+    Rectangle {
+        height: 36px;
+        accessible-role: button;
+        accessible-label: "Memory usage. Show processes";
+        Meter { label: "memory"; percent: Sys.mem-percent; detail: Sys.mem-detail; tint: Theme.magenta; }
+        TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+            clicked => { MemoryProcesses.show(); }
+        }
+    }
     Meter { label: "root"; percent: Sys.disk-percent; detail: Sys.disk-detail; tint: Theme.accent; }
 }
 

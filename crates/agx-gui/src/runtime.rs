@@ -10,6 +10,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
     graphics::attach_input(&ui);
     let _settings_save = crate::settings::install(&ui);
+    let _process_watch = crate::memory_processes::install(&ui);
     let _storage_watch = crate::storage::install(&ui);
     apply_omarchy_theme(&ui);
     ui.global::<Sys>().set_mode_note(

@@ -10,6 +10,7 @@ mod input;
 mod keymap;
 mod launcher;
 mod login;
+mod memory_processes;
 mod open_request;
 mod remote;
 mod scene_model;
