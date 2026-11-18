@@ -14,6 +14,8 @@ On Workspace 1, **Clear cache…** next to **Refresh files** checks the signed-i
 
 Run a preview window on a desktop: `scripts/cargo.sh run --manifest-path crates/agx-gui/Cargo.toml`.
 
+In **Files**, right-click one folder and choose **Start Python server** to serve its contents and open it immediately in **Web**. Right-click empty space and choose **Start Python server here** to serve the folder being viewed. This uses Python 3's static HTTP server on a free loopback port (`127.0.0.1`), under the signed-in account. The Files status bar shows the URL or a startup error. Repeating the action for the same folder reuses its server. Servers stay running when Web closes and stop when the desktop session ends or refreshes.
+
 ## Boot and graphical login
 
 With `/usr/bin/agx-gui` installed, Rust init starts `agx-gui --login` directly on HDMI (`tty1`). There is no text username/password prompt or interface chooser. Sign in with the existing AGX administrator username and password; the desktop runs as that user, with their home directory and supplementary groups. Root, empty passwords, locked accounts and expired credentials are rejected. A failed login has a two-second retry delay. Exiting the desktop or the TUI session returns to graphical login through the supervisor.

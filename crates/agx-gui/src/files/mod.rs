@@ -13,6 +13,7 @@ mod model;
 mod ops;
 mod pane;
 mod places;
+mod server;
 #[cfg(test)]
 mod tests;
 mod trash;
@@ -47,6 +48,7 @@ fn publish_visible(ui: &AppWindow, hub: &Hub) {
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
     let (replies, inbox) = mpsc::channel();
     let hub = Rc::new(RefCell::new(Hub::new(replies)));
+    let servers = Rc::new(server::Servers::new());
     publish_visible(ui, &hub.borrow());
 
     // Polling is fast only while something is outstanding. Starting work speeds it up at once.
@@ -63,9 +65,9 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
         })
     };
 
-    // Work only the desktop can do: opening a terminal, or handing a chosen folder to Agent Angie.
+    // Desktop effects: terminals, local servers, and Agent Angie's folder choice.
     let perform = {
-        let (weak, app) = (ui.as_weak(), app.clone());
+        let (weak, app, servers) = (ui.as_weak(), app.clone(), servers.clone());
         Rc::new(move |effect: Effect| {
             let Some(ui) = weak.upgrade() else { return };
             match effect {
@@ -75,6 +77,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
                         app.terminal_open_in(&ui, dir);
                     }
                 }
+                Effect::PythonServer(dir) => servers.start(dir),
                 Effect::Choose(dir) => {
                     ui.global::<Files>().set_chooser_error("".into());
                     ui.global::<crate::AgentScope>().invoke_use_project(dir.to_string_lossy().into_owned().into());
@@ -151,10 +154,24 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
     }
 
     let weak = ui.as_weak();
+    let app = app.clone();
     timer.start(TimerMode::Repeated, SLOW, move || {
         let (Some(ui), Ok(mut hub)) = (weak.upgrade(), hub.try_borrow_mut()) else { return };
         hub.picker_open = ui.global::<Files>().get_chooser_open();
         let mut changed = false;
+        for reply in servers.replies.try_iter() {
+            match reply {
+                Ok(url) => {
+                    hub.panes[WINDOW].status = format!("Python server: {url} · stops when the desktop session ends");
+                    if let Ok(mut app) = app.try_borrow_mut() {
+                        app.run(&ui, crate::keymap::Cmd::Open(Kind::Web));
+                        app.browser_open(&ui, &url);
+                    }
+                }
+                Err(error) => hub.panes[WINDOW].status = error,
+            }
+            changed = true;
+        }
         for reply in inbox.try_iter() {
             hub.handle(reply);
             changed = true;

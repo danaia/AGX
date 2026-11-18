@@ -300,6 +300,25 @@ impl Harness {
 }
 
 #[test]
+fn python_server_targets_one_folder_or_explicit_current_directory() {
+    let tmp = Scratch::new("server-command");
+    let folder = tmp.dir("site with spaces");
+    tmp.file("file.txt", "");
+    let mut h = Harness::new();
+    h.cmd(WINDOW, "navigate", tmp.0.to_str().unwrap());
+    assert_eq!(h.cmd(WINDOW, "python-server", ""), Effect::None);
+    h.select(WINDOW, "file.txt");
+    assert_eq!(h.cmd(WINDOW, "python-server", ""), Effect::None);
+    h.select(WINDOW, "site with spaces");
+    assert_eq!(h.cmd(WINDOW, "python-server", ""), Effect::PythonServer(folder));
+    assert_eq!(h.cmd(WINDOW, "python-server-here", ""), Effect::PythonServer(tmp.0.clone()));
+    let row = h.rows(WINDOW).iter().position(|name| name == "file.txt").unwrap();
+    h.hub.select(WINDOW, row, true, false);
+    assert_eq!(h.cmd(WINDOW, "python-server", ""), Effect::None);
+    assert_eq!(h.cmd(PICKER, "python-server-here", ""), Effect::None);
+}
+
+#[test]
 fn browsing_history_up_and_typed_paths() {
     let tmp = Scratch::new("browse");
     tmp.file("one/two/f.txt", "");

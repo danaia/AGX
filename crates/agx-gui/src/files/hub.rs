@@ -23,6 +23,7 @@ const HISTORY: usize = 100;
 pub enum Effect {
     None,
     Terminal(PathBuf),
+    PythonServer(PathBuf),
     Choose(PathBuf),
 }
 
@@ -239,6 +240,19 @@ impl Hub {
             "undo" => self.replay(pane, true),
             "redo" => self.replay(pane, false),
             "terminal" => return Effect::Terminal(self.terminal_dir(pane)),
+            "python-server-here" if pane == WINDOW => {
+                self.panes[pane].status = "Starting Python server…".into();
+                return Effect::PythonServer(self.panes[pane].dir.clone());
+            }
+            "python-server" if pane == WINDOW => {
+                let p = &mut self.panes[pane];
+                if let [one] = p.model.selected().as_slice() {
+                    if one.is_dir() {
+                        p.status = "Starting Python server…".into();
+                        return Effect::PythonServer(p.dir.join(&one.name));
+                    }
+                }
+            }
             "choose" => return Effect::Choose(self.choice()),
             _ => {}
         }
