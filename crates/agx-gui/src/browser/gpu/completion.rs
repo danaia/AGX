@@ -13,7 +13,6 @@ pub(super) struct Job {
     pub ready: Arc<AtomicBool>,
     pub commands: SyncSender<(u8, Vec<u8>)>,
     pub sequence: u64,
-    pub wake: slint::Weak<crate::AppWindow>,
 }
 pub(super) struct Worker(SyncSender<Job>);
 impl Worker {
@@ -48,10 +47,8 @@ impl Worker {
                         // ACK can cause WebKit to send the next GPU frame.
                         job.ready.store(true, Ordering::Release);
                         let _ = job.commands.send((11, job.sequence.to_be_bytes().to_vec()));
-                        let _ = job.wake.upgrade_in_event_loop(|ui| {
-                            use slint::ComponentHandle;
-                            ui.window().request_redraw();
-                        });
+                        // The next frame already requests a redraw through the
+                        // receiver. A fence alone does not change what is drawn.
                         break;
                     }
                 }

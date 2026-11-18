@@ -15,7 +15,10 @@ fn event(soft: bool) -> [u8; 8] {
 }
 
 pub fn unblock_bluetooth() -> std::io::Result<()> {
-    OpenOptions::new().write(true).open("/dev/rfkill")?.write_all(&event(false))
+    OpenOptions::new()
+        .write(true)
+        .open("/dev/rfkill")?
+        .write_all(&event(false))
 }
 
 #[cfg(test)]

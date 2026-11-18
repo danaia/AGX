@@ -246,12 +246,8 @@ impl App {
     pub(super) fn down(&mut self, ui: &AppWindow, button: i32, x: f32, y: f32, mods: Mods) {
         self.mods = mods;
         self.last = (x, y);
-        // The top bar's workspace buttons: 30px wide at a 32px pitch, from x = 10.
+        // Slint owns the top bar buttons. Blank space does not start a desktop gesture.
         if button == 0 && y < TOP && !matches!(self.desk.fullscreen_of(), Some((_, Full::Screen))) {
-            let i = ((x - 10.0) / 32.0).floor();
-            if i >= 0.0 && (x - 10.0 - i * 32.0) < 30.0 && (i as usize) < wm::WORKSPACES {
-                self.run(ui, Cmd::Workspace(i as usize));
-            }
             return;
         }
         let hit = self.view.scene.borrow().hit(x, y);

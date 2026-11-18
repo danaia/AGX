@@ -143,6 +143,10 @@ component WorkspaceButton inherits Rectangle {
     in property <int> index;
     in property <bool> active;
     in property <bool> occupied;
+    callback picked();
+    callback pointer-moved(length, length);
+    accessible-role: button;
+    accessible-label: "Workspace " + (root.index + 1);
     width: 30px;
     background: root.active ? Theme.accent : transparent;
     Text {
@@ -151,6 +155,11 @@ component WorkspaceButton inherits Rectangle {
         font-weight: root.occupied || root.active ? 700 : 400;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+        clicked => { root.picked(); }
     }
 }
 
@@ -274,6 +283,8 @@ export component AppWindow inherits Window {
     callback pointer(int, int, length, length, bool, bool, bool, bool);
     callback scroll(float, float, bool, bool, bool, bool);
     callback resized(length, length);
+    callback menu-show();
+    callback workspace-select(int);
     callback menu-query(string);
     callback menu-accept(int);
     callback confirm(bool);
@@ -374,10 +385,31 @@ export component AppWindow inherits Window {
                 padding-left: Theme.gap-out;
                 padding-right: Theme.gap-out;
                 spacing: 2px;
+                Rectangle {
+                    width: 30px;
+                    border-radius: 5px;
+                    background: applications-button.has-hover || root.menu-open ? Theme.bg-light : transparent;
+                    accessible-role: button;
+                    accessible-label: "Open Applications";
+                    Image {
+                        width: 20px; height: 20px;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        source: @image-url("icons/apps/applications.svg");
+                        colorize: Theme.fg-bright;
+                    }
+                    applications-button := TouchArea {
+                        mouse-cursor: MouseCursor.pointer;
+                        moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        clicked => { root.menu-show(); }
+                    }
+                }
                 for occupied[i] in root.ws-occupied: WorkspaceButton {
                     index: i;
                     active: root.workspace == i;
                     occupied: occupied;
+                    pointer-moved(x, y) => { root.track-cursor(x, y); }
+                    picked => { root.workspace-select(i); }
                 }
                 Rectangle {
                     width: mode-label.preferred-width + 26px;

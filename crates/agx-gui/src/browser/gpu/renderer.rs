@@ -79,7 +79,6 @@ impl Renderer {
         &mut self,
         frame: Frame,
         commands: Commands,
-        wake: slint::Weak<crate::AppWindow>,
     ) -> Result<Image, String> {
         let started = Instant::now();
         let sequence = frame.sequence;
@@ -87,7 +86,7 @@ impl Renderer {
             let _ = commands.try_send((16, sequence.to_be_bytes().to_vec()));
             return Err("Requested GPU-to-CPU fallback probe".into());
         }
-        let result = unsafe { self.copy_inner(frame, commands.clone(), wake) };
+        let result = unsafe { self.copy_inner(frame, commands.clone()) };
         if result.is_err() {
             // Only the failure path waits synchronously, before asking the host
             // to republish its still-owned source buffer as CPU pixels.
@@ -103,7 +102,6 @@ impl Renderer {
         &mut self,
         frame: Frame,
         commands: Commands,
-        wake: slint::Weak<crate::AppWindow>,
     ) -> Result<Image, String> {
         if self.source.is_some() {
             return Err("GPU source is still in flight".into());
@@ -225,7 +223,6 @@ impl Renderer {
                         ready: source.ready.clone(),
                         commands: source.commands.clone(),
                         sequence: source.frame.sequence,
-                        wake,
                     });
                 }
                 Ok(BorrowedOpenGLTextureBuilder::new_gl_2d_rgba_texture(

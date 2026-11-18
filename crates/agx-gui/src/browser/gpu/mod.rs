@@ -64,7 +64,7 @@ pub(super) fn install(ui: &crate::AppWindow, app: &std::rc::Rc<std::cell::RefCel
                         return;
                     }
                     let (width, height, sequence) = (frame.width, frame.height, frame.sequence);
-                    match unsafe { gpu.copy(frame, engine.commands(), ui.as_weak()) } {
+                    match unsafe { gpu.copy(frame, engine.commands()) } {
                         Ok(image) => {
                             app.browser.frame_sequence.set(sequence);
                             let web = ui.global::<Web>();

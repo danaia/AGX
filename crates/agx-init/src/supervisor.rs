@@ -35,6 +35,11 @@ pub const TAILSCALE: &str = "/usr/libexec/agx-tailscale/run";
 fn tailscale() -> Definition {
     Definition::new("tailscale", "/bin/sh", &[TAILSCALE], true)
 }
+/// D-Bus, BlueZ and agx-bluetoothd as one chain; see apps/bluetooth/run.sh.
+pub const BLUETOOTH: &str = "/usr/libexec/agx-bluetooth/run";
+fn bluetooth() -> Definition {
+    Definition::new("bluetooth", "/bin/sh", &[BLUETOOTH], true)
+}
 fn console_definition(gui: bool) -> Definition {
     if gui {
         Definition::new("console", "/usr/bin/agx-gui", &["--login"], false)
@@ -122,6 +127,10 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
         // Likewise only where scripts/deploy-tailscale.sh installed it.
         if std::path::Path::new(TAILSCALE).is_file() {
             services.push(tailscale());
+        }
+        // Only images built with BlueZ ship the script.
+        if std::path::Path::new(BLUETOOTH).is_file() {
+            services.push(bluetooth());
         }
     }
     services.push(Definition::new("network", "/usr/sbin/agx-netd", &[], true));
@@ -540,6 +549,17 @@ mod tests {
         // Defined only where deploy-tailscale.sh installed the script, never by default.
         let present = definitions(true).iter().any(|service| service.name == "tailscale");
         assert_eq!(present, std::path::Path::new(TAILSCALE).is_file());
+    }
+    #[test]
+    fn bluetooth_is_a_controllable_service_run_through_its_script() {
+        let definition = bluetooth();
+        assert_eq!(definition.name, "bluetooth");
+        assert_eq!(definition.program, "/bin/sh");
+        assert_eq!(definition.args, [BLUETOOTH]);
+        assert!(definition.controllable);
+        // Defined only where the image installed the script, never by default.
+        let present = definitions(true).iter().any(|service| service.name == "bluetooth");
+        assert_eq!(present, std::path::Path::new(BLUETOOTH).is_file());
     }
     #[test]
     fn desktop_console_enters_greeter_and_headless_keeps_getty() {

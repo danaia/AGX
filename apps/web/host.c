@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     g_unix_signal_add(SIGTERM, stop, host.loop);
     g_unix_signal_add(SIGINT, stop, host.loop);
     g_autoptr(WebKitWebContext) context = webkit_web_context_new();
-    webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_BROWSER);
+    webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_WEB_BROWSER);
     /* Runtime libraries live on NVMe; only these public, read-only runtime trees are exposed. */
     const char *runtime[] = { "/var/lib/agx-data/agx-web/releases", "/var/lib/agx-data/agx-gui/releases", NULL };
     for (int i = 0; runtime[i]; ++i)

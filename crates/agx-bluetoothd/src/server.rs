@@ -64,14 +64,19 @@ fn bind() -> io::Result<(UnixListener, std::fs::File)> {
 
 pub fn run() -> io::Result<()> {
     // One thread is plenty for a handful of local clients and one radio.
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
     runtime.block_on(async {
         let (listener, _lock) = bind()?;
         let prompter = Arc::new(Prompter::default());
-        let backend = Bluez::start(prompter.clone()).await.map_err(|error| err(&error.0))?;
+        let backend = Bluez::start(prompter.clone())
+            .await
+            .map_err(|error| err(&error.0))?;
         let core = Core::new(backend, prompter);
         tokio::spawn(Arc::clone(&core).run_background());
-        let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        let mut terminate =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
         let result = tokio::select! {
             result = accept(listener, core) => result,
             _ = terminate.recv() => Ok(()),
@@ -87,7 +92,9 @@ pub async fn accept<B: Backend>(listener: UnixListener, core: Arc<Core<B>>) -> i
     loop {
         let (stream, _) = listener.accept().await?;
         // A flood of connections waits here instead of exhausting tasks.
-        let Ok(permit) = limit.clone().acquire_owned().await else { continue };
+        let Ok(permit) = limit.clone().acquire_owned().await else {
+            continue;
+        };
         let core = core.clone();
         tokio::spawn(async move {
             let _ = serve(&core, stream).await;
@@ -97,10 +104,17 @@ pub async fn accept<B: Backend>(listener: UnixListener, core: Arc<Core<B>>) -> i
 }
 
 async fn serve<B: Backend>(core: &Arc<Core<B>>, mut stream: UnixStream) -> io::Result<()> {
-    let who = peer::of_pid(stream.peer_cred().ok().and_then(|credentials| credentials.pid()));
+    let who = peer::of_pid(
+        stream
+            .peer_cred()
+            .ok()
+            .and_then(|credentials| credentials.pid()),
+    );
     let mut line = Vec::new();
     let mut reader = BufReader::new((&mut stream).take(MAX_REQUEST as u64 + 1));
-    tokio::time::timeout(IO_TIMEOUT, reader.read_until(b'\n', &mut line)).await.map_err(|_| err("request timed out"))??;
+    tokio::time::timeout(IO_TIMEOUT, reader.read_until(b'\n', &mut line))
+        .await
+        .map_err(|_| err("request timed out"))??;
     let reply = if line.len() > MAX_REQUEST {
         failure(core, "Bluetooth request is too large")
     } else {
@@ -111,9 +125,15 @@ async fn serve<B: Backend>(core: &Arc<Core<B>>, mut stream: UnixStream) -> io::R
     };
     let mut bytes = serde_json::to_vec(&reply)?;
     bytes.push(b'\n');
-    tokio::time::timeout(IO_TIMEOUT, stream.write_all(&bytes)).await.map_err(|_| err("reply timed out"))?
+    tokio::time::timeout(IO_TIMEOUT, stream.write_all(&bytes))
+        .await
+        .map_err(|_| err("reply timed out"))?
 }
 
 fn failure<B: Backend>(core: &Core<B>, message: &str) -> Reply {
-    Reply { ok: false, message: message.into(), status: core.status() }
+    Reply {
+        ok: false,
+        message: message.into(),
+        status: core.status(),
+    }
 }

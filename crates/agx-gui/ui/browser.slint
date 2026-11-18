@@ -31,6 +31,7 @@ export global Web {
     in property <[string]> tabs;
     in property <int> active-tab;
     callback tab-command(int, int);
+    callback engine-update();
     callback selection(int);
     callback dialog-response(bool, string);
     callback action(int);

@@ -9,7 +9,7 @@ use crate::{
 };
 use agx_bluetooth::{Adapter, Category, Device, PromptKind};
 use bluer::{
-    Address, AdapterEvent, AdapterProperty, DeviceEvent, DeviceProperty, ErrorKind,
+    AdapterEvent, AdapterProperty, Address, DeviceEvent, DeviceProperty, ErrorKind,
     agent::{Agent, AgentHandle, ReqError, ReqResult},
 };
 use futures_util::StreamExt;
@@ -96,17 +96,31 @@ pub struct Bluez {
 /// Word BlueZ's errors for the person using the desktop.
 fn describe(error: &bluer::Error) -> Error {
     let text = match &error.kind {
-        ErrorKind::AuthenticationFailed => "Authentication failed. Check the code or PIN and try again.".to_owned(),
+        ErrorKind::AuthenticationFailed => {
+            "Authentication failed. Check the code or PIN and try again.".to_owned()
+        }
         ErrorKind::AuthenticationRejected => "The pairing request was rejected.".to_owned(),
         ErrorKind::AuthenticationCanceled => "Pairing was canceled.".to_owned(),
-        ErrorKind::AuthenticationTimeout => "Pairing timed out. Put the device in pairing mode and try again.".to_owned(),
-        ErrorKind::ConnectionAttemptFailed => "Could not connect. Is the device on and in range?".to_owned(),
-        ErrorKind::InProgress => "Bluetooth is busy with another operation. Try again in a moment.".to_owned(),
+        ErrorKind::AuthenticationTimeout => {
+            "Pairing timed out. Put the device in pairing mode and try again.".to_owned()
+        }
+        ErrorKind::ConnectionAttemptFailed => {
+            "Could not connect. Is the device on and in range?".to_owned()
+        }
+        ErrorKind::InProgress => {
+            "Bluetooth is busy with another operation. Try again in a moment.".to_owned()
+        }
         ErrorKind::NotReady => "Bluetooth is not ready. Turn it on and try again.".to_owned(),
-        ErrorKind::DoesNotExist | ErrorKind::NotFound => "That device is no longer known. Search again.".to_owned(),
+        ErrorKind::DoesNotExist | ErrorKind::NotFound => {
+            "That device is no longer known. Search again.".to_owned()
+        }
         ErrorKind::AlreadyExists => "That device is already paired.".to_owned(),
-        _ if error.message.to_lowercase().contains("rfkill") => "Bluetooth is blocked by a software or hardware switch.".to_owned(),
-        _ if error.message.to_lowercase().contains("serviceunknown") || error.message.to_lowercase().contains("not provided") => {
+        _ if error.message.to_lowercase().contains("rfkill") => {
+            "Bluetooth is blocked by a software or hardware switch.".to_owned()
+        }
+        _ if error.message.to_lowercase().contains("serviceunknown")
+            || error.message.to_lowercase().contains("not provided") =>
+        {
             "Bluetooth service is not running.".to_owned()
         }
         _ if error.message.is_empty() => format!("Bluetooth error: {:?}", error.kind),
@@ -118,17 +132,29 @@ fn lift<T>(result: bluer::Result<T>) -> Result<T> {
     result.map_err(|error| describe(&error))
 }
 fn address(text: &str) -> Result<Address> {
-    text.parse().map_err(|_| Error::new("That is not a Bluetooth address."))
+    text.parse()
+        .map_err(|_| Error::new("That is not a Bluetooth address."))
 }
 
 impl Shared {
     fn adapter(&self) -> Result<bluer::Adapter> {
-        let name = self.cache.lock().unwrap().name.clone().ok_or_else(|| Error::new("No Bluetooth adapter found."))?;
+        let name = self
+            .cache
+            .lock()
+            .unwrap()
+            .name
+            .clone()
+            .ok_or_else(|| Error::new("No Bluetooth adapter found."))?;
         lift(self.session.adapter(&name))
     }
     fn name_of(&self, address: Address) -> String {
         let cache = self.cache.lock().unwrap();
-        cache.devices.get(&address).map(|entry| entry.device.name.clone()).filter(|name| !name.is_empty()).unwrap_or_else(|| address.to_string())
+        cache
+            .devices
+            .get(&address)
+            .map(|entry| entry.device.name.clone())
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| address.to_string())
     }
 }
 
@@ -167,10 +193,16 @@ async fn read_device(device: &bluer::Device) -> bluer::Result<Entry> {
 
 /// Follow one device until BlueZ drops it.
 async fn track(shared: Arc<Shared>, adapter: bluer::Adapter, address: Address) {
-    let Ok(device) = adapter.device(address) else { return };
+    let Ok(device) = adapter.device(address) else {
+        return;
+    };
     // Subscribe first so a change between the read and the subscription is not lost.
-    let Ok(mut events) = device.events().await else { return };
-    let Ok(entry) = read_device(&device).await else { return };
+    let Ok(mut events) = device.events().await else {
+        return;
+    };
+    let Ok(entry) = read_device(&device).await else {
+        return;
+    };
     shared.cache.lock().unwrap().devices.insert(address, entry);
     while let Some(DeviceEvent::PropertyChanged(property)) = events.next().await {
         if let Some(entry) = shared.cache.lock().unwrap().devices.get_mut(&address) {
@@ -181,9 +213,18 @@ async fn track(shared: Arc<Shared>, adapter: bluer::Adapter, address: Address) {
 }
 
 async fn adapter_info(adapter: &bluer::Adapter) -> bluer::Result<Adapter> {
-    let (alias, address, powered, discovering) =
-        tokio::join!(adapter.alias(), adapter.address(), adapter.is_powered(), adapter.is_discovering());
-    Ok(Adapter { name: alias?, address: address?.to_string(), powered: powered?, scanning: discovering? })
+    let (alias, address, powered, discovering) = tokio::join!(
+        adapter.alias(),
+        adapter.address(),
+        adapter.is_powered(),
+        adapter.is_discovering()
+    );
+    Ok(Adapter {
+        name: alias?,
+        address: address?.to_string(),
+        powered: powered?,
+        scanning: discovering?,
+    })
 }
 
 /// Follow the first adapter until it goes away (unplugged, or bluetoothd restarted).
@@ -203,7 +244,10 @@ async fn follow(shared: &Arc<Shared>) -> bluer::Result<()> {
     }
     let mut tracked = Tracked::default();
     for address in adapter.device_addresses().await? {
-        tracked.0.insert(address, tokio::spawn(track(shared.clone(), adapter.clone(), address)));
+        tracked.0.insert(
+            address,
+            tokio::spawn(track(shared.clone(), adapter.clone(), address)),
+        );
     }
     let mut liveness = tokio::time::interval(Duration::from_secs(5));
     loop {
@@ -261,15 +305,29 @@ fn agent(shared: Arc<Shared>, prompter: Arc<Prompter>) -> Agent {
             }
         }
     };
-    let (confirm, authorize, pin, passkey) =
-        (ask(PromptKind::Confirm), ask(PromptKind::Authorize), ask(PromptKind::Pin), ask(PromptKind::Passkey));
+    let (confirm, authorize, pin, passkey) = (
+        ask(PromptKind::Confirm),
+        ask(PromptKind::Authorize),
+        ask(PromptKind::Pin),
+        ask(PromptKind::Passkey),
+    );
     let (authorize_service, authorize_incoming) = (authorize.clone(), authorize);
     let (show_shared, show_prompter) = (shared.clone(), prompter.clone());
     let show = move |device: Address, code: String, ended: tokio::sync::oneshot::Receiver<()>| {
         let (shared, prompter) = (show_shared.clone(), show_prompter.clone());
         async move {
             let name = shared.name_of(device);
-            prompter.show(PromptKind::Display, &device.to_string(), &name, code, async { let _ = ended.await; }).await;
+            prompter
+                .show(
+                    PromptKind::Display,
+                    &device.to_string(),
+                    &name,
+                    code,
+                    async {
+                        let _ = ended.await;
+                    },
+                )
+                .await;
         }
     };
     let show_pin = show.clone();
@@ -277,37 +335,72 @@ fn agent(shared: Arc<Shared>, prompter: Arc<Prompter>) -> Agent {
         request_default: true,
         request_confirmation: Some(Box::new(move |request| {
             let answer = confirm(request.device, Some(format!("{:06}", request.passkey)));
-            Box::pin(async move { if answer.await.accept { Ok(()) } else { Err(ReqError::Rejected) } })
+            Box::pin(async move {
+                if answer.await.accept {
+                    Ok(())
+                } else {
+                    Err(ReqError::Rejected)
+                }
+            })
         })),
         request_authorization: Some(Box::new(move |request| {
             let answer = authorize_incoming(request.device, None);
-            Box::pin(async move { if answer.await.accept { Ok(()) } else { Err(ReqError::Rejected) } })
+            Box::pin(async move {
+                if answer.await.accept {
+                    Ok(())
+                } else {
+                    Err(ReqError::Rejected)
+                }
+            })
         })),
         authorize_service: Some(Box::new(move |request| {
             let answer = authorize_service(request.device, None);
-            Box::pin(async move { if answer.await.accept { Ok(()) } else { Err(ReqError::Rejected) } })
+            Box::pin(async move {
+                if answer.await.accept {
+                    Ok(())
+                } else {
+                    Err(ReqError::Rejected)
+                }
+            })
         })),
         request_pin_code: Some(Box::new(move |request| {
             let answer = pin(request.device, None);
             Box::pin(async move {
                 let answer = answer.await;
-                answer.value.filter(|_| answer.accept).ok_or(ReqError::Rejected)
+                answer
+                    .value
+                    .filter(|_| answer.accept)
+                    .ok_or(ReqError::Rejected)
             })
         })),
         request_passkey: Some(Box::new(move |request| {
             let answer = passkey(request.device, None);
             Box::pin(async move {
                 let answer = answer.await;
-                answer.value.filter(|_| answer.accept).and_then(|text| text.parse().ok()).ok_or(ReqError::Rejected)
+                answer
+                    .value
+                    .filter(|_| answer.accept)
+                    .and_then(|text| text.parse().ok())
+                    .ok_or(ReqError::Rejected)
             })
         })),
         display_pin_code: Some(Box::new(move |request| {
             let shown = show_pin(request.device, request.pincode, request.cancel);
-            Box::pin(async move { shown.await; ReqResult::Ok(()) })
+            Box::pin(async move {
+                shown.await;
+                ReqResult::Ok(())
+            })
         })),
         display_passkey: Some(Box::new(move |request| {
-            let shown = show(request.device, format!("{:06}", request.passkey), request.cancel);
-            Box::pin(async move { shown.await; ReqResult::Ok(()) })
+            let shown = show(
+                request.device,
+                format!("{:06}", request.passkey),
+                request.cancel,
+            );
+            Box::pin(async move {
+                shown.await;
+                ReqResult::Ok(())
+            })
         })),
         ..Agent::default()
     }
@@ -316,12 +409,26 @@ fn agent(shared: Arc<Shared>, prompter: Arc<Prompter>) -> Agent {
 impl Bluez {
     pub async fn start(prompter: Arc<Prompter>) -> Result<Self> {
         let session = bluer::Session::new().await.map_err(|error| {
-            Error(format!("Cannot reach the system bus ({error}). Is dbus running?"))
+            Error(format!(
+                "Cannot reach the system bus ({error}). Is dbus running?"
+            ))
         })?;
-        let shared = Arc::new(Shared { session, cache: Mutex::default(), scan: tokio::sync::Mutex::new(None) });
-        let handle = lift(shared.session.register_agent(agent(shared.clone(), prompter)).await)?;
+        let shared = Arc::new(Shared {
+            session,
+            cache: Mutex::default(),
+            scan: tokio::sync::Mutex::new(None),
+        });
+        let handle = lift(
+            shared
+                .session
+                .register_agent(agent(shared.clone(), prompter))
+                .await,
+        )?;
         tokio::spawn(watch(shared.clone()));
-        Ok(Self { shared, _agent: handle })
+        Ok(Self {
+            shared,
+            _agent: handle,
+        })
     }
 }
 
@@ -330,7 +437,15 @@ impl Backend for Bluez {
         Ok(self.shared.cache.lock().unwrap().adapter.clone())
     }
     async fn devices(&self) -> Result<Vec<Device>> {
-        Ok(self.shared.cache.lock().unwrap().devices.values().map(|entry| entry.device.clone()).collect())
+        Ok(self
+            .shared
+            .cache
+            .lock()
+            .unwrap()
+            .devices
+            .values()
+            .map(|entry| entry.device.clone())
+            .collect())
     }
     async fn set_powered(&self, on: bool) -> Result<()> {
         let adapter = self.shared.adapter()?;

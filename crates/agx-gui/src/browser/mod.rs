@@ -35,6 +35,8 @@ const TOOLBAR: f32 = 44.0;
 pub(super) struct Browser {
     engine: Option<Engine>,
     attempted: bool,
+    primed: bool,
+    initial_load: bool,
     ready: bool,
     starting: Option<Instant>,
     closing: Option<Instant>,
@@ -103,6 +105,29 @@ impl Browser {
         web.set_dialog_message("".into());
         web.set_dialog_value("".into());
     }
+    fn begin(&mut self, ui: &AppWindow, hidden: bool) {
+        self.attempted = true;
+        self.primed = hidden;
+        let web = ui.global::<Web>();
+        web.set_error("".into());
+        match Engine::start(ui) {
+            Ok(engine) => {
+                self.engine = Some(engine);
+                self.starting = Some(Instant::now());
+                self.initial_load = true;
+            }
+            Err(error) if !hidden => web.set_error(format!("Could not start Web: {error}").into()),
+            Err(_) => {}
+        }
+    }
+
+    fn navigate(&mut self, uri: &str) {
+        if self.ready {
+            self.send(2, uri.as_bytes().to_vec());
+            self.initial_load = false;
+        }
+    }
+
     fn focus_address(&self, ui: &AppWindow, focused: bool) {
         let web = ui.global::<Web>();
         web.set_address_focused(focused);
@@ -125,17 +150,8 @@ impl App {
             .iter()
             .find(|p| p.kind == Kind::Web && !p.collapsed);
         let visible = placed.is_some();
-        if !browser.attempted {
-            if !visible { return; }
-            browser.attempted = true;
-            web.set_error("".into());
-            match Engine::start(ui) {
-                Ok(engine) => {
-                    browser.engine = Some(engine);
-                    browser.starting = Some(Instant::now());
-                }
-                Err(error) => web.set_error(format!("Could not start Web: {error}").into()),
-            }
+        if visible && (!browser.attempted || (browser.primed && browser.engine.is_none())) {
+            browser.begin(ui, false);
         }
         web.set_popup_visible(
             visible
@@ -223,14 +239,6 @@ impl App {
             if updates.ready {
                 browser.ready = true;
                 browser.starting = None;
-                if let Some(placed) = placed {
-                    let rect = viewport(placed.rect);
-                    let size = (rect.w.ceil() as u16, rect.h.ceil() as u16);
-                    browser.set_geometry(size);
-                }
-                browser.send(6, vec![u8::from(visible)]);
-                browser.visible = visible;
-                browser.send(2, web.get_address().as_bytes().to_vec());
             }
             if let Some(frame) = updates.frame.take() {
                 if visible && frame.sequence >= browser.frame_floor {
@@ -272,6 +280,8 @@ impl App {
                 browser.tabs.publish(&web);
                 web.set_popup_kind(0);
                 browser.ready = false;
+                web.set_ready(false);
+                web.set_frame(Image::default());
                 browser.starting = None;
                 web.set_loading(false);
             }
@@ -298,9 +308,24 @@ impl App {
         if !browser.ready {
             return;
         }
+        if visible && browser.initial_load {
+            if let Some(placed) = placed {
+                let rect = viewport(placed.rect);
+                let size = (rect.w.ceil() as u16, rect.h.ceil() as u16);
+                if browser.geometry != Some(size) {
+                    browser.set_geometry(size);
+                }
+            }
+        }
         if browser.visible != visible {
             browser.send(6, vec![u8::from(visible)]);
             browser.visible = visible;
+        }
+        if visible && browser.initial_load {
+            browser.navigate(&web.get_address());
+        }
+        if visible {
+            browser.primed = false;
         }
         if browser.focused != focused {
             browser.send(7, vec![u8::from(focused)]);
@@ -351,7 +376,7 @@ impl App {
             2 => self.browser.send(5, vec![]),
             3 => {
                 ui.global::<Web>().set_address(protocol::HOME.into());
-                self.browser.send(2, protocol::HOME.as_bytes().to_vec());
+                self.browser.navigate(protocol::HOME);
             }
             _ => return,
         }
@@ -374,7 +399,7 @@ impl App {
         }
         ui.global::<Web>().set_address(uri.into());
         ui.global::<Web>().set_error("".into());
-        self.browser.send(2, uri.as_bytes().to_vec());
+        self.browser.navigate(uri);
         self.browser.focus_address(ui, false);
     }
     pub(super) fn browser_navigate(&mut self, ui: &AppWindow, address: &str) {
@@ -382,7 +407,7 @@ impl App {
             Some(uri) => {
                 ui.global::<Web>().set_address(uri.clone().into());
                 ui.global::<Web>().set_error("".into());
-                self.browser.send(2, uri.into_bytes());
+                self.browser.navigate(&uri);
                 self.browser.focus_address(ui, false);
             }
             None => ui
@@ -439,7 +464,19 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> slint::Timer {
     web_hook!(on_dialog_response, |state, ui, accepted, value| state
         .browser_dialog(&ui, accepted, &value));
     web_hook!(on_tab_command, |state, ui, action, index| state.browser_tab_command(&ui, action, index));
+    web_hook!(on_engine_update, |state, ui| state.browser_tick(&ui));
     gpu::install(ui, app);
+    let (weak, state) = (ui.as_weak(), Rc::downgrade(app));
+    slint::Timer::single_shot(Duration::from_millis(1200), move || {
+        let (Some(ui), Some(state)) = (weak.upgrade(), state.upgrade()) else { return };
+        if let Ok(mut app) = state.try_borrow_mut() {
+            if app.desk.is_open(Kind::Web) && !app.browser.attempted {
+                // Warm the host, graphics and private storage. No page is
+                // loaded until Web becomes visible.
+                app.browser.begin(&ui, true);
+            }
+        };
+    });
     let timer = slint::Timer::default();
     let (weak, state) = (ui.as_weak(), app.clone());
     timer.start(

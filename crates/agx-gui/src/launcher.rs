@@ -67,8 +67,8 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         ),
         (
             "Settings",
-            "Mouse, pointer and desktop preferences",
-            "settings preferences mouse sensitivity acceleration scrolling",
+            "Mouse, Bluetooth and desktop preferences",
+            "settings preferences mouse sensitivity acceleration scrolling bluetooth wireless pair devices",
         ),
         (
             "Agent Angie",
@@ -267,6 +267,7 @@ impl App {
     }
 
     pub(super) fn open_menu(&mut self, ui: &AppWindow) {
+        self.menu_workspace = self.desk.current();
         ui.set_session_open(false);
         ui.set_menu_section(0);
         self.set_menu_rows(ui, "");
@@ -276,6 +277,9 @@ impl App {
 
     pub(super) fn menu_accept(&mut self, ui: &AppWindow, index: i32) {
         if let Some(command) = self.menu.get(index as usize).copied() {
+            if matches!(command, Cmd::Open(_) | Cmd::OpenCode) {
+                self.desk.goto(self.menu_workspace);
+            }
             self.run(ui, command);
         }
     }
@@ -350,7 +354,7 @@ mod tests {
             results(&desktop, "Super", "workspace 3", 0)[0].command,
             Cmd::Workspace(2)
         );
-        for query in ["settings", "mouse", "sensitivity"] {
+        for query in ["settings", "mouse", "sensitivity", "bluetooth"] {
             assert_eq!(
                 results(&desktop, "Super", query, 0)[0].command,
                 Cmd::Open(Kind::Settings)

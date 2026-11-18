@@ -29,6 +29,7 @@ pub(super) struct App {
     pub(super) ghost: Option<Rect>,
     pub(super) cursor: i32,
     pub(super) menu: Vec<Cmd>,
+    pub(super) menu_workspace: usize,
     pub(super) pending: Option<Cmd>,
     /// Logical size of the window as last laid out.
     pub(super) size: (f32, f32),
@@ -65,6 +66,7 @@ impl App {
             ghost: None,
             cursor: 0,
             menu: vec![],
+            menu_workspace: 0,
             pending: None,
             size: (1280.0, 720.0),
             header_clicks: input::HeaderClicks::default(),

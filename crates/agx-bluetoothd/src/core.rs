@@ -6,8 +6,8 @@ use crate::{
     prompts::Prompter,
 };
 use agx_bluetooth::{
-    Adapter, Approval, ApprovalAction, Device, PROMPT_SECONDS, Reply, Request, SCAN_SECONDS, Status,
-    normalize_address,
+    Adapter, Approval, ApprovalAction, Device, PROMPT_SECONDS, Reply, Request, SCAN_SECONDS,
+    Status, normalize_address,
 };
 use std::{
     collections::HashSet,
@@ -48,17 +48,34 @@ pub struct Core<B: Backend> {
 /// Unnamed strangers are noise; hide them unless the person already uses them. A cached device
 /// that is out of range (no signal) is hidden too, so the list shows what is here now.
 fn visible(device: &Device) -> bool {
-    device.paired || device.connected || device.trusted || (device.rssi.is_some() && !device.name.is_empty())
+    device.paired
+        || device.connected
+        || device.trusted
+        || (device.rssi.is_some() && !device.name.is_empty())
 }
 
 fn rank(device: &Device) -> (u8, std::cmp::Reverse<i16>, String) {
-    let group = if device.connected { 0 } else if device.paired { 1 } else { 2 };
-    (group, std::cmp::Reverse(device.rssi.unwrap_or(i16::MIN)), device.name.to_lowercase())
+    let group = if device.connected {
+        0
+    } else if device.paired {
+        1
+    } else {
+        2
+    };
+    (
+        group,
+        std::cmp::Reverse(device.rssi.unwrap_or(i16::MIN)),
+        device.name.to_lowercase(),
+    )
 }
 
 impl<B: Backend> Core<B> {
     pub fn new(backend: B, prompter: Arc<Prompter>) -> Arc<Self> {
-        Arc::new(Self { backend, prompter, state: Mutex::new(State::default()) })
+        Arc::new(Self {
+            backend,
+            prompter,
+            state: Mutex::new(State::default()),
+        })
     }
 
     pub fn status(&self) -> Status {
@@ -67,10 +84,17 @@ impl<B: Backend> Core<B> {
             adapter: state.adapter.clone(),
             devices: state.devices.clone(),
             prompt: self.prompter.current(),
-            approvals: state.approvals.iter().map(|waiting| waiting.approval.clone()).collect(),
-            scan_seconds_left: state
-                .scan_until
-                .map_or(0, |until| until.saturating_duration_since(Instant::now()).as_secs_f32().ceil() as u32),
+            approvals: state
+                .approvals
+                .iter()
+                .map(|waiting| waiting.approval.clone())
+                .collect(),
+            scan_seconds_left: state.scan_until.map_or(0, |until| {
+                until
+                    .saturating_duration_since(Instant::now())
+                    .as_secs_f32()
+                    .ceil() as u32
+            }),
             message: state.message.clone(),
             error: state.error.clone(),
         }
@@ -147,10 +171,17 @@ impl<B: Backend> Core<B> {
         self.state.lock().unwrap().error = Some(message.into());
     }
     fn device(&self, address: &str) -> Option<Device> {
-        self.state.lock().unwrap().devices.iter().find(|d| d.address == address).cloned()
+        self.state
+            .lock()
+            .unwrap()
+            .devices
+            .iter()
+            .find(|d| d.address == address)
+            .cloned()
     }
     fn name_of(&self, address: &str) -> String {
-        self.device(address).map_or_else(|| address.to_owned(), |d| d.name)
+        self.device(address)
+            .map_or_else(|| address.to_owned(), |d| d.name)
     }
 
     pub async fn handle(self: &Arc<Self>, request: Request, peer: Peer) -> Reply {
@@ -159,8 +190,16 @@ impl<B: Backend> Core<B> {
         self.refresh().await;
         let status = self.status();
         match result {
-            Ok(message) => Reply { ok: true, message, status },
-            Err(error) => Reply { ok: false, message: error.0, status },
+            Ok(message) => Reply {
+                ok: true,
+                message,
+                status,
+            },
+            Err(error) => Reply {
+                ok: false,
+                message: error.0,
+                status,
+            },
         }
     }
 
@@ -172,21 +211,35 @@ impl<B: Backend> Core<B> {
                 // Turning the radio off can strand a Bluetooth keyboard or mouse, so only the
                 // person at the desktop may do it.
                 if !on && !desktop {
-                    return Err(Error::new("Turn Bluetooth off from Settings on the ANGI desktop."));
+                    return Err(Error::new(
+                        "Turn Bluetooth off from Settings on the ANGI desktop.",
+                    ));
                 }
                 self.backend.set_powered(on).await?;
                 if !on {
                     self.state.lock().unwrap().scan_until = None;
                 }
-                self.say(if on { "Bluetooth is on" } else { "Bluetooth is off" });
+                self.say(if on {
+                    "Bluetooth is on"
+                } else {
+                    "Bluetooth is off"
+                });
                 Ok(self.status_message())
             }
             Request::Scan { on: true } => {
-                if !self.state.lock().unwrap().adapter.as_ref().is_some_and(|a| a.powered) {
+                if !self
+                    .state
+                    .lock()
+                    .unwrap()
+                    .adapter
+                    .as_ref()
+                    .is_some_and(|a| a.powered)
+                {
                     return Err(Error::new("Turn Bluetooth on to search for devices."));
                 }
                 self.backend.start_scan().await?;
-                self.state.lock().unwrap().scan_until = Some(Instant::now() + Duration::from_secs(SCAN_SECONDS.into()));
+                self.state.lock().unwrap().scan_until =
+                    Some(Instant::now() + Duration::from_secs(SCAN_SECONDS.into()));
                 self.say("Searching for devices…");
                 Ok(self.status_message())
             }
@@ -196,16 +249,31 @@ impl<B: Backend> Core<B> {
                 self.say("Search stopped");
                 Ok(self.status_message())
             }
-            Request::Pair { address } => self.guarded(ApprovalAction::Pair, &address, desktop).await,
+            Request::Pair { address } => {
+                self.guarded(ApprovalAction::Pair, &address, desktop).await
+            }
             Request::Connect { address } => {
                 let address = known(&address)?;
                 // Reaching a device the person already paired is routine; reaching a new one is not.
                 let routine = self.device(&address).is_some_and(|d| d.paired);
-                self.guarded(ApprovalAction::Connect, &address, desktop || routine).await
+                self.guarded(ApprovalAction::Connect, &address, desktop || routine)
+                    .await
             }
-            Request::Trust { address, trusted: true } => self.guarded(ApprovalAction::Trust, &address, desktop).await,
-            Request::Trust { address, trusted: false } => self.perform(ApprovalAction::Trust, &known(&address)?, false).await,
-            Request::Forget { address } => self.guarded(ApprovalAction::Forget, &address, desktop).await,
+            Request::Trust {
+                address,
+                trusted: true,
+            } => self.guarded(ApprovalAction::Trust, &address, desktop).await,
+            Request::Trust {
+                address,
+                trusted: false,
+            } => {
+                self.perform(ApprovalAction::Trust, &known(&address)?, false)
+                    .await
+            }
+            Request::Forget { address } => {
+                self.guarded(ApprovalAction::Forget, &address, desktop)
+                    .await
+            }
             Request::Disconnect { address } => {
                 let address = known(&address)?;
                 self.backend.disconnect(&address).await?;
@@ -215,27 +283,41 @@ impl<B: Backend> Core<B> {
             }
             Request::Respond { id, accept, value } => {
                 if !desktop {
-                    return Err(Error::new("Only the ANGI desktop can answer pairing prompts."));
+                    return Err(Error::new(
+                        "Only the ANGI desktop can answer pairing prompts.",
+                    ));
                 }
                 if self.prompter.respond(id, accept, value) {
                     Ok("Answer sent".into())
                 } else {
-                    Err(Error::new("That prompt has ended, or the PIN or passkey was not valid."))
+                    Err(Error::new(
+                        "That prompt has ended, or the PIN or passkey was not valid.",
+                    ))
                 }
             }
             Request::Decide { id, allow } => {
                 if !desktop {
-                    return Err(Error::new("Only the ANGI desktop can allow or decline requests."));
+                    return Err(Error::new(
+                        "Only the ANGI desktop can allow or decline requests.",
+                    ));
                 }
                 let waiting = {
                     let mut state = self.state.lock().unwrap();
-                    state.approvals.iter().position(|w| w.approval.id == id).map(|index| state.approvals.remove(index))
+                    state
+                        .approvals
+                        .iter()
+                        .position(|w| w.approval.id == id)
+                        .map(|index| state.approvals.remove(index))
                 };
                 let Some(Waiting { approval, .. }) = waiting else {
                     return Err(Error::new("That request has expired."));
                 };
                 if !allow {
-                    self.say(format!("Declined: {} {}", approval.action.label(), approval.name));
+                    self.say(format!(
+                        "Declined: {} {}",
+                        approval.action.label(),
+                        approval.name
+                    ));
                     return Ok("Declined".into());
                 }
                 self.perform(approval.action, &approval.address, true).await
@@ -248,30 +330,53 @@ impl<B: Backend> Core<B> {
     }
 
     /// Run `action` now if `allowed`, otherwise hold it for the person at the desktop.
-    async fn guarded(self: &Arc<Self>, action: ApprovalAction, address: &str, allowed: bool) -> Result<String> {
+    async fn guarded(
+        self: &Arc<Self>,
+        action: ApprovalAction,
+        address: &str,
+        allowed: bool,
+    ) -> Result<String> {
         let address = known(address)?;
         if self.device(&address).is_none() {
-            return Err(Error::new("That device is not in range. Search for devices first."));
+            return Err(Error::new(
+                "That device is not in range. Search for devices first.",
+            ));
         }
         if allowed {
             return self.perform(action, &address, true).await;
         }
         let name = self.name_of(&address);
         let mut state = self.state.lock().unwrap();
-        let exists = state.approvals.iter().any(|w| w.approval.action == action && w.approval.address == address);
+        let exists = state
+            .approvals
+            .iter()
+            .any(|w| w.approval.action == action && w.approval.address == address);
         if !exists {
             if state.approvals.len() >= MAX_APPROVALS {
                 return Err(Error::new("Too many requests are waiting for approval."));
             }
             state.next_approval = state.next_approval.wrapping_add(1).max(1);
-            let approval = Approval { id: state.next_approval, action, address, name: name.clone() };
+            let approval = Approval {
+                id: state.next_approval,
+                action,
+                address,
+                name: name.clone(),
+            };
             let expires = Instant::now() + Duration::from_secs(PROMPT_SECONDS.into());
             state.approvals.push(Waiting { approval, expires });
         }
-        Ok(format!("Waiting for approval: allow ANGI to {} {name} in Settings → Bluetooth.", action.label()))
+        Ok(format!(
+            "Waiting for approval: allow ANGI to {} {name} in Settings → Bluetooth.",
+            action.label()
+        ))
     }
 
-    async fn perform(self: &Arc<Self>, action: ApprovalAction, address: &str, enable: bool) -> Result<String> {
+    async fn perform(
+        self: &Arc<Self>,
+        action: ApprovalAction,
+        address: &str,
+        enable: bool,
+    ) -> Result<String> {
         let name = self.name_of(address);
         match action {
             ApprovalAction::Pair | ApprovalAction::Connect => {
@@ -279,12 +384,23 @@ impl<B: Backend> Core<B> {
                     return Err(Error::new(format!("Already working with {name}.")));
                 }
                 let (core, address) = (Arc::clone(self), address.to_owned());
-                tokio::spawn(async move { core.connect_flow(&address, action == ApprovalAction::Pair).await });
-                Ok(if action == ApprovalAction::Pair { format!("Pairing with {name}…") } else { format!("Connecting to {name}…") })
+                tokio::spawn(async move {
+                    core.connect_flow(&address, action == ApprovalAction::Pair)
+                        .await
+                });
+                Ok(if action == ApprovalAction::Pair {
+                    format!("Pairing with {name}…")
+                } else {
+                    format!("Connecting to {name}…")
+                })
             }
             ApprovalAction::Trust => {
                 self.backend.set_trusted(address, enable).await?;
-                let message = if enable { format!("{name} will reconnect automatically") } else { format!("{name} will no longer reconnect automatically") };
+                let message = if enable {
+                    format!("{name} will reconnect automatically")
+                } else {
+                    format!("{name} will no longer reconnect automatically")
+                };
                 self.say(message.clone());
                 Ok(message)
             }
@@ -309,8 +425,14 @@ impl<B: Backend> Core<B> {
                 self.backend.set_trusted(address, true).await?;
             }
             match tokio::time::timeout(CONNECT_TIMEOUT, self.backend.connect(address)).await {
-                Ok(Ok(())) => Ok(if pair { format!("Paired and connected to {name}") } else { format!("Connected to {name}") }),
-                Ok(Err(error)) if pair => Ok(format!("Paired with {name}, but it did not connect: {error}")),
+                Ok(Ok(())) => Ok(if pair {
+                    format!("Paired and connected to {name}")
+                } else {
+                    format!("Connected to {name}")
+                }),
+                Ok(Err(error)) if pair => Ok(format!(
+                    "Paired with {name}, but it did not connect: {error}"
+                )),
                 Err(_) if pair => Ok(format!("Paired with {name}, but connecting timed out.")),
                 Ok(Err(error)) => Err(error),
                 Err(_) => Err(Error::new(format!("Connecting to {name} timed out."))),
@@ -327,5 +449,6 @@ impl<B: Backend> Core<B> {
 }
 
 fn known(address: &str) -> Result<String> {
-    normalize_address(address).ok_or_else(|| Error::new("That is not a Bluetooth address (expected AA:BB:CC:DD:EE:FF)."))
+    normalize_address(address)
+        .ok_or_else(|| Error::new("That is not a Bluetooth address (expected AA:BB:CC:DD:EE:FF)."))
 }

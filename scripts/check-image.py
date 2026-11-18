@@ -92,6 +92,15 @@ def check(images):
     require("CONFIG_BRCMFMAC=m" in kernel_config.splitlines() and
             "CONFIG_BRCMFMAC_SDIO=y" in kernel_config.splitlines(),
             "Missing Broadcom SDIO Wi-Fi support")
+    # Bluetooth: controller enabled at boot, kernel modules available, BlueZ/D-Bus, the service chain
+    # and the Broadcom radio firmware.
+    require("dtparam=krnbt=on" in config.splitlines(), "Bluetooth controller is not enabled")
+    for option in ("CONFIG_BT=m", "CONFIG_BT_HCIUART=m"):
+        require(option in kernel_config.splitlines(), f"Missing Bluetooth kernel option: {option}")
+    for name in ("usr/sbin/agx-bluetoothd", "usr/libexec/bluetooth/bluetoothd", "usr/bin/dbus-daemon",
+                 "usr/libexec/agx-bluetooth/run", "lib/firmware/brcm/BCM4345C0.hcd"):
+        require((target / name).is_file(), f"Missing Bluetooth component: {name}")
+    require((target / "usr/libexec/agx-bluetooth/run").stat().st_mode & 0o111, "Bluetooth service script is not executable")
     keys = target / "root/.ssh/authorized_keys"
     require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
     debugfs = images.parent / "host/sbin/debugfs"

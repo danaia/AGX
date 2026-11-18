@@ -7,3 +7,5 @@ disable_overscan=1
 dtoverlay=dwc2,dr_mode=peripheral
 # HDMI display through DRM/KMS for the desktop (agx-gui draws to it directly).
 dtoverlay=vc4-kms-v3d
+# Bluetooth through the kernel driver: enables the controller node on the Pi 5 UART.
+dtparam=krnbt=on

@@ -63,7 +63,11 @@ pub fn rows(devices: &[Device]) -> Vec<BtDevice> {
         .iter()
         .map(|device| {
             let mine = device.paired || device.connected;
-            let header = if previous != Some(mine) { if mine { "MY DEVICES" } else { "NEARBY DEVICES" } } else { "" };
+            let header = if previous != Some(mine) {
+                if mine { "MY DEVICES" } else { "NEARBY DEVICES" }
+            } else {
+                ""
+            };
             previous = Some(mine);
             BtDevice {
                 address: device.address.as_str().into(),
@@ -99,9 +103,18 @@ pub fn prompt(prompt: Option<&Prompt>) -> (i32, String, String) {
     };
     let name = &prompt.name;
     let (kind, text) = match prompt.kind {
-        PromptKind::Confirm => (1, format!("Does {name} show this code? Pair only if both screens match.")),
-        PromptKind::Display => (2, format!("Type this code on {name}, then press Enter on it.")),
-        PromptKind::Pin => (3, format!("{name} needs a PIN. Many devices use 0000 or 1234.")),
+        PromptKind::Confirm => (
+            1,
+            format!("Does {name} show this code? Pair only if both screens match."),
+        ),
+        PromptKind::Display => (
+            2,
+            format!("Type this code on {name}, then press Enter on it."),
+        ),
+        PromptKind::Pin => (
+            3,
+            format!("{name} needs a PIN. Many devices use 0000 or 1234."),
+        ),
         PromptKind::Passkey => (4, format!("Enter the six-digit passkey for {name}.")),
         PromptKind::Authorize => (5, format!("{name} wants to connect to this device.")),
     };
@@ -114,12 +127,22 @@ mod tests {
     use agx_bluetooth::{Approval, ApprovalAction};
 
     fn device(name: &str, paired: bool, connected: bool, rssi: Option<i16>) -> Device {
-        Device { address: "AA:BB:CC:DD:EE:01".into(), name: name.into(), paired, connected, rssi, ..Device::default() }
+        Device {
+            address: "AA:BB:CC:DD:EE:01".into(),
+            name: name.into(),
+            paired,
+            connected,
+            rssi,
+            ..Device::default()
+        }
     }
 
     #[test]
     fn signal_strength_maps_to_bars() {
-        assert_eq!([None, Some(-40), Some(-60), Some(-70), Some(-85)].map(bars), [0, 4, 3, 2, 1]);
+        assert_eq!(
+            [None, Some(-40), Some(-60), Some(-70), Some(-85)].map(bars),
+            [0, 4, 3, 2, 1]
+        );
     }
 
     #[test]
@@ -144,7 +167,10 @@ mod tests {
         // A stale battery reading is not shown for a device that is not connected.
         speaker.connected = false;
         assert_eq!(detail(&speaker), "Speaker · Not connected · Auto-connect");
-        assert_eq!(detail(&device("Phone", false, false, Some(-50))), "Device · Very close");
+        assert_eq!(
+            detail(&device("Phone", false, false, Some(-50))),
+            "Device · Very close"
+        );
         let mut busy = device("Phone", false, false, Some(-50));
         busy.busy = true;
         assert_eq!(detail(&busy), "Working…");
@@ -153,15 +179,29 @@ mod tests {
     #[test]
     fn prompts_and_approvals_read_as_plain_sentences() {
         assert_eq!(prompt(None), (0, String::new(), String::new()));
-        let confirm = Prompt { id: 1, kind: PromptKind::Confirm, address: "A".into(), name: "Keyboard".into(), code: Some("123456".into()) };
+        let confirm = Prompt {
+            id: 1,
+            kind: PromptKind::Confirm,
+            address: "A".into(),
+            name: "Keyboard".into(),
+            code: Some("123456".into()),
+        };
         let (kind, text, code) = prompt(Some(&confirm));
         assert_eq!((kind, code.as_str()), (1, "123456"));
         assert!(text.contains("Keyboard") && text.contains("match"));
         let status = Status {
-            approvals: vec![Approval { id: 7, action: ApprovalAction::Forget, address: "A".into(), name: "Speaker".into() }],
+            approvals: vec![Approval {
+                id: 7,
+                action: ApprovalAction::Forget,
+                address: "A".into(),
+                name: "Speaker".into(),
+            }],
             ..Status::default()
         };
         let approvals = approvals(&status);
-        assert_eq!((approvals[0].id, approvals[0].text.as_str()), (7, "remove Speaker."));
+        assert_eq!(
+            (approvals[0].id, approvals[0].text.as_str()),
+            (7, "remove Speaker.")
+        );
     }
 }

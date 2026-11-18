@@ -14,12 +14,24 @@ pub enum Peer {
 /// The only executable trusted to answer on the person's behalf.
 const DESKTOP: &str = "agx-gui";
 
+/// Installed desktop releases are named `agx-gui.<release id>` (hex), and the symlink the system
+/// launches resolves to that file, so the kernel reports that name rather than plain `agx-gui`.
+fn is_desktop_name(name: &str) -> bool {
+    match name.strip_prefix(DESKTOP) {
+        Some("") => true,
+        Some(rest) => rest
+            .strip_prefix('.')
+            .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_hexdigit())),
+        None => false,
+    }
+}
+
 /// Classify by the connecting process's executable path as the kernel reports it. A replaced
 /// binary (after a desktop update) is reported with a trailing " (deleted)".
 pub fn classify(exe: &str) -> Peer {
     let path = exe.strip_suffix(" (deleted)").unwrap_or(exe);
     match std::path::Path::new(path).file_name().and_then(|name| name.to_str()) {
-        Some(DESKTOP) => Peer::Desktop,
+        Some(name) if is_desktop_name(name) => Peer::Desktop,
         _ => Peer::Other,
     }
 }

@@ -2,8 +2,19 @@ use super::*;
 
 #[test]
 fn addresses_are_validated_and_normalized() {
-    assert_eq!(normalize_address(" aa:bb:0c:0d:0e:0F "), Some("AA:BB:0C:0D:0E:0F".into()));
-    for bad in ["", "AA:BB:CC:DD:EE", "AA:BB:CC:DD:EE:FF:00", "AA-BB-CC-DD-EE-FF", "GG:BB:CC:DD:EE:FF", "A:BB:CC:DD:EE:FF", "AA:BB:CC:DD:EE:F\n"] {
+    assert_eq!(
+        normalize_address(" aa:bb:0c:0d:0e:0F "),
+        Some("AA:BB:0C:0D:0E:0F".into())
+    );
+    for bad in [
+        "",
+        "AA:BB:CC:DD:EE",
+        "AA:BB:CC:DD:EE:FF:00",
+        "AA-BB-CC-DD-EE-FF",
+        "GG:BB:CC:DD:EE:FF",
+        "A:BB:CC:DD:EE:FF",
+        "AA:BB:CC:DD:EE:F\n",
+    ] {
         assert_eq!(normalize_address(bad), None, "{bad:?}");
     }
 }
@@ -19,8 +30,14 @@ fn pins_are_short_printable_ascii() {
 
 #[test]
 fn categories_come_from_icon_class_and_appearance() {
-    assert_eq!(Category::from_icon("audio-headset"), Some(Category::Headset));
-    assert_eq!(Category::from_icon("input-keyboard"), Some(Category::Keyboard));
+    assert_eq!(
+        Category::from_icon("audio-headset"),
+        Some(Category::Headset)
+    );
+    assert_eq!(
+        Category::from_icon("input-keyboard"),
+        Some(Category::Keyboard)
+    );
     assert_eq!(Category::from_icon("something-new"), None);
     // 0x000540 keyboard, 0x000580 pointing device, 0x240404 wearable headset, 0x5a020c phone.
     assert_eq!(Category::from_class(0x0540), Some(Category::Keyboard));
@@ -38,8 +55,15 @@ fn categories_come_from_icon_class_and_appearance() {
 
 #[test]
 fn requests_use_a_tagged_json_form_and_reject_unknown_commands() {
-    let json = serde_json::to_string(&Request::Trust { address: "AA:BB:CC:DD:EE:FF".into(), trusted: true }).unwrap();
-    assert_eq!(json, r#"{"cmd":"trust","address":"AA:BB:CC:DD:EE:FF","trusted":true}"#);
+    let json = serde_json::to_string(&Request::Trust {
+        address: "AA:BB:CC:DD:EE:FF".into(),
+        trusted: true,
+    })
+    .unwrap();
+    assert_eq!(
+        json,
+        r#"{"cmd":"trust","address":"AA:BB:CC:DD:EE:FF","trusted":true}"#
+    );
     assert!(matches!(
         serde_json::from_str::<Request>(r#"{"cmd":"scan","on":true}"#),
         Ok(Request::Scan { on: true })

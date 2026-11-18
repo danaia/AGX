@@ -48,6 +48,7 @@ BR2_PACKAGE_DROPBEAR=y
 BR2_PACKAGE_AGX=y
 BR2_PACKAGE_BRCMFMAC_SDIO_FIRMWARE_RPI=y
 BR2_PACKAGE_BRCMFMAC_SDIO_FIRMWARE_RPI_WIFI=y
+BR2_PACKAGE_BRCMFMAC_SDIO_FIRMWARE_RPI_BT=y
 BR2_PACKAGE_WIRELESS_REGDB=y
 BR2_PACKAGE_IW=y
 BR2_PACKAGE_WPA_SUPPLICANT=y
@@ -108,3 +109,12 @@ BR2_ENABLE_LOCALE_WHITELIST="C C.utf8 en_US"
 BR2_PACKAGE_AGX_OPENCODE=y
 BR2_PACKAGE_AGX_AGENT=y
 BR2_STRIP_EXCLUDE_FILES="opencode"
+
+# Bluetooth: BlueZ over the system D-Bus (the kernel already ships the Bluetooth modules), with
+# keyboard/mouse (HID and HID-over-GATT) support. bluetoothctl and btmon are for diagnostics.
+# agx-bluetoothd, supervised by agx-init, is what the desktop and `agx bluetooth` talk to.
+BR2_PACKAGE_DBUS=y
+BR2_PACKAGE_BLUEZ5_UTILS=y
+BR2_PACKAGE_BLUEZ5_UTILS_CLIENT=y
+BR2_PACKAGE_BLUEZ5_UTILS_MONITOR=y
+BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HID=y

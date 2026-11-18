@@ -62,6 +62,12 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     hook!(on_scroll, |a, ui, dx, delta, ctrl, alt, shift, meta| a
         .scroll(&ui, dx, delta, mods(ctrl, alt, shift, meta)));
     hook!(on_resized, |a, ui, w, h| a.resized(&ui, w, h));
+    hook!(on_menu_show, |a, ui| a.run(&ui, Cmd::Menu));
+    hook!(on_workspace_select, |a, ui, index| {
+        if let Ok(index) = usize::try_from(index) {
+            a.run(&ui, Cmd::Workspace(index));
+        }
+    });
     hook!(on_menu_query, |a, ui, query| a.set_menu_rows(&ui, &query));
     hook!(on_menu_accept, |a, ui, index| a.menu_accept(&ui, index));
     hook!(on_confirm, |a, ui, yes| a.confirm(&ui, yes));

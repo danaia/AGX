@@ -128,13 +128,19 @@ impl Engine {
         drop(peer);
         let updates = Arc::new(Mutex::new(Updates::default()));
         let shared = updates.clone();
+        let weak = ui.as_weak();
         thread::spawn(move || {
-            if let Err(error) = receive(reader, frame, &shared) {
+            let notify = || {
+                let _ = weak.upgrade_in_event_loop(|ui| ui.global::<crate::Web>().invoke_engine_update());
+            };
+            if let Err(error) = receive(reader, frame, &shared, &notify) {
                 let mut state = shared.lock().unwrap();
                 state.dead = true;
                 state.error = Some(format!(
                     "Web stopped: {error}. Close and reopen Web to retry."
                 ));
+                drop(state);
+                notify();
             }
         });
         if let Some((gpu_socket, gpu_peer)) = gpu_pair {
@@ -219,7 +225,12 @@ impl Drop for Engine {
         }
     }
 }
-fn receive(mut control: UnixStream, frame: File, shared: &Mutex<Updates>) -> io::Result<()> {
+fn receive(
+    mut control: UnixStream,
+    frame: File,
+    shared: &Mutex<Updates>,
+    notify: &impl Fn(),
+) -> io::Result<()> {
     loop {
         let (kind, data) = protocol::read(&mut control)?;
         match kind {
@@ -237,6 +248,8 @@ fn receive(mut control: UnixStream, frame: File, shared: &Mutex<Updates>) -> io:
                     return Err(io::Error::other("web frame was not acknowledged"));
                 }
                 state.frame = Some(Frame { pixels, sequence });
+                drop(state);
+                notify();
             }
             2..=5 if data.len() <= 8192 => {
                 let mut state = shared.lock().unwrap();
@@ -254,7 +267,10 @@ fn receive(mut control: UnixStream, frame: File, shared: &Mutex<Updates>) -> io:
                     }
                 }
             }
-            6 if data == b"ANGIWEB1" => shared.lock().unwrap().ready = true,
+            6 if data == b"ANGIWEB1" => {
+                shared.lock().unwrap().ready = true;
+                notify();
+            }
             7 if data.len() == 1 && [0, 6, 7].contains(&data[0]) => {
                 shared.lock().unwrap().cursor = Some(data[0])
             }
@@ -297,7 +313,7 @@ mod tests {
         protocol::write(&mut writer, 1, &frame_message(2, 1, 9)).unwrap();
         drop(writer);
         let state = Mutex::new(Updates::default());
-        assert!(receive(reader, frame, &state).is_err()); // Clean EOF ends the reader.
+        assert!(receive(reader, frame, &state, &|| {}).is_err()); // Clean EOF ends the reader.
         let mut updates = state.lock().unwrap();
         assert!(updates.ready);
         assert_eq!(updates.title.as_deref(), Some("Page title"));
@@ -318,7 +334,7 @@ mod tests {
             }
             let state = Mutex::new(Updates::default());
             assert_eq!(
-                receive(reader, storage(), &state).unwrap_err().kind(),
+                receive(reader, storage(), &state, &|| {}).unwrap_err().kind(),
                 io::ErrorKind::Other
             );
         }

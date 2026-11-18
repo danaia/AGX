@@ -95,18 +95,40 @@ pub struct Status {
 #[serde(tag = "cmd", rename_all = "snake_case")]
 pub enum Request {
     Status,
-    Power { on: bool },
+    Power {
+        on: bool,
+    },
     /// Start a bounded search, or stop the running one.
-    Scan { on: bool },
-    Pair { address: String },
-    Connect { address: String },
-    Disconnect { address: String },
-    Trust { address: String, trusted: bool },
-    Forget { address: String },
+    Scan {
+        on: bool,
+    },
+    Pair {
+        address: String,
+    },
+    Connect {
+        address: String,
+    },
+    Disconnect {
+        address: String,
+    },
+    Trust {
+        address: String,
+        trusted: bool,
+    },
+    Forget {
+        address: String,
+    },
     /// Answer the pairing prompt. Only the desktop may do this.
-    Respond { id: u32, accept: bool, value: Option<String> },
+    Respond {
+        id: u32,
+        accept: bool,
+        value: Option<String>,
+    },
     /// Allow or refuse an `Approval`. Only the desktop may do this.
-    Decide { id: u32, allow: bool },
+    Decide {
+        id: u32,
+        allow: bool,
+    },
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

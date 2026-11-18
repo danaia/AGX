@@ -2,6 +2,9 @@
 //! module mirrors the daemon's state into the UI and turns the page's callbacks into requests.
 mod view;
 
+#[cfg(test)]
+pub(crate) mod tests;
+
 use crate::{App, AppWindow, BluetoothSettings, BtApproval, BtDevice, wm::Kind};
 use agx_bluetooth::{Reply, Request, Status};
 use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
@@ -48,18 +51,39 @@ fn show(ui: &AppWindow, shown: &mut Shown, outcome: Outcome) {
     let status = &reply.status;
     page.set_available(true);
     page.set_adapter(status.adapter.is_some());
-    page.set_powered(status.adapter.as_ref().is_some_and(|adapter| adapter.powered));
-    page.set_scanning(status.adapter.as_ref().is_some_and(|adapter| adapter.scanning));
+    page.set_powered(
+        status
+            .adapter
+            .as_ref()
+            .is_some_and(|adapter| adapter.powered),
+    );
+    page.set_scanning(
+        status
+            .adapter
+            .as_ref()
+            .is_some_and(|adapter| adapter.scanning),
+    );
     page.set_seconds_left(status.scan_seconds_left as i32);
-    page.set_status(if status.message.is_empty() { "Find, pair and connect Bluetooth devices".into() } else { status.message.as_str().into() });
+    page.set_status(if status.message.is_empty() {
+        "Find, pair and connect Bluetooth devices".into()
+    } else {
+        status.message.as_str().into()
+    });
     // A rejected request's reason arrives in the reply rather than in the sticky state.
-    let error = if reply.ok { status.error.clone() } else { Some(reply.message.clone()) };
+    let error = if reply.ok {
+        status.error.clone()
+    } else {
+        Some(reply.message.clone())
+    };
     page.set_error(error.unwrap_or_default().into());
 
     let rows = view::rows(&status.devices);
     if rows != shown.rows {
         // Keep the selection on the same device when the list reorders.
-        let index = rows.iter().position(|row| row.address.as_str() == shown.selected).map_or(-1, |index| index as i32);
+        let index = rows
+            .iter()
+            .position(|row| row.address.as_str() == shown.selected)
+            .map_or(-1, |index| index as i32);
         page.set_devices(ModelRc::new(VecModel::from(rows.clone())));
         page.set_selected(index);
         shown.rows = rows;
@@ -119,8 +143,14 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                 1 => Request::Connect { address },
                 2 => Request::Disconnect { address },
                 3 => Request::Forget { address },
-                4 => Request::Trust { address, trusted: true },
-                5 => Request::Trust { address, trusted: false },
+                4 => Request::Trust {
+                    address,
+                    trusted: true,
+                },
+                5 => Request::Trust {
+                    address,
+                    trusted: false,
+                },
                 _ => return,
             });
         });
@@ -131,7 +161,12 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
             let Some(ui) = weak.upgrade() else { return };
             let page = ui.global::<BluetoothSettings>();
             let mut shown = shown.borrow_mut();
-            let Some(row) = usize::try_from(index).ok().and_then(|index| shown.rows.get(index)) else { return };
+            let Some(row) = usize::try_from(index)
+                .ok()
+                .and_then(|index| shown.rows.get(index))
+            else {
+                return;
+            };
             shown.selected = row.address.to_string();
             page.set_selected(index);
             // Moving to another device cancels a pending removal confirmation.
@@ -143,13 +178,29 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     {
         let (send, shown) = (send.clone(), shown.clone());
         page.on_respond(move |accept, value| {
-            let Some(id) = shown.borrow().status.as_ref().and_then(|status| status.prompt.as_ref().map(|prompt| prompt.id)) else { return };
-            send(Request::Respond { id, accept, value: (!value.is_empty()).then(|| value.to_string()) });
+            let Some(id) = shown
+                .borrow()
+                .status
+                .as_ref()
+                .and_then(|status| status.prompt.as_ref().map(|prompt| prompt.id))
+            else {
+                return;
+            };
+            send(Request::Respond {
+                id,
+                accept,
+                value: (!value.is_empty()).then(|| value.to_string()),
+            });
         });
     }
     {
         let send = send.clone();
-        page.on_decide(move |id, allow| send(Request::Decide { id: id.max(0) as u32, allow }));
+        page.on_decide(move |id, allow| {
+            send(Request::Decide {
+                id: id.max(0) as u32,
+                allow,
+            })
+        });
     }
 
     let timer = Timer::default();
@@ -162,12 +213,16 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
             show(&ui, &mut shown.borrow_mut(), outcome);
         }
         // Poll only while the Bluetooth page is on screen.
-        let open = state.try_borrow().is_ok_and(|app| app.desk.is_open(Kind::Settings));
+        let open = state
+            .try_borrow()
+            .is_ok_and(|app| app.desk.is_open(Kind::Settings));
         let page = ui.global::<BluetoothSettings>();
         if !open || !page.get_active() || pending.get() > 0 {
             return;
         }
-        let lively = page.get_scanning() || page.get_prompt_kind() != 0 || !shown.borrow().approvals.is_empty();
+        let lively = page.get_scanning()
+            || page.get_prompt_kind() != 0
+            || !shown.borrow().approvals.is_empty();
         if last_poll.elapsed() >= if lively { BUSY_POLL } else { QUIET_POLL } {
             last_poll = Instant::now();
             send(Request::Status);

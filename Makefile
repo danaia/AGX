@@ -14,7 +14,7 @@ deploy-tui: tui-build
 
 .PHONY: network-build deploy-network
 network-build:
-	./scripts/cargo.sh build --locked --workspace --release --target aarch64-unknown-linux-gnu
+	./scripts/cargo.sh build --locked --workspace --exclude agx-bluetoothd --release --target aarch64-unknown-linux-gnu
 deploy-network: network-build
 	./scripts/deploy-tui.sh
 	./scripts/deploy-network.sh
@@ -37,9 +37,14 @@ release-update:
 
 .PHONY: init-build deploy-init
 init-build:
-	./scripts/cargo.sh build --locked --workspace --release --target aarch64-unknown-linux-gnu
+	./scripts/cargo.sh build --locked --workspace --exclude agx-bluetoothd --release --target aarch64-unknown-linux-gnu
 deploy-init: init-build
 	./scripts/deploy-init.sh
+
+# agx-bluetoothd links libdbus-1, so it cross-builds only once Buildroot has built D-Bus into staging.
+.PHONY: bluetooth-build
+bluetooth-build:
+	PKG_CONFIG=$(CURDIR)/output/host/bin/pkg-config PKG_CONFIG_ALLOW_CROSS=1 ./scripts/cargo.sh build --locked --release --target aarch64-unknown-linux-gnu --package agx-bluetoothd
 
 .PHONY: gui-build deploy-gui
 gui-build:

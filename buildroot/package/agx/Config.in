@@ -3,5 +3,6 @@ config BR2_PACKAGE_AGX
 	depends on BR2_PACKAGE_HOST_RUSTC_TARGET_ARCH_SUPPORTS
 	select BR2_PACKAGE_HOST_RUSTC
 	select BR2_PACKAGE_LIBXCRYPT if BR2_TOOLCHAIN_USES_GLIBC
+	select BR2_PACKAGE_DBUS
 	help
 	  Rust headless system console, live TUI, and JSON status command.
