@@ -18,6 +18,8 @@ path = "src/main.rs"
 # Preview on a desktop (Wayland/X11) window.
 default = ["desktop"]
 desktop = ["slint/backend-winit", "slint/renderer-femtovg", "slint/renderer-software"]
+# Appliance preview as a Wayland client of a separate compositor.
+wayland-client = ["slint/backend-winit-wayland", "slint/renderer-femtovg"]
 # Appliance mode: draw straight to DRM/KMS with libinput. No display server.
 kms = ["dep:glow", "dep:libloading", "dep:input", "slint/unstable-libinput-09", "slint/backend-linuxkms-noseat", "slint/renderer-femtovg", "slint/renderer-software"]
 

@@ -89,6 +89,10 @@ def install(app, store, report, get=None, opener=None, pause=time.sleep):
         release = app_fetch.resolve(app, **kwargs)
         report.tag = release.tag
         if entry and entry['tag'] == release.tag and healthy(store, app, entry):
+            if app.id == 'chromium':
+                launches = store.prepare_programs(store.pkg / app.id / 'current', app.id, entry['bins'])
+                for name, relative in launches.items():
+                    store.link(name, app.id, relative)
             report.done(f'{app.name} {report.shown} is already installed and up to date.')
             return
         if store.free_bytes() < release.size * SPACE_FACTOR + SPACE_RESERVE:
@@ -110,13 +114,14 @@ def install(app, store, report, get=None, opener=None, pause=time.sleep):
             located = {program.name: app_fetch.find_program(tree, program) for program in app.programs}
             for name, relative in located.items():
                 app_fetch.check_program(tree / relative, name)
+            launches = store.prepare_programs(tree, app.id, located)
             report.phase('installing', f'Installing {app.name}…')
             target = store.pkg / app.id / release.tag
             target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
             shutil.rmtree(target, ignore_errors=True)
             os.replace(tree, target)
             store.switch(app.id, release.tag)
-            for name, relative in located.items():
+            for name, relative in launches.items():
                 store.link(name, app.id, relative)
             ledger[app.id] = dict(name=app.name, repo=app.repo, tag=release.tag, asset=release.asset,
                                   sha256=release.sha256, size=release.size, bins=located,
@@ -127,7 +132,9 @@ def install(app, store, report, get=None, opener=None, pause=time.sleep):
             shutil.rmtree(work, ignore_errors=True)
         names = ', '.join(sorted(located))
         old = version_label(entry['tag'], app.id, app.name) if entry else ''
-        report.done(f'{app.name} {report.shown} is installed. Run {names} in Terminal.' if not entry
+        how = ('It opens once ANGI\'s Wayland display is ready.'
+               if app.kind == 'Graphical' and not app.launch else f'Run {names} in Terminal.')
+        report.done(f'{app.name} {report.shown} is installed. {how}' if not entry
                     else f'{app.name} {report.shown} was repaired.' if entry['tag'] == release.tag
                     else f'{app.name} updated from {old} to {report.shown}.')
     finally:

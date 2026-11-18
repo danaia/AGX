@@ -96,10 +96,11 @@ pub enum Kind {
     Settings,
     AgentAngie,
     Files,
+    Chromium,
     TerminalWindow(u32),
 }
 impl Kind {
-    pub const ALL: [Kind; 12] = [
+    pub const ALL: [Kind; 13] = [
         Kind::Overview,
         Kind::Cpu,
         Kind::Memory,
@@ -112,6 +113,7 @@ impl Kind {
         Kind::Settings,
         Kind::AgentAngie,
         Kind::Files,
+        Kind::Chromium,
     ];
     pub fn is_terminal(self) -> bool {
         matches!(self, Self::Terminal | Self::TerminalWindow(_))
@@ -136,6 +138,7 @@ impl Kind {
             Kind::Settings => "Settings",
             Kind::AgentAngie => "Agent Angie",
             Kind::Files => "Files",
+            Kind::Chromium => "Chromium",
         }
     }
 }

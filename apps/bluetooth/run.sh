@@ -29,6 +29,9 @@ fi
 umask 077
 mkdir -p "$state" /run/dbus /tmp/dbus /var/lib/dbus || exit 1
 chmod 700 "$state"
+# System-bus clients need to traverse the socket directory. D-Bus policy
+# still controls the calls they can make over the socket.
+chmod 755 /run/dbus || exit 1
 dbus-uuidgen --ensure 2>/dev/null
 
 dbus=''

@@ -150,6 +150,12 @@ impl App {
         if let Some(result) = self.browser_shortcut(ui, name, mods) {
             return result;
         }
+        if self.desk.focused() == Some(Kind::Chromium)
+            && !self.modk.held(mods)
+            && !(mods.alt && name == "tab")
+        {
+            return false;
+        }
         match bind(name, mods, self.modk) {
             Some(cmd) => {
                 self.run(ui, cmd);
@@ -173,7 +179,9 @@ impl App {
             self.header_clicks.cancel();
             return;
         }
-        if self.browser_pointer(ui, kind, button, x, y, mods) {
+        if self.browser_pointer(ui, kind, button, x, y, mods)
+            || self.chromium_pointer(ui, kind, button, x, y, mods)
+        {
             self.header_clicks.cancel();
             return;
         }
@@ -407,7 +415,9 @@ impl App {
         if self.terminal_scroll(ui, delta, mods) {
             return;
         }
-        if !self.modk.held(mods) && self.browser_scroll(dx, delta, mods) {
+        if self.chromium_scroll(dx, delta, mods)
+            || (!self.modk.held(mods) && self.browser_scroll(dx, delta, mods))
+        {
             return;
         }
         if self.modk.held(mods) && delta != 0.0 {

@@ -125,6 +125,20 @@ impl App {
 
     /// Opens a terminal for an installed app: the program itself when it is a full-screen tool, else a shell.
     fn package_open(&mut self, ui: &AppWindow, package: &Package) {
+        if package.id == "chromium" {
+            self.desk.goto(self.menu_workspace);
+            self.chromium_open(ui, Vec::new());
+            return;
+        }
+        if package.kind == "Graphical" && package.launch.is_empty() {
+            // A windowed app needs a Wayland display, which ANGI does not provide yet. Say so rather than
+            // starting it in a terminal where it would only print an error.
+            self.toast(
+                ui,
+                &format!("{} is installed. It cannot open yet: ANGI's Wayland display is not ready.", package.name),
+            );
+            return;
+        }
         self.desk.goto(self.menu_workspace);
         if package.launch.is_empty() {
             self.run(ui, Cmd::Open(crate::wm::Kind::Terminal));

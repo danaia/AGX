@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="brand/ANGI.svg" alt="ANGI OS" width="560">
+  <img src="brand/brand-mark-text-banner.svg" alt="ANGI OS" width="560">
 </h1>
 
 <p align="center"><strong>A thin operating system made for AI coding agents.<br>A small machine where agents build software, and the operating system itself.</strong></p>

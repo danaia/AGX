@@ -18,6 +18,7 @@ pub(super) struct App {
     pub(super) next_terminal: u32,
     pub(super) terminal_views: Rc<VecModel<crate::TerminalView>>,
     pub(super) browser: browser::Browser,
+    pub(super) chromium: crate::chromium::Chromium,
     pub(super) desk: Desktop,
     pub(super) view: SceneModel,
     pub(super) occupied: Rc<VecModel<bool>>,
@@ -58,6 +59,7 @@ impl App {
             next_terminal: 3,
             terminal_views: Default::default(),
             browser: browser::Browser::default(),
+            chromium: Default::default(),
             desk,
             view,
             occupied: Rc::new(VecModel::from(vec![false; wm::WORKSPACES])),
@@ -177,6 +179,9 @@ impl App {
                     if k == Kind::Web && self.browser_request_close() {
                         return;
                     }
+                    if k == Kind::Chromium {
+                        self.chromium_close(ui);
+                    }
                     self.desk.close(k);
                     self.toast(
                         ui,
@@ -201,6 +206,7 @@ impl App {
             Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
             Cmd::Menu => self.open_menu(ui),
             Cmd::Open(Kind::Terminal) => self.terminal_new_window(ui),
+            Cmd::Open(Kind::Chromium) => self.chromium_open(ui, Vec::new()),
             Cmd::Open(k) => {
                 self.desk.open(k);
                 if k == Kind::Settings {

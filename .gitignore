@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 /target/
+# Wayland runtime build tree (scripts/build-wayland.sh)
+/output-wayland/

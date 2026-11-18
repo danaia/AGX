@@ -12,7 +12,7 @@ mod frame;
 mod handoff;
 pub(crate) mod input;
 mod resize;
-mod rfb;
+pub(crate) mod rfb;
 mod server;
 
 use frame::Frame;

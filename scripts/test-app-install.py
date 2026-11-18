@@ -126,7 +126,7 @@ class Catalogue(unittest.TestCase):
         apps = app_catalog.load()
         self.assertGreaterEqual(len(apps), 45)
         for app in apps.values():
-            self.assertTrue(app.programs and app.repo and app.summary and app.kind in {'Terminal', 'Server'}, app.id)
+            self.assertTrue(app.programs and app.repo and app.summary and app.kind in {'Terminal', 'Server', 'Graphical'}, app.id)
         names = {name for app in apps.values() for name in (p.name for p in app.programs)}
         self.assertTrue({'rg', 'nvim', 'gh', 'btm', 'syncthing'} <= names)
 
@@ -295,6 +295,13 @@ class Install(Case):
         listed = app_install.listing(self.store)['apps']['demo']
         self.assertEqual((listed['tag'], listed['version'], listed['update']), ('v1.0', '1.0', ''))
 
+    def test_a_graphical_app_does_not_tell_you_to_type_a_command(self):
+        app = app_entry(id='gui', name='Gui', kind='Graphical', asset=r'^demo-.*-linux-arm64\.tar\.gz$',
+                        bins=[dict(name='gui', path='demo-*/demo')])
+        message = self.install(Fake(), app)[-1]['message']
+        self.assertIn('Wayland display', message)
+        self.assertNotIn('Terminal', message)
+
     def test_reinstalling_the_current_release_is_a_verified_no_op_unless_it_is_broken(self):
         self.install(Fake())
         fake = Fake()
@@ -303,6 +310,23 @@ class Install(Case):
         (self.store.bin / 'demo').unlink()
         self.assertIn('was repaired', self.install(Fake())[-1]['message'], 'a damaged install is repaired')
         self.assertTrue((self.store.bin / 'demo').exists())
+
+    def test_chromium_updates_existing_launch_links_without_downloading_again(self):
+        app = app_entry(id='chromium', name='Chromium', kind='Graphical', launch='chromium',
+                        bins=[dict(name='chromium', path='demo-*/demo')])
+        self.install(Fake(), app)
+        link = self.store.bin / 'chromium'
+        release = self.store.pkg / 'chromium/current'
+        self.assertEqual((release / '.angi-chromium-bin').read_bytes(), ELF)
+        self.assertEqual(link.read_text().splitlines()[-1], 'exec /usr/bin/angi-chromium "$@"')
+        self.store.link('chromium', 'chromium', 'demo-v1.0/demo')
+        (release / '.angi-chromium').unlink()
+        (release / '.angi-chromium-bin').unlink()
+        fake = Fake()
+        self.assertIn('already installed', self.install(fake, app)[-1]['message'])
+        self.assertFalse(any('download' in url for url in fake.requests))
+        self.assertEqual(os.readlink(link), '../pkg/chromium/current/.angi-chromium')
+        self.assertEqual((release / '.angi-chromium-bin').read_bytes(), ELF)
 
     def test_update_switches_atomically_and_removes_the_old_version(self):
         self.install(Fake('v1.0'))
