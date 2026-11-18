@@ -2,12 +2,8 @@ use super::*;
 use crate::remote::rfb::{ENCODING_DESKTOP_SIZE, ENCODING_RAW};
 use std::io::{Read, Write};
 
-fn frame(width: usize, height: usize, value: u8) -> Frame {
-    Frame {
-        width,
-        height,
-        rgba: vec![value; width * height * 4],
-    }
+fn frame(width: u32, height: u32, value: u8) -> Frame {
+    Frame::from_rgba(width, height, &vec![value; (width * height * 4) as usize])
 }
 
 struct Client(TcpStream);
@@ -101,7 +97,7 @@ impl Client {
 #[test]
 fn resize_replies_and_pixels_stay_separate_and_other_viewers_are_notified() {
     let shared = Shared::new(|_| {});
-    shared.set_resize_handler(|w, h| Some(frame(usize::from(w), usize::from(h), 10)));
+    shared.set_resize_handler(|w, h| Some(frame(u32::from(w), u32::from(h), 10)));
     shared.publish(frame(640, 480, 10));
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
@@ -164,7 +160,7 @@ fn extended_resize_capability_survives_login_handoff() {
         }],
     };
     let shared = Shared::new(|_| {});
-    shared.set_resize_handler(|w, h| Some(frame(usize::from(w), usize::from(h), 10)));
+    shared.set_resize_handler(|w, h| Some(frame(u32::from(w), u32::from(h), 10)));
     shared.publish(frame(640, 480, 10));
     assert!(adopt(&handoff, addr, &shared));
     let mut client = Client(viewer);
@@ -203,7 +199,7 @@ fn a_client_sees_the_frame_then_only_what_changes_and_can_send_input() {
     // Change one pixel at (3, 2); an incremental request gets just that rectangle.
     client.request(true);
     let mut next = frame(8, 4, 10);
-    next.rgba[(2 * 8 + 3) * 4..][..3].copy_from_slice(&[1, 2, 3]);
+    next.rgba_mut()[(2 * 8 + 3) * 4..][..3].copy_from_slice(&[1, 2, 3]);
     thread::sleep(Duration::from_millis(100)); // the request is pending before the frame lands
     shared.publish(next);
     assert_eq!(client.update(), (3, 2, 1, 1, vec![3, 2, 1, 0]));

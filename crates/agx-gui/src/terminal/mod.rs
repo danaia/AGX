@@ -17,6 +17,7 @@ use alacritty_terminal::{
     selection::{Selection, SelectionType},
     term::{TermMode, search::RegexSearch},
 };
+pub(crate) use session::AgentRun;
 use session::{Session, Size};
 use slint::{ComponentHandle, Model, ModelRc, Timer, TimerMode, VecModel};
 use std::{cell::RefCell, rc::Rc, sync::atomic::Ordering, time::Duration};
@@ -206,11 +207,11 @@ impl App {
     pub(crate) fn terminal_open_program(&mut self, ui: &AppWindow, path: String, title: String) {
         self.terminal_launch(ui, |size| Session::program(size, &path, &title));
     }
-    pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String, project: Option<String>) {
+    pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String, run: AgentRun) {
         if prompt.trim().is_empty() {
             return;
         }
-        self.terminal_launch(ui, |size| Session::agent(size, prompt, project));
+        self.terminal_launch(ui, |size| Session::agent(size, prompt, run));
     }
     /// Opens the Terminal window and adds a tab running an Agent Angie command.
     fn terminal_launch(&mut self, ui: &AppWindow, start: impl FnOnce(Size) -> std::io::Result<Session>) {

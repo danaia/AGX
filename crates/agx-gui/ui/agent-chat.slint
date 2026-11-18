@@ -1,0 +1,75 @@
+import { Theme } from "data.slint";
+
+// Agent Angie's Chat mode: a conversation shown as bubbles. agent_chat.rs owns the messages and talks to
+// the agent runtime (`agent chat-turn`); this file only draws them.
+export struct ChatMessage {
+    // True for the person's own messages (right, accent), false for Angie's (left).
+    mine: bool,
+    text: string,
+    // A reply that failed: shown in red so it is never mistaken for something Angie said.
+    failed: bool,
+}
+
+export global AgentChat {
+    in-out property <[ChatMessage]> messages;
+    // True from sending until Angie's reply (or failure) arrives.
+    in-out property <bool> busy;
+    callback send(string);
+    callback new-chat();
+}
+
+component Bubble inherits Rectangle {
+    in property <ChatMessage> message;
+    in property <length> limit;
+    max-width: root.limit;
+    border-radius: 14px; border-width: 1px;
+    background: root.message.failed ? Theme.bg-dark : root.message.mine ? Theme.accent : Theme.bg-light;
+    border-color: root.message.failed ? Theme.red : root.message.mine ? Theme.accent : Theme.muted;
+    VerticalLayout {
+        padding-left: 14px; padding-right: 14px; padding-top: 9px; padding-bottom: 9px;
+        Text {
+            text: root.message.text; wrap: word-wrap; font-size: 14px;
+            color: root.message.failed ? Theme.red : root.message.mine ? Theme.bg-dark : Theme.fg-bright;
+        }
+    }
+}
+
+component TypingBubble inherits Rectangle {
+    height: 36px; width: 64px;
+    border-radius: 14px; border-width: 1px; border-color: Theme.muted; background: Theme.bg-light;
+    // Three dots that pulse in turn.
+    property <int> tick: mod(floor(animation-tick() / 1s * 3), 3);
+    HorizontalLayout {
+        alignment: center; spacing: 6px;
+        for dot in 3: Rectangle {
+            y: (root.height - self.height) / 2; width: 8px; height: 8px; border-radius: 4px;
+            background: Theme.fg-dim; opacity: root.tick == dot ? 1.0 : 0.35;
+        }
+    }
+}
+
+// The scrolling conversation. It stays pinned to the newest message.
+export component ChatMessages inherits Rectangle {
+    background: Theme.bg-dark; border-radius: 10px; border-width: 1px; border-color: Theme.muted;
+    clip: true;
+    flick := Flickable {
+        x: 0; y: 0; width: root.width; height: root.height;
+        content-width: self.width;
+        changed content-height => { self.content-y = min(0px, self.height - self.content-height); }
+        VerticalLayout {
+            padding: 14px; spacing: 10px; alignment: start;
+            if AgentChat.messages.length == 0 && !AgentChat.busy: Text {
+                text: "Say hi. Angie is listening."; color: Theme.fg-dim; font-size: 13px; horizontal-alignment: center;
+            }
+            for message in AgentChat.messages: HorizontalLayout {
+                if message.mine: Rectangle { horizontal-stretch: 1; }
+                Bubble { message: message; limit: root.width * 0.8; }
+                if !message.mine: Rectangle { horizontal-stretch: 1; }
+            }
+            if AgentChat.busy: HorizontalLayout {
+                TypingBubble { }
+                Rectangle { horizontal-stretch: 1; }
+            }
+        }
+    }
+}

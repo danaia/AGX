@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -11,10 +12,12 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent"))
+import chat
 import main
 import models
 import scope
 import session
+import solo
 
 
 class Sandbox:
@@ -211,12 +214,92 @@ class LaunchTests(unittest.TestCase):
             self.assertIn("Scope: the ANGI operating system", seen["legacy"])
 
 
+class ChatTests(unittest.TestCase):
+    """Chat: one persona agent that can talk and load its skill, and nothing else."""
+    def assets(self, temporary):
+        (Path(temporary) / "profiles").mkdir(exist_ok=True)
+        (Path(temporary) / "profiles/chat.md").write_text("ROLE chat")
+        return patch.object(session, "ASSETS", Path(temporary))
+
+    def test_the_chat_scope_is_conversation_only(self):
+        text = scope.chat_scope_text()
+        self.assertIn("conversation only", text)
+        self.assertIn("do not use administrator access", text)
+
+    def test_chat_is_one_agent_that_may_only_load_skills(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_STATE_HOME": temporary}), self.assets(temporary):
+            agent = json.loads(chat.config())["agent"]
+        self.assertEqual(list(agent), ["angi-chat"])
+        self.assertEqual(agent["angi-chat"]["permission"], {"*": "deny", "skill": "allow"})
+        self.assertTrue(agent["angi-chat"]["prompt"].startswith("ROLE chat"))
+        self.assertIn("Scope: conversation only", agent["angi-chat"]["prompt"])
+
+    def test_the_persona_skill_and_profile_ship_with_the_agent(self):
+        root = Path(__file__).resolve().parents[1] / "apps/agent"
+        skill = (root / "skills/angi-chat/SKILL.md").read_text()
+        self.assertTrue(skill.startswith("---\nname: angi-chat\n"))
+        self.assertIn("Angie", skill)
+        self.assertIn("angi-chat", (root / "profiles/chat.md").read_text())
+        for forbidden in ("angi-root", "angi-update"):
+            self.assertNotIn(forbidden, (root / "profiles/chat.md").read_text())
+
+    def test_a_chat_starts_in_its_own_folder_and_is_recorded_as_a_chat(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_CONFIG_HOME": temporary, "XDG_STATE_HOME": temporary}), self.assets(temporary), \
+                patch.object(session, "install_skills"), patch.object(chat.os, "chdir") as chdir, patch.object(chat.os, "execvp") as execvp:
+            state = Path(temporary) / "state"
+            state.mkdir()
+            chat.launch(state, "hi Angie")
+            run = json.loads(next(state.glob("angi-chat-*/run.json")).read_text())
+            execvp.assert_called_once_with("opencode", ["opencode", "--agent", "angi-chat", "--prompt", "hi Angie"])
+            chdir.assert_called_once_with(state / "chat")
+            self.assertEqual((run["mode"], run["brief"]), ("chat", "hi Angie"))
+            self.assertTrue(chat.newest(state))
+            self.assertFalse(solo.newest(state))
+
+    def test_replies_are_the_text_parts_or_the_error(self):
+        text = lambda value: json.dumps({"type": "text", "part": {"text": value}})
+        self.assertEqual(chat.parse_reply("\n".join([json.dumps({"type": "step_start"}), text("Hey "), "noise", text("there!")])), ("Hey there!", None))
+        failure = json.dumps({"type": "error", "error": {"name": "APIError", "data": {"message": "No credits"}}})
+        self.assertEqual(chat.parse_reply(failure), ("", "No credits"))
+
+    def test_a_turn_continues_the_chat_unless_it_is_new_and_reports_failures(self):
+        reply = lambda out, err="": subprocess.CompletedProcess([], 0, out, err)
+        said = json.dumps({"type": "text", "part": {"text": "Hi!"}})
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_CONFIG_HOME": temporary, "XDG_STATE_HOME": temporary}), self.assets(temporary), \
+                patch.object(session, "install_skills"), patch.object(chat.os, "chdir"):
+            state = Path(temporary)
+            with patch.object(chat.subprocess, "run", return_value=reply(said)) as run:
+                self.assertEqual(chat.turn(state, "hello"), {"text": "Hi!"})
+                self.assertIn("--continue", run.call_args.args[0])
+                chat.turn(state, "hello", new=True)
+                self.assertNotIn("--continue", run.call_args.args[0])
+                self.assertEqual(run.call_args.args[0][-1], "hello")
+            with patch.object(chat.subprocess, "run", return_value=reply("", "boom\nModel not found")):
+                self.assertEqual(chat.turn(state, "hello"), {"error": "Model not found"})
+            with patch.object(chat.subprocess, "run", side_effect=subprocess.TimeoutExpired("opencode", 1)):
+                self.assertIn("too long", chat.turn(state, "hello")["error"])
+
+    def test_resume_follows_the_most_recent_kind_of_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            self.assertFalse(chat.newest(state))
+            for name, when in (("current", 100), ("os-current", 200), ("chat-current", 300)):
+                (state / name).write_text("x")
+                os.utime(state / name, (when, when))
+            self.assertTrue(chat.newest(state))
+            self.assertFalse(solo.newest(state))
+            os.utime(state / "os-current", (400, 400))
+            self.assertFalse(chat.newest(state))
+            self.assertTrue(solo.newest(state))
+
+
 class CommandTests(unittest.TestCase):
     def test_angi_request_forms(self):
-        self.assertEqual(main.angi_request(["angi"]), (None, None))
-        self.assertEqual(main.angi_request(["angi", "--prompt", " build a thing "]), ("build a thing", None))
-        self.assertEqual(main.angi_request(["angi", "--prompt", "build", "--project", "/home/dana/shop"]), ("build", "/home/dana/shop"))
-        for bad in ([], ["angi", "--prompt"], ["angi", "--prompt", ""], ["angi", "--prompt", "x", "--project"], ["angi", "--prompt", "x", "--other", "y"], ["angi", "--prompt", "x", "--project", " "], ["status"]):
+        self.assertEqual(main.angi_request(["angi"]), (None, None, False))
+        self.assertEqual(main.angi_request(["angi", "--prompt", " build a thing "]), ("build a thing", None, False))
+        self.assertEqual(main.angi_request(["angi", "--prompt", "build", "--project", "/home/dana/shop"]), ("build", "/home/dana/shop", False))
+        self.assertEqual(main.angi_request(["angi", "--prompt", " hi Angie ", "--chat"]), ("hi Angie", None, True))
+        for bad in ([], ["angi", "--prompt"], ["angi", "--prompt", ""], ["angi", "--prompt", "x", "--project"], ["angi", "--prompt", "x", "--other", "y"], ["angi", "--prompt", "x", "--project", " "], ["angi", "--prompt", "x", "--chat", "y"], ["angi", "--prompt", "x", "--project", "/a", "--chat"], ["status"]):
             self.assertIs(main.angi_request(bad), False, bad)
 
     def test_project_check_reports_a_path_or_an_error_as_one_json_line(self):

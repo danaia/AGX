@@ -95,8 +95,8 @@ impl PixelFormat {
         let bytes_per_pixel = usize::from(self.bits_per_pixel / 8);
         out.reserve(rect.w * rect.h * bytes_per_pixel);
         for y in rect.y..rect.y + rect.h {
-            let start = (y * frame.width + rect.x) * 4;
-            let row = &frame.rgba[start..start + rect.w * 4];
+            let start = rect.x * 4;
+            let row = &frame.row(y)[start..start + rect.w * 4];
             if *self == Self::NATIVE {
                 for pixel in row.chunks_exact(4) {
                     out.extend_from_slice(&[pixel[2], pixel[1], pixel[0], 0]);
@@ -352,11 +352,7 @@ mod tests {
     }
 
     fn one_pixel(r: u8, g: u8, b: u8) -> Frame {
-        Frame {
-            width: 1,
-            height: 1,
-            rgba: vec![r, g, b, 255],
-        }
+        Frame::from_rgba(1, 1, &[r, g, b, 255])
     }
 
     fn encoded(format: PixelFormat, frame: &Frame) -> Vec<u8> {
@@ -402,11 +398,7 @@ mod tests {
 
     #[test]
     fn only_the_requested_rectangle_is_encoded() {
-        let frame = Frame {
-            width: 3,
-            height: 2,
-            rgba: (0..24).collect(),
-        };
+        let frame = Frame::from_rgba(3, 2, &(0..24).collect::<Vec<_>>());
         let mut out = Vec::new();
         PixelFormat::NATIVE.encode(
             &frame,
@@ -437,11 +429,7 @@ mod tests {
                 Ok(())
             }
         }
-        let frame = Frame {
-            width: 8,
-            height: 4,
-            rgba: (0..128).collect(),
-        };
+        let frame = Frame::from_rgba(8, 4, &(0..128).collect::<Vec<_>>());
         let rect = Rect {
             x: 2,
             y: 1,

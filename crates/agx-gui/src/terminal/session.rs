@@ -96,11 +96,20 @@ impl EventListener for Proxy {
         self.0.dirty.store(true, Ordering::Release);
     }
 }
+/// What an Agent Angie terminal run is for: the operating system or a project folder. (Chat has its own
+/// bubble view, `agent_chat.rs`.)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum AgentRun {
+    Os,
+    /// A folder the agent runtime validates.
+    Project(String),
+}
 /// Command line for Agent Angie: the operating system by default, or `--project DIR`.
-pub(super) fn agent_arguments(prompt: String, project: Option<String>) -> Vec<String> {
+pub(super) fn agent_arguments(prompt: String, run: AgentRun) -> Vec<String> {
     let mut arguments = vec!["angi".into(), "--prompt".into(), prompt];
-    if let Some(project) = project {
-        arguments.extend(["--project".into(), project]);
+    match run {
+        AgentRun::Os => {}
+        AgentRun::Project(project) => arguments.extend(["--project".into(), project]),
     }
     arguments
 }
@@ -145,11 +154,11 @@ impl Session {
     pub fn opencode(size: Size) -> io::Result<Self> {
         Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }
-    /// Agent Angie on the operating system, or in `project` (a folder the agent runtime validates).
-    pub fn agent(size: Size, prompt: String, project: Option<String>) -> io::Result<Self> {
+    /// Agent Angie on the operating system, or in a project folder.
+    pub fn agent(size: Size, prompt: String, run: AgentRun) -> io::Result<Self> {
         Self::start(
             size,
-            Some(("/usr/bin/agent", agent_arguments(prompt, project), "Agent Angie")),
+            Some(("/usr/bin/agent", agent_arguments(prompt, run), "Agent Angie")),
             None,
         )
     }

@@ -2,7 +2,8 @@ import { Theme } from "data.slint";
 import { Button } from "std-widgets.slint";
 import { HoverDwell, HoverTip } from "hover-tip.slint";
 
-// What Agent Angie builds: the operating system ("os") or one project folder ("project").
+// What Agent Angie does: build the operating system ("os"), build in one project folder ("project"),
+// or just talk ("chat").
 //
 // The project folder arrives through two callbacks only:
 //   choose-project()   the user asked to pick a folder; agent_project.rs opens ANGI Files' picker.
@@ -12,24 +13,25 @@ export global AgentScope {
     in-out property <string> project;
     in-out property <string> error;
     in-out property <bool> checking;
-    out property <bool> ready: mode == "os" || project != "";
+    out property <bool> ready: mode != "project" || project != "";
     callback choose-project();
     callback use-project(string);
 }
 
-// Two-segment switch. Hovering a segment for a moment raises `hint` (0 = OS, 1 = Project), which the
-// panel turns into a tooltip beside it.
+// Three-segment switch. Hovering a segment for a moment raises `hint` (0 = OS, 1 = Project, 2 = Chat),
+// which the panel turns into a tooltip beside it.
 export component ModeSwitch inherits Rectangle {
     out property <int> hint: -1;
-    width: 176px; height: 32px;
+    property <[string]> modes: ["os", "project", "chat"];
+    width: 240px; height: 32px;
     border-radius: 8px; border-width: 1px; border-color: Theme.muted; background: Theme.bg-dark;
-    for label[index] in ["OS", "Project"] : Rectangle {
-        x: index * parent.width / 2; width: parent.width / 2; height: parent.height;
-        property <bool> selected: (index == 0) == (AgentScope.mode == "os");
+    for label[index] in ["OS", "Project", "Chat"] : Rectangle {
+        x: index * parent.width / 3; width: parent.width / 3; height: parent.height;
+        property <bool> selected: AgentScope.mode == root.modes[index];
         border-radius: 7px; background: selected ? Theme.accent : transparent;
         Text { text: label; color: selected ? Theme.bg-dark : Theme.fg; font-size: 12px; font-weight: selected ? 700 : 400; }
         pointer := TouchArea {
-            clicked => { AgentScope.mode = index == 0 ? "os" : "project"; dwell.dismiss(); }
+            clicked => { AgentScope.mode = root.modes[index]; dwell.dismiss(); }
         }
         dwell := HoverDwell {
             hovered: pointer.has-hover;
@@ -45,7 +47,9 @@ export component ScopeTip inherits HoverTip {
     in property <int> hint;
     shown: root.hint >= 0;
     width: 330px;
-    text: root.hint == 1
+    text: root.hint == 2
+        ? "Chat: just talk. Angie answers as herself in a plain conversation. She builds nothing and touches no files."
+        : root.hint == 1
         ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
         : "OS: you are extending the operating system. Herdr's agents focus strictly on ANGI itself: its source, services and desktop on this device.";
 }

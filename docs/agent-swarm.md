@@ -108,9 +108,9 @@ Upstream: [Herdr 0.9.5](https://github.com/herdrdev/herdr/releases/tag/v0.9.5)
 and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
 
 
-## What Agent Angie builds: OS or Project
+## What Agent Angie does: OS, Project or Chat
 
-A switch under the prompt chooses the scope of a run; hovering either side explains it.
+A three-way switch under the prompt chooses the scope of a run; hovering a side explains it.
 
 * **OS** (the default) changes the operating system, mostly its desktop. It is **one agent, not a
   swarm, and does not use Herdr**: OpenCode starts in the terminal with a single `angi-os` agent, its
@@ -123,9 +123,23 @@ A switch under the prompt chooses the scope of a run; hovering either side expla
   chosen. All three Herdr panes start in that folder, and the agents are told to work only inside
   it, to leave the operating system and its source alone, and not to use `angi-root`.
 
+* **Chat** is just conversation with Angie's persona, shown as chat bubbles in the panel itself
+  (no terminal): your messages on the right, Angie's on the left, a typing indicator while she
+  answers and a red bubble if a turn fails. **New chat** clears the conversation. Like OS it is
+  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new] MESSAGE`
+  (`apps/agent/chat.py`), which calls `opencode run --agent angi-chat --format json` and prints one
+  JSON line, `{"text": ...}` or `{"error": ...}`. The agent loads the `angi-chat` skill
+  (`apps/agent/skills/angi-chat/SKILL.md`: who Angie is, how she talks, honesty rules) and is
+  allowed nothing else, so it reads, writes and runs nothing. It works in a private `chat` folder
+  in the swarm state directory; the first message of a conversation passes `--new`, later ones
+  continue that session. `agent angi --prompt BRIEF --chat` still runs the same agent in a terminal.
+  Chat needs no folder. It uses the model chosen for **OS updates** (the other single-agent role),
+  or OpenCode's default when none is chosen. The provider cards are hidden while chatting to give
+  the conversation the room.
+
 Provider setup has a model for **OS updates** next to the project roles. It is saved like the others
 (per service, applied to new runs) and, until one is chosen, OpenCode's default model is used.
-`agent angi` resumes the most recent run, whichever kind it was. Runs started before this change that
+`agent angi` resumes the most recent run, whichever kind it was (chat, OS update or swarm). Runs started before this change that
 were OS swarms still resume as swarms.
 
 The scope is the folder the agents start in plus a scope block appended to each prompt

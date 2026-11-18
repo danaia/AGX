@@ -111,11 +111,7 @@ pub fn start<C: ComponentHandle + 'static>(ui: &C) -> Option<Remote> {
                     u32::from(width),
                     u32::from(height),
                 ));
-                let frame = ui.window().take_snapshot().ok().map(|snapshot| Frame {
-                    width: snapshot.width() as usize,
-                    height: snapshot.height() as usize,
-                    rgba: snapshot.as_bytes().to_vec(),
-                });
+                let frame = ui.window().take_snapshot().ok().map(Frame::from_snapshot);
                 eprintln!("agx-gui: vnc desktop resized to {width}x{height}");
                 let _ = sender.send(frame);
             })
@@ -163,11 +159,7 @@ pub fn start<C: ComponentHandle + 'static>(ui: &C) -> Option<Remote> {
         let Some(ui) = weak.upgrade() else { return };
         last = Instant::now();
         match ui.window().take_snapshot() {
-            Ok(snapshot) => shared.publish(Frame {
-                width: snapshot.width() as usize,
-                height: snapshot.height() as usize,
-                rgba: snapshot.as_bytes().to_vec(),
-            }),
+            Ok(snapshot) => shared.publish(Frame::from_snapshot(snapshot)),
             Err(error) if !warned => {
                 warned = true;
                 eprintln!("agx-gui: vnc: cannot capture the window: {error}");

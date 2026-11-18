@@ -93,11 +93,14 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
             if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
                 // OS mode builds the operating system; Project mode builds in the chosen folder.
                 let scope = ui.global::<crate::AgentScope>();
-                let project = (scope.get_mode() == "project").then(|| scope.get_project().to_string());
-                if project.as_deref() == Some("") {
-                    return;
-                }
-                app.terminal_open_agent(&ui, prompt.to_string(), project);
+                let run = match scope.get_mode().as_str() {
+                    "project" if scope.get_project().is_empty() => return,
+                    "project" => terminal::AgentRun::Project(scope.get_project().to_string()),
+                    // Chat is the bubble view's own send; it never opens a terminal.
+                    "chat" => return,
+                    _ => terminal::AgentRun::Os,
+                };
+                app.terminal_open_agent(&ui, prompt.to_string(), run);
             }
         });
     }
@@ -137,6 +140,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _terminal_watch = terminal::install(&ui, &app);
     let _browser_watch = browser::install(&ui, &app);
     let _provider_watch = crate::agent_providers::install(&ui, &app);
+    let _chat_watch = crate::agent_chat::install(&ui);
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);
     let _bluetooth_watch = crate::bluetooth::install(&ui, &app);

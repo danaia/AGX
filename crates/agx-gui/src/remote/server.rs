@@ -239,11 +239,20 @@ impl Shared {
     }
 
     fn unregister(&self, id: u64) {
-        let mut hub = self.hub();
-        hub.clients.remove(&id);
-        if hub.clients.is_empty() {
-            hub.frame = None;
+        let released_capture = {
+            let mut hub = self.hub();
+            hub.clients.remove(&id);
+            hub.clients.is_empty() && hub.frame.take().is_some()
+        };
+        // A full capture can leave several MiB in glibc arenas. Return free pages
+        // once the last viewer leaves, outside the hub lock on the network thread.
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        if released_capture {
+            // SAFETY: malloc_trim is thread-safe and does not take any Rust pointers.
+            unsafe { libc::malloc_trim(0) };
         }
+        #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+        let _ = released_capture;
     }
 
     fn update_client(&self, id: u64, change: impl FnOnce(&mut ClientState)) {

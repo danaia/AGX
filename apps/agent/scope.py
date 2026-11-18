@@ -1,4 +1,4 @@
-"""What a build run may touch: the ANGI operating system, or one project folder the user chose.
+"""What a run may touch: the ANGI operating system, one project folder the user chose, or nothing (chat).
 
 The scope is instructions in each agent's prompt plus the folder the panes start in. It steers the
 agents; it is not a sandbox, because the agents run as the desktop account with its permissions.
@@ -67,6 +67,16 @@ files (code, tests, notes) in it. Do not modify the ANGI operating system, its s
 device's toolchain; use it to build and run the project, and ignore its source-checkout, deployment
 and root-install guidance. Do not use angi-root; if the project needs a system change, stop and ask
 the user."""
+
+
+CHAT_SCOPE = """Scope: conversation only.
+This is a chat, not a build. Talk with the user; do not read, create, change or run anything on this
+device, and do not use administrator access. If the user wants something built or changed, tell them
+to switch Agent Angie's OS or Project toggle and describe it there."""
+
+
+def chat_scope_text():
+    return CHAT_SCOPE
 
 
 def scope_text(project=None):

@@ -1,11 +1,21 @@
-//! Captured window pixels and change detection. Pure data: no Slint, sockets or threads.
+//! Captured window pixels and change detection.
+
+use slint::{Rgba8Pixel, SharedPixelBuffer};
 
 /// An RGBA8 (4 bytes per pixel, row-major, no padding) image of the whole window.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Frame {
     pub width: usize,
     pub height: usize,
-    pub rgba: Vec<u8>,
+    pixels: SharedPixelBuffer<Rgba8Pixel>,
+}
+
+impl PartialEq for Frame {
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width
+            && self.height == other.height
+            && self.pixels.as_bytes() == other.pixels.as_bytes()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -17,6 +27,14 @@ pub struct Rect {
 }
 
 impl Frame {
+    pub fn from_snapshot(pixels: SharedPixelBuffer<Rgba8Pixel>) -> Self {
+        Self {
+            width: pixels.width() as usize,
+            height: pixels.height() as usize,
+            pixels,
+        }
+    }
+
     pub fn bounds(&self) -> Rect {
         Rect {
             x: 0,
@@ -26,8 +44,19 @@ impl Frame {
         }
     }
 
-    fn row(&self, y: usize) -> &[u8] {
-        &self.rgba[y * self.width * 4..(y + 1) * self.width * 4]
+    pub fn row(&self, y: usize) -> &[u8] {
+        let stride = self.width * 4;
+        &self.pixels.as_bytes()[y * stride..(y + 1) * stride]
+    }
+
+    #[cfg(test)]
+    pub fn from_rgba(width: u32, height: u32, bytes: &[u8]) -> Self {
+        Self::from_snapshot(SharedPixelBuffer::clone_from_slice(bytes, width, height))
+    }
+
+    #[cfg(test)]
+    pub fn rgba_mut(&mut self) -> &mut [u8] {
+        self.pixels.make_mut_bytes()
     }
 }
 
@@ -69,16 +98,13 @@ pub fn changed_bounds(old: &Frame, new: &Frame) -> Option<Rect> {
 mod tests {
     use super::*;
 
-    fn blank(width: usize, height: usize) -> Frame {
-        Frame {
-            width,
-            height,
-            rgba: vec![0; width * height * 4],
-        }
+    fn blank(width: u32, height: u32) -> Frame {
+        Frame::from_snapshot(SharedPixelBuffer::new(width, height))
     }
 
     fn paint(frame: &mut Frame, x: usize, y: usize) {
-        frame.rgba[(y * frame.width + x) * 4] = 255;
+        let index = (y * frame.width + x) * 4;
+        frame.rgba_mut()[index] = 255;
     }
 
     #[test]

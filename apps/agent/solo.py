@@ -52,6 +52,6 @@ def resume(state):
 
 
 def newest(state):
-    """True when the last run was an OS update run, not a swarm."""
-    solo, swarm = state / "os-current", state / "current"
-    return solo.exists() and (not swarm.exists() or solo.stat().st_mtime >= swarm.stat().st_mtime)
+    """True when the last run was an OS update run, not a swarm or a chat."""
+    solo = state / "os-current"
+    return solo.exists() and all(not other.exists() or solo.stat().st_mtime >= other.stat().st_mtime for other in (state / "current", state / "chat-current"))

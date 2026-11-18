@@ -3,7 +3,8 @@ import { LineEdit, Button } from "std-widgets.slint";
 
 import { AgentProviders, CardModels, ProviderCards, ProviderPanel } from "agent-providers.slint";
 import { AgentScope, ModeSwitch, ProjectRow, ScopeTip } from "agent-scope.slint";
-export { AgentProviders, CardModels, AgentScope }
+import { AgentChat, ChatMessage, ChatMessages } from "agent-chat.slint";
+export { AgentProviders, CardModels, AgentScope, AgentChat, ChatMessage }
 
 export global AgentAngie {
     // Agents and swarms still running for this account, kept current by agent_swarm.rs. A swarm
@@ -70,27 +71,49 @@ export component AgentPanel inherits Rectangle {
     width: AgentProviders.open ? max(0px, parent.width - min(440px, parent.width * 0.48)) : parent.width;
     height: parent.height;
     property <bool> herdr-visible: AgentAngie.running-agents > 0;
+    property <bool> chatting: AgentScope.mode == "chat";
     VerticalLayout {
         x: max(20px, (content.width - 660px) / 2);
         // A short window moves the prompt down rather than under the Herdr banner.
-        y: max(24px + (content.herdr-visible ? 68px : 0px), (content.height - 390px) / 2);
+        y: content.chatting ? 24px + (content.herdr-visible ? 68px : 0px)
+            : max(24px + (content.herdr-visible ? 68px : 0px), (content.height - 390px) / 2);
         width: min(660px, content.width - 40px);
-        height: 220px + (AgentScope.mode == "project" ? 48px + (AgentScope.error != "" ? 22px : 0px) : 0px);
+        height: content.chatting ? max(240px, content.height - 48px - (content.herdr-visible ? 68px : 0px))
+            : 220px + (AgentScope.mode == "project" ? 48px + (AgentScope.error != "" ? 22px : 0px) : 0px);
         spacing: 16px;
-        // Rows below the prompt appear and disappear; keep everything above them where it is.
-        alignment: start;
-        Text { text: "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; }
-        Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
-        Text { text: "Describe your idea and Agent Angie will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
+        // Rows below the prompt appear and disappear; keep everything above them where it is. A chat
+        // instead stretches its conversation to fill the panel.
+        alignment: content.chatting ? stretch : start;
+        HorizontalLayout {
+            spacing: 12px;
+            Text { text: content.chatting ? "AGENT ANGIE · CHAT" : "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            if content.chatting: Button { text: "New chat"; enabled: AgentChat.messages.length > 0 && !AgentChat.busy; clicked => { AgentChat.new-chat(); } }
+        }
+        if !content.chatting: Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
+        if !content.chatting: Text { text: "Describe your idea and Agent Angie will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
+        if content.chatting: ChatMessages { vertical-stretch: 1; }
         prompt := LineEdit {
-            placeholder-text: "Describe what you want to build…";
-            accepted => { if (self.text != "" && AgentScope.ready) { AgentAngie.submit(self.text); } }
+            placeholder-text: content.chatting ? "Say hi to Angie…" : "Describe what you want to build…";
+            accepted => {
+                if (self.text == "" || !AgentScope.ready) { return; }
+                if (content.chatting) {
+                    if (!AgentChat.busy) { AgentChat.send(self.text); self.text = ""; }
+                } else { AgentAngie.submit(self.text); }
+            }
         }
         HorizontalLayout {
             spacing: 12px;
             scope-switch := ModeSwitch { y: 2px; }
             Rectangle { horizontal-stretch: 1; }
-            Button { text: "Start building"; enabled: prompt.text != "" && AgentScope.ready; clicked => { AgentAngie.submit(prompt.text); } }
+            Button {
+                text: content.chatting ? "Send" : "Start building";
+                enabled: prompt.text != "" && AgentScope.ready && !(content.chatting && AgentChat.busy);
+                clicked => {
+                    if (content.chatting) { AgentChat.send(prompt.text); prompt.text = ""; }
+                    else { AgentAngie.submit(prompt.text); }
+                }
+            }
         }
         if AgentScope.mode == "project": ProjectRow { }
     }
@@ -99,7 +122,7 @@ export component AgentPanel inherits Rectangle {
         width: min(450px, max(0px, content.width - 24px));
         x: content.width - self.width - 16px; y: 16px;
     }
-    ProviderCards {
+    if !content.chatting: ProviderCards {
         x: 24px; y: max(270px, content.height - 176px);
         width: max(0px, content.width - 48px); height: 150px;
     }
@@ -107,7 +130,9 @@ export component AgentPanel inherits Rectangle {
     ScopeTip {
         hint: scope-switch.hint;
         x: scope-switch.absolute-position.x - content.absolute-position.x;
-        y: scope-switch.absolute-position.y - content.absolute-position.y + scope-switch.height + 8px;
+        // In a chat the switch sits at the panel's bottom edge, so the tip opens above it.
+        y: content.chatting ? scope-switch.absolute-position.y - content.absolute-position.y - self.height - 8px
+            : scope-switch.absolute-position.y - content.absolute-position.y + scope-switch.height + 8px;
     }
     }
     if AgentProviders.open: ProviderPanel {

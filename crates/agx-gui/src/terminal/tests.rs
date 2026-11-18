@@ -1,7 +1,7 @@
 //! Exercise the integration contract, not Alacritty's own parser implementation.
 use super::{
     render,
-    session::{Proxy, Session, Size, agent_arguments},
+    session::{AgentRun, Proxy, Session, Size, agent_arguments},
 };
 use alacritty_terminal::{
     Term,
@@ -95,16 +95,20 @@ fn shell_pty_resizes_and_closing_it_reaps_the_child() {
 #[test]
 fn agent_arguments_select_the_operating_system_or_a_project_folder() {
     assert_eq!(
-        agent_arguments("make it".into(), None),
+        agent_arguments("make it".into(), AgentRun::Os),
         ["angi", "--prompt", "make it"]
     );
     assert_eq!(
-        agent_arguments("make it".into(), Some("/home/dana/shop".into())),
+        agent_arguments("make it".into(), AgentRun::Project("/home/dana/shop".into())),
         ["angi", "--prompt", "make it", "--project", "/home/dana/shop"]
     );
-    // A brief that looks like a flag stays one argument, so it can never choose the folder.
+    // A brief that looks like a flag stays one argument, so it can never choose the folder or the mode.
     assert_eq!(
-        agent_arguments("--project /etc".into(), None),
+        agent_arguments("--project /etc".into(), AgentRun::Os),
         ["angi", "--prompt", "--project /etc"]
+    );
+    assert_eq!(
+        agent_arguments("--chat".into(), AgentRun::Os),
+        ["angi", "--prompt", "--chat"]
     );
 }
