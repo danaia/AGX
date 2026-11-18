@@ -303,6 +303,69 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
         render();
         assert!(!page.get_active(), "leaving the page stops polling");
     }
+    // The real wiring end to end: a stand-in daemon answers on a private socket, so the worker
+    // thread, request framing, poll gating and presentation all run as they do on the device.
+    {
+        use slint::Model;
+        use std::io::{BufRead, BufReader, Write};
+        let press = |key: slint::platform::Key| {
+            ui.window().dispatch_event(WindowEvent::KeyPressed { text: key.into() });
+            slint::platform::update_timers_and_animations();
+        };
+        let socket = std::env::temp_dir().join(format!("agx-bt-gui-{}.sock", std::process::id()));
+        let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        // Only this test reads the variable, and it runs on this thread before the worker starts.
+        unsafe { std::env::set_var(agx_bluetooth::SOCKET_ENV, &socket) };
+        let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+        let log = requests.clone();
+        std::thread::spawn(move || {
+            let status = agx_bluetooth::Status {
+                adapter: Some(agx_bluetooth::Adapter { name: "angi".into(), address: "00:11:22:33:44:55".into(), powered: true, scanning: true }),
+                devices: vec![
+                    agx_bluetooth::Device { address: "AA:BB:CC:00:00:01".into(), name: "Speaker".into(), paired: true, connected: true, ..Default::default() },
+                    agx_bluetooth::Device { address: "AA:BB:CC:00:00:02".into(), name: "Phone".into(), rssi: Some(-50), ..Default::default() },
+                ],
+                ..Default::default()
+            };
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { break };
+                let mut line = String::new();
+                BufReader::new(&stream).read_line(&mut line).unwrap();
+                log.lock().unwrap().push(line.trim().to_owned());
+                let reply = agx_bluetooth::Reply { ok: true, message: "Bluetooth status".into(), status: status.clone() };
+                let _ = writeln!(stream, "{}", serde_json::to_string(&reply).unwrap());
+            }
+        });
+        let watch = crate::bluetooth::install(&ui, &settings_app);
+        let page = ui.global::<BluetoothSettings>();
+        press(slint::platform::Key::PageDown);
+        let wait = |done: &dyn Fn() -> bool| {
+            for _ in 0..80 {
+                slint::platform::update_timers_and_animations();
+                if done() {
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            panic!("timed out waiting for the Bluetooth service state to reach the page");
+        };
+        wait(&|| page.get_devices().row_count() == 2);
+        assert!(page.get_available() && page.get_adapter() && page.get_powered() && page.get_scanning());
+        assert_eq!(page.get_devices().row_data(0).unwrap().header, "MY DEVICES");
+        assert_eq!(page.get_devices().row_data(1).unwrap().header, "NEARBY DEVICES");
+        assert_eq!(requests.lock().unwrap()[0], r#"{"cmd":"status"}"#, "the page polls with a plain status request");
+        // An action goes through the worker as the same wire request the CLI would send.
+        page.invoke_act("AA:BB:CC:00:00:02".into(), 0);
+        wait(&|| requests.lock().unwrap().iter().any(|r| r == r#"{"cmd":"pair","address":"AA:BB:CC:00:00:02"}"#));
+        // A stopped service is reported rather than leaving stale devices on screen.
+        std::fs::remove_file(&socket).unwrap();
+        wait(&|| !page.get_available());
+        assert_eq!(page.get_devices().row_count(), 0);
+        assert!(page.get_status().contains("unavailable"));
+        drop(watch);
+        unsafe { std::env::remove_var(agx_bluetooth::SOCKET_ENV) };
+        press(slint::platform::Key::PageUp);
+    }
     let settings_rect = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
     click(settings_rect.right() - 12., settings_rect.y + 14.);
     assert!(
