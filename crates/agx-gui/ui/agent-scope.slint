@@ -1,5 +1,6 @@
 import { Theme } from "data.slint";
 import { Button } from "std-widgets.slint";
+import { HoverDwell, HoverTip } from "hover-tip.slint";
 
 // What Agent Angie builds: the operating system ("os") or one project folder ("project").
 //
@@ -27,28 +28,26 @@ export component ModeSwitch inherits Rectangle {
         property <bool> selected: (index == 0) == (AgentScope.mode == "os");
         border-radius: 7px; background: selected ? Theme.accent : transparent;
         Text { text: label; color: selected ? Theme.bg-dark : Theme.fg; font-size: 12px; font-weight: selected ? 700 : 400; }
-        TouchArea {
-            clicked => { AgentScope.mode = index == 0 ? "os" : "project"; root.hint = -1; }
-            changed has-hover => {
-                dwell.running = self.has-hover;
-                if (!self.has-hover) { root.hint = -1; }
+        pointer := TouchArea {
+            clicked => { AgentScope.mode = index == 0 ? "os" : "project"; dwell.dismiss(); }
+        }
+        dwell := HoverDwell {
+            hovered: pointer.has-hover;
+            changed ready => {
+                if self.ready { root.hint = index; }
+                else if root.hint == index { root.hint = -1; }
             }
         }
-        dwell := Timer { interval: 400ms; running: false; triggered => { self.running = false; root.hint = index; } }
     }
 }
 
-export component ScopeTip inherits Rectangle {
+export component ScopeTip inherits HoverTip {
     in property <int> hint;
-    visible: hint >= 0;
-    width: 330px; height: words.preferred-height + 22px;
-    background: Theme.bg-light; border-color: Theme.accent; border-width: 1px; border-radius: 8px;
-    words := Text {
-        x: 13px; y: 11px; width: parent.width - 26px; wrap: word-wrap; font-size: 12px; color: Theme.fg-bright;
-        text: root.hint == 1
-            ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
-            : "OS: you are extending the operating system. Herdr's agents focus strictly on ANGI itself: its source, services and desktop on this device.";
-    }
+    shown: root.hint >= 0;
+    width: 330px;
+    text: root.hint == 1
+        ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
+        : "OS: you are extending the operating system. Herdr's agents focus strictly on ANGI itself: its source, services and desktop on this device.";
 }
 
 // Shown in Project mode: the chosen folder and a button that opens the folder picker.

@@ -6,4 +6,6 @@ In particular, evaluate source files around 500 lines, split clear responsibilit
 
 Run `python3 scripts/check-file-sizes.py` to review the current large-file backlog. Explain any decision to retain an oversized file rather than silently growing it. Apply the shared guide's exceptions and validation requirements.
 
+For desktop tooltips, follow the shared [ANGI desktop tooltips skill](.claude/skills/angi-desktop-tooltips/SKILL.md). Agent Angie's OS and Project toggle is the reference.
+
 For any Pi access or control, read [.claude/skills/angi-pi-ethernet/SKILL.md](.claude/skills/angi-pi-ethernet/SKILL.md) and follow [docs/pi-ethernet.md](docs/pi-ethernet.md). This is the same skill and procedure used by Codex. Connect over direct Ethernet to `root@10.78.0.2`; `10.77.0.2` is only the recorded host-key alias for that connection. Apply the deployment authorization and access rules in `AGENTS.md`.

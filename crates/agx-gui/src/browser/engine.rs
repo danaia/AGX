@@ -33,6 +33,7 @@ pub struct Updates {
     pub uri: Option<String>,
     pub status: Option<(u8, u8)>,
     pub error: Option<String>,
+    pub download: Option<String>,
     pub cursor: Option<u8>,
     pub options: Option<Vec<protocol::OptionItem>>,
     pub dialog: Option<(u8, String, String)>,
@@ -279,6 +280,10 @@ fn receive(
             10 if data.is_empty() => shared.lock().unwrap().popup_closed = true,
             11 if data.is_empty() => shared.lock().unwrap().close_requested = true,
             12 => shared.lock().unwrap().tabs = Some(protocol::tabs(&data)?),
+            13 if (1..=8192).contains(&data.len()) => {
+                let text = String::from_utf8(data).map_err(io::Error::other)?;
+                shared.lock().unwrap().download = Some(text);
+            }
             _ => return Err(io::Error::other("invalid web host response")),
         }
     }
@@ -321,6 +326,17 @@ mod tests {
         let frame = updates.frame.take().unwrap();
         assert_eq!(frame.sequence, 9);
         assert_eq!(frame.pixels.as_bytes(), &[10, 20, 30, 255, 40, 50, 60, 255]);
+    }
+    #[test]
+    fn download_notices_are_bounded_utf8() {
+        for (message, accepted) in [(&b"Saved a.zip to Downloads"[..], true), (&[0xff, 0xfe][..], false), (&[][..], false)] {
+            let (reader, mut writer) = UnixStream::pair().unwrap();
+            protocol::write(&mut writer, 13, message).unwrap();
+            drop(writer);
+            let state = Mutex::new(Updates::default());
+            assert!(receive(reader, storage(), &state, &|| {}).is_err());
+            assert_eq!(state.lock().unwrap().download.is_some(), accepted);
+        }
     }
     #[test]
     fn oversized_and_unacknowledged_frames_are_rejected() {

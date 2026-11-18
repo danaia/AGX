@@ -16,7 +16,7 @@ mod places;
 mod server;
 #[cfg(test)]
 mod tests;
-mod trash;
+pub(super) mod trash;
 mod worker;
 
 use crate::{App, AppWindow, Files, wm::Kind};

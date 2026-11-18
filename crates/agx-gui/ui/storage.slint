@@ -1,8 +1,21 @@
 import { Theme } from "data.slint";
 import { DesktopInput } from "desktop-input.slint";
+import { ScrollView } from "std-widgets.slint";
+import { HoverDwell } from "hover-tip.slint";
 
 export struct StorageCell { tint: color, path: string, detail: string }
+export struct StorageTrashRow { name: string, location: string, size: string }
 export global StorageView {
+    in-out property <bool> empty-confirming: false;
+    callback empty-trash();
+    in property <[StorageTrashRow]> trash-items;
+    in property <string> trash-message;
+    in property <bool> trash-loading;
+    in property <bool> selected-trashed;
+    callback select-trash(int);
+    callback restore-file();
+    in property <int> category: 0;
+    callback select-category(int);
     in property <[StorageCell]> sd-cells;
     in property <[StorageCell]> nvme-cells;
     in property <string> sd-summary: "Scanning…";
@@ -71,7 +84,7 @@ export component StorageMap inherits Rectangle {
                 accessible-label: cell.path + " · " + cell.detail;
             }
             if root.cells.length == 0: Text {
-                text: root.summary == "Scanning…" ? "Reading file sizes…" : root.summary == "Not mounted" ? "Not mounted" : "No files in this set · use Refresh files";
+                text: root.summary == "Scanning…" ? "Reading file sizes…" : root.summary == "Not mounted" ? "Not mounted" : "No removable files in this category";
                 color: #947a6d; font-size: 11px;
                 vertical-alignment: center; horizontal-alignment: center;
             }
@@ -90,5 +103,77 @@ export component StorageMap inherits Rectangle {
             }
         }
         Text { height: 16px; text: root.status; color: Theme.fg-dim; font-size: 10px; overflow: elide; }
+    }
+}
+
+export component StorageCategories inherits ScrollView {
+    in property <bool> hide-cursor;
+    callback pointer-moved(length, length);
+    out property <string> hint-text;
+    out property <length> hint-x;
+    height: strip.preferred-width > self.width ? 46px : 34px;
+    content-width: max(self.width, strip.preferred-width);
+    content-height: 32px;
+    horizontal-scrollbar-policy: as-needed;
+    vertical-scrollbar-policy: always-off;
+    strip := HorizontalLayout {
+        height: 32px;
+        spacing: 20px;
+        alignment: start;
+        for tab[index] in [
+            { label: "All files", icon: @image-url("icons/storage-categories/all.svg") },
+            { label: "Apps & Games", icon: @image-url("icons/apps/applications.svg") },
+            { label: "Media", icon: @image-url("icons/storage-categories/media.svg") },
+            { label: "Downloads", icon: @image-url("icons/storage-categories/downloads.svg") },
+            { label: "Documents", icon: @image-url("icons/storage-categories/documents.svg") },
+            { label: "Cache", icon: @image-url("icons/apps/storage.svg") },
+            { label: "Other files", icon: @image-url("icons/storage-categories/other.svg") },
+            { label: "Trash", icon: @image-url("icons/storage-categories/trash.svg") },
+        ]: row := Rectangle {
+            width: 28px;
+            horizontal-stretch: 0;
+            height: 31px;
+            background: keys.has-focus ? Theme.bg-light : transparent;
+            accessible-role: button;
+            accessible-label: tab.label;
+            accessible-action-default => { dwell.dismiss(); StorageView.select-category(index); }
+            keys := FocusScope {
+                key-pressed(e) => {
+                    if e.text == Key.Return || e.text == " " {
+                        dwell.dismiss();
+                        StorageView.select-category(index);
+                        return accept;
+                    }
+                    reject
+                }
+                pointer := TouchArea {
+                    mouse-cursor: root.hide-cursor ? MouseCursor.none : MouseCursor.pointer;
+                    moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                    clicked => { dwell.dismiss(); keys.focus(); StorageView.select-category(index); }
+                }
+            }
+            dwell := HoverDwell {
+                hovered: pointer.has-hover;
+                changed ready => {
+                    if self.ready {
+                        root.hint-text = tab.label;
+                        root.hint-x = row.absolute-position.x - root.absolute-position.x;
+                    } else if root.hint-text == tab.label {
+                        root.hint-text = "";
+                    }
+                }
+            }
+            Image {
+                width: 19px;
+                height: 19px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: tab.icon;
+                colorize: StorageView.category == index || pointer.has-hover ? Theme.accent : Theme.fg;
+            }
+            if StorageView.category == index: Rectangle {
+                y: parent.height - 2px; height: 2px; background: Theme.accent;
+            }
+        }
     }
 }

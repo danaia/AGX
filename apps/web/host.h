@@ -24,6 +24,7 @@ typedef struct {
     gboolean visible, focused, closing_tab, tabs_enabled;
     WPEView *view;
     WebKitOptionMenu *menu;
+    GPtrArray *menu_actions;
     WebKitScriptDialog *dialog;
     int control;
     int gpu_fd;
@@ -36,11 +37,13 @@ typedef struct {
     WPEBuffer *queued;
     uint64_t sequence, tab_frame_floor;
     gboolean failed;
+    char *downloads;
     double pointer_x, pointer_y;
 } WebHost;
 
-gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, char **shader_dir);
+gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, char **shader_dir, char **store_dir);
 void web_dialogs_connect(WebHost *host, WebKitWebView *web);
+void web_downloads_connect(WebHost *host, const char *store);
 void web_menu_response(WebHost *host, guint16 index);
 void web_dialog_response(WebHost *host, gboolean accepted, const char *text);
 

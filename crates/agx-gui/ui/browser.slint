@@ -10,6 +10,7 @@ export global Web {
     in-out property <string> site: "https://www.google.com/";
     in-out property <string> address: "https://www.google.com/";
     in-out property <string> error;
+    in-out property <string> download-notice;
     in-out property <bool> ready: false;
     in-out property <bool> loading: false;
     in-out property <float> progress: 0;
@@ -93,6 +94,18 @@ export component BrowserPanel inherits Rectangle {
         x: 0; width: parent.width;
         y: 80px; height: max(0px, parent.height - 80px);
         Image { x: 0; y: 0; width: Web.frame-width * 1px; height: Web.frame-height * 1px; source: Web.frame; image-fit: fill; }
+        if Web.download-notice != "": Rectangle {
+            y: parent.height - 30px; height: 30px; width: parent.width;
+            background: Theme.bg-light;
+            Text { x: 12px; width: parent.width - 48px; text: Web.download-notice; color: Theme.fg-bright; font-size: 13px; vertical-alignment: center; overflow: elide; }
+            TouchArea {
+                x: parent.width - 36px; width: 36px;
+                mouse-cursor: MouseCursor.pointer;
+                clicked => { Web.download-notice = ""; }
+                Text { text: "×"; color: Theme.fg-dim; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            Timer { interval: 8s; running: Web.download-notice != ""; triggered => { Web.download-notice = ""; } }
+        }
         if !Web.ready || Web.error != "": Rectangle {
             background: Theme.bg;
             VerticalLayout {

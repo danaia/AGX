@@ -40,8 +40,8 @@ int main(int argc, char **argv)
     WebHost host = { .control = control, .pixels = pixels, .gpu_fd = gpu_fd, .use_gpu = gpu_fd >= 0 };
     host.loop = g_main_loop_new(NULL, FALSE);
     host.input = g_byte_array_new();
-    g_autofree char *data_dir = NULL, *cache_dir = NULL, *shader_dir = NULL;
-    if (!web_storage_setup(&host, &data_dir, &cache_dir, &shader_dir)) return 1;
+    g_autofree char *data_dir = NULL, *cache_dir = NULL, *shader_dir = NULL, *store_dir = NULL;
+    if (!web_storage_setup(&host, &data_dir, &cache_dir, &shader_dir, &store_dir)) return 1;
     g_autoptr(WPEDisplay) display = angi_display_new(&host);
     g_autoptr(GError) error = NULL;
     if (!wpe_display_connect(display, &error)) {
@@ -81,6 +81,7 @@ int main(int argc, char **argv)
     host.display = display;
     host.context = context;
     host.session = session;
+    web_downloads_connect(&host, store_dir);
     host.tabs = g_ptr_array_new_with_free_func(g_object_unref);
     host.tabs_enabled = !g_strcmp0(g_getenv("AGX_WEB_TABS"), "1");
     host.width = 800;
@@ -96,6 +97,7 @@ int main(int argc, char **argv)
         web_retire_view(webkit_web_view_get_wpe_view(g_ptr_array_index(host.tabs, i)));
     g_ptr_array_unref(host.tabs);
     g_byte_array_unref(host.input);
+    g_free(host.downloads);
     g_main_loop_unref(host.loop);
     munmap(pixels, WEB_FRAME_BYTES);
     close(control);

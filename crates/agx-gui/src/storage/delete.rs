@@ -1,5 +1,6 @@
 //! Confirmed deletion of one inventory file, with pinned parents and identity checks.
 use super::{policy::Policy, scan::File};
+use crate::files::trash;
 use std::{
     ffi::CString,
     fs, io,
@@ -10,7 +11,7 @@ use std::{
             fs::{MetadataExt, OpenOptionsExt},
         },
     },
-    path::{Component, Path},
+    path::{Component, Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -100,18 +101,45 @@ fn rename(directory: &fs::File, from: &CString, to: &CString) -> io::Result<()> 
     Ok(())
 }
 
-pub(super) fn remove(file: &File, policy: &Policy) -> io::Result<()> {
+pub(super) fn remove(file: &File, policy: &Policy, home: Option<PathBuf>) -> io::Result<()> {
     if !policy.contains(&file.path) {
         return Err(invalid("This is not a personal cleanup file"));
     }
-    remove_checked(file, |meta, moved| {
+    trash_checked(file, home, |meta, moved| {
         moved || policy.eligible(&file.path, meta)
+    })
+}
+
+pub(super) fn trash_checked(
+    file: &File,
+    home: Option<PathBuf>,
+    allowed: impl Fn(&fs::Metadata, bool) -> bool,
+) -> io::Result<()> {
+    act_checked(file, allowed, |directory, temporary| {
+        trash::store(&file.path, home, |destination| {
+            let temporary = Path::new(std::ffi::OsStr::from_bytes(temporary.as_bytes()));
+            trash::rename_noreplace(directory.as_raw_fd(), temporary, destination)
+        })
+        .map(drop)
     })
 }
 
 pub(super) fn remove_checked(
     file: &File,
     allowed: impl Fn(&fs::Metadata, bool) -> bool,
+) -> io::Result<()> {
+    act_checked(file, allowed, |directory, temporary| {
+        if unsafe { libc::unlinkat(directory.as_raw_fd(), temporary.as_ptr(), 0) } != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    })
+}
+
+fn act_checked(
+    file: &File,
+    allowed: impl Fn(&fs::Metadata, bool) -> bool,
+    commit: impl FnOnce(&fs::File, &CString) -> io::Result<()>,
 ) -> io::Result<()> {
     let directory = parent(&file.path)?;
     let entry = name(Path::new(
@@ -141,10 +169,7 @@ pub(super) fn remove_checked(
                 "The file changed before deletion. Please select it again.",
             ));
         }
-        if unsafe { libc::unlinkat(directory.as_raw_fd(), temporary.as_ptr(), 0) } != 0 {
-            return Err(io::Error::last_os_error());
-        }
-        Ok(())
+        commit(&directory, &temporary)
     })();
     if let Err(error) = result {
         if let Err(restore) = rename(&directory, &temporary, &entry) {

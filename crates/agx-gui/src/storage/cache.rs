@@ -134,6 +134,31 @@ impl Plan {
         self.entries.iter().map(|e| e.file.allocated).sum()
     }
 
+    pub fn tiles(&self) -> Vec<File> {
+        let mut files: Vec<_> = self
+            .entries
+            .iter()
+            .map(|entry| &entry.file)
+            .filter(|file| file.bytes >= super::policy::MIN_BYTES)
+            .cloned()
+            .collect();
+        files.sort_by(|a, b| b.cmp(a));
+        files.truncate(super::scan::CELL_LIMIT);
+        files
+    }
+
+    pub fn remove_tile(&mut self, file: &File, home: Option<PathBuf>) -> io::Result<()> {
+        let index = self
+            .entries
+            .iter()
+            .position(|entry| entry.file.same_version(file))
+            .ok_or_else(|| io::Error::other("Refresh the Cache tab and select the file again."))?;
+        let entry = self.entries.swap_remove(index);
+        delete::trash_checked(&entry.file, home, |meta, moved| {
+            cache_file(meta, self.uid) && (moved || changed(meta) == entry.changed)
+        })
+    }
+
     pub fn clear(self) -> Outcome {
         let mut result = Outcome {
             removed: Vec::new(),
@@ -141,9 +166,7 @@ impl Plan {
             first_error: None,
         };
         for entry in self.entries {
-            match delete::remove_checked(&entry.file, |meta, moved| {
-                cache_file(meta, self.uid) && (moved || changed(meta) == entry.changed)
-            }) {
+            match entry.remove(self.uid) {
                 Ok(()) => result.removed.push(entry.file),
                 Err(error) => {
                     result.failed += 1;
@@ -154,6 +177,14 @@ impl Plan {
             }
         }
         result
+    }
+}
+
+impl Candidate {
+    fn remove(&self, uid: u32) -> io::Result<()> {
+        delete::remove_checked(&self.file, |meta, moved| {
+            cache_file(meta, uid) && (moved || changed(meta) == self.changed)
+        })
     }
 }
 
@@ -201,6 +232,14 @@ fn verify(
     if !cache_file(&meta, uid)
         || meta.dev() != device
         || meta.len() == 0
+        || unsafe {
+            libc::faccessat(
+                dir.as_raw_fd(),
+                c".".as_ptr(),
+                libc::W_OK | libc::X_OK,
+                libc::AT_EACCESS,
+            )
+        } != 0
         || !meta
             .modified()
             .ok()
@@ -288,6 +327,25 @@ mod tests {
         for path in [other, linked, bad, symlinked, unknown, index] {
             assert!(path.exists(), "{} was unexpectedly removed", path.display());
         }
+    }
+
+    #[test]
+    fn cache_tiles_are_verified_and_reject_changed_entries() {
+        let fixture = super::super::tests::Fixture::new("cache-tiles");
+        let root = fixture.0.join("content-v2/sha512");
+        let good = blob(&root, &vec![9; super::super::policy::MIN_BYTES as usize]);
+        let bad = blob(&root, &vec![7; super::super::policy::MIN_BYTES as usize]);
+        fs::write(&bad, vec![4; super::super::policy::MIN_BYTES as usize]).unwrap();
+        let uid = unsafe { libc::geteuid() };
+        let mut plan = Plan::inspect(&root, uid, SystemTime::now() + QUIET * 2).unwrap();
+        let files = plan.tiles();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, good);
+        fs::rename(&good, fixture.0.join("previous")).unwrap();
+        fs::write(&good, b"keep this replacement").unwrap();
+        assert!(plan.remove_tile(&files[0], Some(fixture.0.join("Trash"))).is_err());
+        assert!(good.exists());
+        assert!(bad.exists());
     }
 
     #[test]

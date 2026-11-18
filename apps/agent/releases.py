@@ -130,22 +130,40 @@ def release_name(binary):
     return "agx-gui." + hashlib.sha256(Path(binary).read_bytes()).hexdigest()[:16]
 
 
-def install(build, origin="pi"):
-    """Build with `build()`, which returns the binary, then install it as the new release. Returns a status line."""
+def install(build, origin="pi", progress=None):
+    """Build and install a guarded release; report only actual stage transitions."""
+    report = progress or (lambda *_: None)
+    report('checking', 'Validating the installed release and local source')
     reason = guard()
     if reason:
         raise Refused(reason)
     before = tree_hash()
+    report('building', 'Building the ANGI desktop')
     binary = build()
+    report('verifying', 'Checking the built desktop and source snapshot')
     if tree_hash() != before:
         raise Refused("The source changed while it was building. Run the update again once edits are finished.")
     name = release_name(binary)
     current = installed()
     if name == current:
-        return f"Already installed: {name}. The build matches the running release."
+        report('confirming', 'Confirming the existing installation')
+        if release_name(GUI_DIR / name) != name or not entry(name):
+            raise Refused('The existing release could not be verified.')
+        return f"Already installed: {name}. The build matches the installed release."
+    report('installing', 'Copying the new desktop release')
     place(binary, GUI_DIR / name, "755")
+    # Read back the installed bytes before changing the active link.
+    if release_name(GUI_DIR / name) != name:
+        raise Refused('Installed file verification failed. The previous release is still selected.')
+    report('recording', 'Recording the release and its source for rollback')
     record(name, origin, before, current)
+    report('activating', 'Selecting the installed release')
     point_link_at(name)
+    report('confirming', 'Verifying the installed link and release record')
+    if installed() != name or (entry(name) or {}).get('tree') != before:
+        point_link_at(current)
+        marker().write_text(current + "\n")
+        raise Refused('Installation verification failed. The previous release was restored.')
     return f"Installed {name} (previous {current}). Load it with `angi-update refresh` (last step: it closes this terminal); `angi-update rollback` restores the previous release."
 
 

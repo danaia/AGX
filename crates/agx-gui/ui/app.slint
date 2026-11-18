@@ -1,19 +1,23 @@
 // AGX desktop shell. The tiling engine lives in Rust (src/wm.rs); this file
 // draws what it places and forwards raw keyboard and pointer input to it.
 import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
-import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
+import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, SystemPanel } from "panels.slint";
+import { ServicesPanel, Services, ServiceRow } from "services.slint";
+export { Services, ServiceRow }
+import { ServiceUpdateDialog } from "services-dialog.slint";
+import { ServiceUpdateProgress } from "services-progress.slint";
 import { Web, WebOption, BrowserPanel, BrowserTabs } from "browser.slint";
 export { Web, WebOption }
 import { Terminal, TerminalRow, TerminalRun, TerminalPanel, TerminalView } from "terminal.slint";
 export { Terminal, TerminalRow, TerminalRun, TerminalView }
 import { BrowserPopup } from "browser-popup.slint";
 import { DesktopInput } from "desktop-input.slint";
-import { StorageView, StorageCell } from "storage.slint";
+import { StorageView, StorageCell, StorageTrashRow } from "storage.slint";
 import { StorageDialog } from "storage-dialog.slint";
 import { CacheDialog } from "cache-dialog.slint";
 import { MemoryProcesses, ProcessRow, MemoryProcessDialog } from "memory-processes.slint";
 export { MemoryProcesses, ProcessRow }
-export { StorageView, StorageCell }
+export { StorageView, StorageCell, StorageTrashRow }
 import { AgentPanel, AgentAngie, AgentProviders, AgentScope, CardModels } from "agent.slint";
 export { AgentAngie, AgentProviders, AgentScope, CardModels }
 import { FilesPanel, Files, FileRow, Crumb, PlaceRow, PaneState } from "files.slint";
@@ -22,9 +26,9 @@ export { Files, FileRow, Crumb, PlaceRow, PaneState }
 import { SettingsPanel, MouseSettings, BluetoothSettings, BtDevice, BtApproval } from "settings.slint";
 export { MouseSettings, BluetoothSettings, BtDevice, BtApproval }
 import { AppLauncher } from "launcher.slint";
+import { HoverTip } from "hover-tip.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
-import { HoverTip } from "hover-tip.slint";
 export { CursorPreviewWindow }
 import { LineEdit, Button } from "std-widgets.slint";
 export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
@@ -74,7 +78,6 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 1: CpuPanel { }
                 if win.kind == 3: NetworkPanel { }
                 if win.kind == 4: HardwarePanel { }
-                if win.kind == 5: ServicesPanel { }
                 if win.kind == 6: SystemPanel { }
                 if win.kind == 7: BrowserPanel { active: win.focused; }
                 if win.kind == 8 || win.kind >= 12: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 11; }
@@ -87,6 +90,11 @@ component WindowFrame inherits Rectangle {
         pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
         scroll(dx, dy, c, a, s, m) => { root.scroll(dx, dy, c, a, s, m); }
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 5 && !win.collapsed: ServicesPanel {
+        x: 6px; y: 28px;
+        width: max(0px, parent.width - 12px);
+        height: max(0px, parent.height - 34px);
     }
     if win.kind == 7 && !win.collapsed: BrowserTabs {
         x: 2px; y: 28px;
@@ -253,13 +261,13 @@ export component AppWindow inherits Window {
     in property <string> focus-title: "";
     in property <string> mod-name: "Super";
     in property <bool> windowed-mode: true;
+    property <bool> mode-tip: false;
     in property <string> clock: "";
     in property <string> toast: "";
     in property <bool> screen-full: false;
     in property <bool> dragging: false;
     in property <int> cursor: 0;
     in property <bool> draw-cursor: false;
-    property <bool> mode-tip: false;
     in property <bool> resize-cursor-overlay: false;
     in-out property <length> cursor-x;
     in-out property <length> cursor-y;
@@ -278,7 +286,7 @@ export component AppWindow inherits Window {
     in-out property <bool> session-open: false;
     in-out property <int> session-index: 0;
     property <bool> custom-resize-cursor: root.resize-cursor-overlay
-        && !StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
+        && !Services.progress-open && !Services.review-open && !StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
     callback browser-key(string, bool, bool, bool, bool, bool) -> bool;
@@ -314,7 +322,7 @@ export component AppWindow inherits Window {
 
     root-keys := FocusScope {
         key-pressed(e) => {
-            if StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
+            if Services.progress-open || Services.review-open || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
                 if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
@@ -334,7 +342,7 @@ export component AppWindow inherits Window {
             reject
         }
         key-released(e) => {
-            if (!StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && !root.session-open && root.confirm-text == "" && root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
+            if (!Services.progress-open && !Services.review-open && !StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && !root.session-open && root.confirm-text == "" && root.browser-key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
             reject
         }
 
@@ -580,6 +588,16 @@ export component AppWindow inherits Window {
         }
 
         if MemoryProcesses.open: MemoryProcessDialog {
+            dismissed => { root-keys.focus(); }
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+        }
+
+        if Services.review-open: ServiceUpdateDialog {
+            dismissed => { root-keys.focus(); }
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+        }
+
+        if Services.progress-open: ServiceUpdateProgress {
             dismissed => { root-keys.focus(); }
             pointer-moved(x, y) => { root.track-cursor(x, y); }
         }

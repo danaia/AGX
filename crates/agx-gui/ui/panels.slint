@@ -1,7 +1,9 @@
 import { Theme, Sys } from "data.slint";
-import { StorageMap, StorageView } from "storage.slint";
+import { StorageCategories, StorageMap, StorageView } from "storage.slint";
 import { MemoryProcesses } from "memory-processes.slint";
 import { DesktopInput } from "desktop-input.slint";
+import { StorageTrash } from "storage-trash.slint";
+import { HoverTip } from "hover-tip.slint";
 import { ScrollView, Button } from "std-widgets.slint";
 
 component Row inherits HorizontalLayout {
@@ -75,10 +77,15 @@ export component OverviewPanel inherits Rectangle {
             accessible-label: "ANGI";
         }
     }
-    Rectangle { x: 12px; y: 134px; width: max(0px, root.width - 24px); height: 1px; background: #3d3030; }
-    ScrollView {
-        x: 0px; y: 135px;
-        width: parent.width; height: max(0px, parent.height - 179px);
+    categories := StorageCategories {
+        x: 12px; y: 135px; width: max(0px, parent.width - 24px);
+        hide-cursor: root.hide-cursor;
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    storage-scroll := ScrollView {
+        visible: StorageView.category != 7;
+        x: 0px; y: categories.y + categories.height;
+        width: parent.width; height: max(0px, parent.height - self.y - 44px);
         content-width: self.width;
         horizontal-scrollbar-policy: always-off;
         vertical-scrollbar-policy: always-off;
@@ -105,9 +112,20 @@ export component OverviewPanel inherits Rectangle {
                 pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
                 pointer-moved(x, y) => { root.pointer-moved(x, y); }
             }
-            Text { text: "Your files ≥ 1 MiB · green < 10 MiB · amber 100 MiB · red ≥ 1 GiB · click for details"; color: #947a6d; font-size: 10px; wrap: word-wrap; }
+            Text { text: "File size · green < 10 MiB · amber 100 MiB · red ≥ 1 GiB · click for details"; color: #947a6d; font-size: 10px; wrap: word-wrap; }
 
         }
+    }
+    if StorageView.category == 7: StorageTrash {
+        x: categories.x;
+        y: categories.y + categories.height + 8px;
+        width: categories.width;
+        height: max(0px, root.height - self.y - 44px);
+    }
+    category-position := Rectangle {
+        visible: false;
+        property <int> selection: StorageView.category;
+        changed selection => { storage-scroll.content-y = 0px; }
     }
     if sd-map.hover-path != "" || nvme-map.hover-path != "": Rectangle {
         x: 12px; y: max(0px, root.height - 40px);
@@ -122,6 +140,7 @@ export component OverviewPanel inherits Rectangle {
         x: max(0px, root.width - self.width - 56px);
         y: max(0px, root.height - self.height - 8px);
         width: 124px; height: 32px;
+        visible: StorageView.category != 7;
         text: "Clear cache…";
         enabled: !StorageView.selected-open;
         clicked => { StorageView.check-cache(); }
@@ -133,9 +152,16 @@ export component OverviewPanel inherits Rectangle {
         icon: @image-url("icons/refresh.svg");
         icon-size: 16px;
         colorize-icon: true;
-        accessible-label: StorageView.refreshing ? "Refreshing files" : "Refresh files";
+        accessible-label: StorageView.category == 7 ? "Refresh Trash" : StorageView.refreshing ? "Refreshing files" : "Refresh files";
         enabled: !StorageView.selected-open && !StorageView.refreshing;
         clicked => { StorageView.refresh-files(); }
+    }
+    HoverTip {
+        shown: categories.hint-text != "";
+        text: categories.hint-text;
+        width: min(160px, categories.width);
+        x: categories.x + clamp(categories.hint-x, 0px, categories.width - self.width);
+        y: categories.y + categories.height + 8px;
     }
 }
 
@@ -193,18 +219,6 @@ export component HardwarePanel inherits VerticalLayout {
         Text { text: h.kind; color: Theme.accent; width: 90px; vertical-alignment: center; }
         Text { text: h.name; color: Theme.fg-bright; width: 170px; vertical-alignment: center; }
         Text { text: h.detail; color: Theme.fg-dim; overflow: elide; vertical-alignment: center; }
-    }
-}
-
-export component ServicesPanel inherits VerticalLayout {
-    padding: 12px;
-    spacing: 8px;
-    alignment: start;
-    Text { text: "Service supervision is not wired into the GUI yet."; color: Theme.yellow; wrap: word-wrap; }
-    Text {
-        text: "Use `agx services status` or the TUI Services tab.";
-        color: Theme.fg-dim;
-        wrap: word-wrap;
     }
 }
 

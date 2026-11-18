@@ -1,5 +1,5 @@
 //! Persistent heat-map models, stable cleanup batches and explicit refresh epochs.
-use super::scan;
+use super::{category::Category, scan};
 use crate::{AppWindow, StorageCell, StorageView};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::{
@@ -11,6 +11,11 @@ use std::{
 #[derive(Default)]
 pub(super) struct State {
     pub files: [Vec<scan::File>; 2],
+    category: Category,
+    shown: [Vec<scan::File>; 2],
+    cache: Vec<scan::File>,
+    pub cache_loading: bool,
+    cache_status: String,
     models: [Rc<VecModel<StorageCell>>; 2],
     batches: [Option<HashSet<PathBuf>>; 2],
     removed: HashMap<PathBuf, scan::File>,
@@ -31,9 +36,67 @@ impl State {
         let view = ui.global::<StorageView>();
         view.set_sd_summary(self.summaries[0].clone().into());
         view.set_nvme_summary(self.summaries[1].clone().into());
-        view.set_sd_status(self.statuses[0].clone().into());
-        view.set_nvme_status(self.statuses[1].clone().into());
+        view.set_sd_status(self.status_for(0).into());
+        view.set_nvme_status(self.status_for(1).into());
         view.set_refreshing(self.refreshing);
+    }
+
+    fn status_for(&self, drive: usize) -> String {
+        match self.category {
+            Category::All => self.statuses[drive].clone(),
+            Category::Cache if drive == 0 => "Verified downloads are on NVMe".into(),
+            Category::Cache => self.cache_status.clone(),
+            _ => format!(
+                "{} shown in this category · {}",
+                self.shown[drive].len(),
+                self.statuses[drive]
+            ),
+        }
+    }
+
+    pub fn select_category(&mut self, category: Category) {
+        self.category = category;
+        for drive in 0..2 {
+            self.sync_shown(drive);
+        }
+    }
+
+    pub fn tile(&self, drive: usize, index: usize) -> Option<(scan::File, bool)> {
+        let file = self.shown.get(drive)?.get(index)?.clone();
+        Some((file, self.category == Category::Cache))
+    }
+
+    pub fn showing_trash(&self) -> bool {
+        self.category == Category::Trash
+    }
+
+    pub fn restore(&mut self, original: &std::path::Path, generation: u64) {
+        self.removed.remove(original);
+        self.begin_refresh(generation);
+    }
+
+    pub fn showing_cache(&self) -> bool {
+        self.category == Category::Cache
+    }
+
+    pub fn start_cache_check(&mut self) {
+        self.cache_loading = true;
+        self.cache.clear();
+        self.cache_status = "Checking verified downloads…".into();
+        self.sync_shown(1);
+    }
+
+    pub fn finish_cache_check(&mut self, result: Result<Vec<scan::File>, String>) {
+        self.cache_loading = false;
+        self.cache_status = match result {
+            Ok(mut files) => {
+                files.retain(|file| !self.removed.contains_key(&file.path));
+                self.cache = files;
+                format!("{} verified downloads shown", self.cache.len())
+            }
+            Err(error) => format!("Cache check unavailable: {error}"),
+        };
+        self.sync_shown(1);
     }
 
     pub fn begin_refresh(&mut self, generation: u64) {
@@ -104,6 +167,12 @@ impl State {
         let paths: HashSet<_> = files.iter().map(|file| &file.path).collect();
         self.removed
             .extend(files.iter().map(|file| (file.path.clone(), file.clone())));
+        let previous = self.cache.len();
+        self.cache.retain(|file| !paths.contains(&file.path));
+        if self.cache.len() != previous {
+            self.cache_status = format!("{} verified downloads shown", self.cache.len());
+            self.sync_shown(1);
+        }
         for drive in 0..2 {
             if self.files[drive]
                 .iter()
@@ -126,7 +195,26 @@ impl State {
     }
 
     fn sync(&mut self, drive: usize, incoming: Vec<scan::File>) {
-        let current = &mut self.files[drive];
+        self.files[drive] = incoming;
+        self.sync_shown(drive);
+    }
+
+    fn sync_shown(&mut self, drive: usize) {
+        let source = match self.category {
+            Category::Trash => &[][..],
+            Category::Cache if drive == 0 => &[][..],
+            Category::Cache => &self.cache,
+            _ => &self.files[drive],
+        };
+        let incoming: Vec<_> = source
+            .iter()
+            .filter(|file| {
+                matches!(self.category, Category::All | Category::Cache)
+                    || self.category.includes(&file.path)
+            })
+            .cloned()
+            .collect();
+        let current = &mut self.shown[drive];
         let model = &self.models[drive];
         // Remove individual rows so Slint retains the remaining tile items and
         // animates their new indices instead of rebuilding the entire map.
@@ -323,6 +411,45 @@ mod tests {
             },
             scan::Inventory::default(),
         ]
+    }
+
+    #[test]
+    fn categories_keep_tile_indices_and_cache_authorization_separate() {
+        let mut state = State::default();
+        let media = named_file("Pictures/holiday.JPG", 1);
+        let download = named_file("Downloads/manual.PDF", 2);
+        let document = named_file("Documents/notes.md", 3);
+        let installer = named_file("Downloads/game.AppImage", 4);
+        state.snapshot(
+            0,
+            inventory(vec![
+                media.clone(),
+                document.clone(),
+                installer.clone(),
+                download.clone(),
+            ]),
+        );
+        for (category, file) in [
+            (Category::Media, media),
+            (Category::Apps, installer.clone()),
+            (Category::Documents, document),
+        ] {
+            state.select_category(category);
+            assert_eq!(state.tile(0, 0), Some((file, false)));
+            assert!(state.tile(0, 1).is_none());
+        }
+        state.select_category(Category::Downloads);
+        assert_eq!(state.tile(0, 0), Some((installer, false)));
+        assert_eq!(state.tile(0, 1), Some((download, false)));
+        assert!(state.tile(0, 2).is_none());
+        state.select_category(Category::Cache);
+        assert!(state.tile(0, 0).is_none());
+        let cached = named_file("verified-download", 5);
+        state.finish_cache_check(Ok(vec![cached.clone()]));
+        assert_eq!(state.tile(1, 0), Some((cached.clone(), true)));
+        state.remove(&cached);
+        state.finish_cache_check(Ok(vec![cached]));
+        assert!(state.tile(1, 0).is_none());
     }
 
     #[test]

@@ -284,7 +284,15 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     ui.on_pointer(move |kind, button, x, y, ctrl, alt, shift, meta| {
         state.borrow_mut().pointer(&weak.upgrade().unwrap(), kind, button, x, y, mods(ctrl, alt, shift, meta));
     });
-    click(overview.x + 25., overview.y + 200.);
+    let category = Rc::new(RefCell::new(None));
+    let received = category.clone();
+    storage.on_select_category(move |index| *received.borrow_mut() = Some(index));
+    // The icon strip starts at the panel's left edge and leaves 20 px between buttons.
+    for index in 0..8 {
+        click(overview.x + 32. + 48. * index as f32, overview.y + 180.);
+        assert_eq!(*category.borrow(), Some(index));
+    }
+    click(overview.x + 25., overview.y + 234.);
     assert_eq!(*selected.borrow(), vec![(0, 0)]);
     assert!(storage.get_selected_open());
     render();
@@ -307,6 +315,7 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     assert_eq!(*deletions.borrow(), 1);
     storage.set_selected_open(false);
     floating_drag_tracks_each_physical_move(&ui, &render);
+    crate::services::tests::review(&ui, &render);
 }
 
 // Exercise Slint's actual grabbed TouchArea, including layout/render between events.

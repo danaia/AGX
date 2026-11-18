@@ -39,12 +39,14 @@ export component StorageDialog inherits FocusScope {
             width: min(580px, parent.width - 32px);
             height: min(440px, parent.height - 32px);
             background: Theme.bg;
-            border-color: StorageView.confirming ? Theme.red : Theme.muted;
+            border-color: StorageView.confirming && StorageView.selected-trashed ? Theme.red : Theme.muted;
             border-width: 1px; border-radius: 6px;
             VerticalLayout {
                 padding: 20px; spacing: 14px;
                 Text {
-                    text: StorageView.confirming ? "Delete this file?" : "File details";
+                    text: StorageView.confirming
+                        ? (StorageView.selected-trashed ? "Permanently delete this item?" : "Move this file to Trash?")
+                        : (StorageView.selected-trashed ? "Trash item" : "File details");
                     color: Theme.fg-bright; font-size: 19px; font-weight: 700;
                 }
                 ScrollView {
@@ -53,7 +55,7 @@ export component StorageDialog inherits FocusScope {
                         spacing: 12px;
                         Text { text: StorageView.selected-path; wrap: char-wrap; color: Theme.fg-bright; font-size: 12px; }
                         Text { text: StorageView.selected-detail; wrap: word-wrap; color: Theme.fg; font-size: 12px; }
-                        VerticalLayout {
+                        if !StorageView.selected-trashed: VerticalLayout {
                             spacing: 7px;
                             HorizontalLayout {
                                 Text { text: "Estimated removal risk"; color: Theme.fg; font-size: 12px; }
@@ -80,12 +82,13 @@ export component StorageDialog inherits FocusScope {
                             Text { text: "Estimated from location and file type; backups are not verified."; wrap: word-wrap; color: Theme.fg-dim; font-size: 10px; }
                         }
                         Text {
-                            text: StorageView.busy ? "Deleting file…"
+                            text: StorageView.busy ? "Working…"
                                 : StorageView.message != "" ? StorageView.message
-                                : StorageView.confirming ? "This permanently removes the file. This cannot be undone."
-                                : "Personal file owned by your account. Deleting it removes this file from the drive.";
+                                : StorageView.selected-trashed
+                                    ? (StorageView.confirming ? "This permanently removes the item and frees its space. This cannot be undone." : "Restore the item to its original location or delete it permanently.")
+                                    : "You can restore this file from Trash. It still uses disk space until permanently deleted.";
                             wrap: word-wrap;
-                            color: StorageView.confirming ? Theme.red : Theme.fg-dim;
+                            color: StorageView.confirming && StorageView.selected-trashed ? Theme.red : Theme.fg-dim;
                             font-size: 12px;
                         }
                     }
@@ -100,8 +103,16 @@ export component StorageDialog inherits FocusScope {
                             else { root.close(); }
                         }
                     }
+                    restore-button := Button {
+                        visible: StorageView.selected-trashed && !StorageView.confirming;
+                        text: "Restore";
+                        enabled: !StorageView.busy;
+                        clicked => { StorageView.restore-file(); }
+                    }
                     delete-button := Button {
-                        text: StorageView.confirming ? "Delete permanently" : "Delete…";
+                        text: StorageView.selected-trashed
+                            ? (StorageView.confirming ? "Delete permanently" : "Delete permanently…")
+                            : (StorageView.confirming ? "Move to Trash" : "Move to Trash…");
                         enabled: !StorageView.busy && StorageView.message == "";
                         clicked => {
                             if StorageView.confirming { StorageView.delete-file(); }

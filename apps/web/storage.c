@@ -17,7 +17,7 @@ static gboolean private_directory(const char *path)
     close(fd);
     return valid;
 }
-gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, char **shader_dir)
+gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, char **shader_dir, char **store_dir)
 {
     struct stat volume, root, owner;
 #ifdef AGX_WEB_APPLIANCE
@@ -40,6 +40,7 @@ gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, cha
             web_error(host, "Web storage is not ready for this account. Sign out and back in.");
             return FALSE;
         }
+        *store_dir = g_strdup(user);
         *data_dir = g_build_filename(user, "data", NULL);
         *cache_dir = g_build_filename(user, "cache", NULL);
     } else {

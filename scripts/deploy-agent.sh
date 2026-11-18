@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 DESTINATION=${AGX_SSH_HOST:-root@10.77.0.2}
-OPTIONS=(-i "${AGX_SSH_KEY:-$HOME/.ssh/id_ed25519}" -o BatchMode=yes -o ConnectTimeout=10)
+OPTIONS=(-i "${AGX_SSH_KEY:-$HOME/.ssh/id_ed25519}" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes)
 if [[ -n ${AGX_SSH_HOST_KEY_ALIAS:-} ]]; then OPTIONS+=(-o "HostKeyAlias=$AGX_SSH_HOST_KEY_ALIAS"); fi
 mkdir -p "$ROOT/.cache/herdr"
 binary=$ROOT/.cache/herdr/herdr-linux-aarch64

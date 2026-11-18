@@ -1,0 +1,85 @@
+import { Button, ListView } from "std-widgets.slint";
+import { Theme } from "data.slint";
+import { StorageView } from "storage.slint";
+import { HoverDwell, HoverTip } from "hover-tip.slint";
+
+export component StorageTrash inherits Rectangle {
+    if StorageView.trash-items.length == 0: Text {
+        y: 8px;
+        text: StorageView.trash-loading ? "Reading Trash…"
+            : StorageView.trash-message != "" ? StorageView.trash-message : "Trash is empty.";
+        color: Theme.fg-dim; wrap: word-wrap; font-size: 12px;
+    }
+    if StorageView.trash-message != "" && StorageView.trash-items.length > 0: Text {
+        x: 0px; y: 4px; width: max(0px, parent.width - 130px);
+        text: StorageView.trash-message; color: Theme.red; font-size: 11px; overflow: elide;
+    }
+    if StorageView.trash-items.length > 0: ListView {
+        y: 38px;
+        height: max(0px, parent.height - 38px);
+        for item[index] in StorageView.trash-items: HorizontalLayout {
+            height: 42px; spacing: 12px;
+            VerticalLayout {
+                alignment: center; horizontal-stretch: 1;
+                Text { text: item.name; color: Theme.fg-bright; overflow: elide; font-size: 12px; }
+                Text { text: item.location; color: Theme.fg-dim; overflow: elide; font-size: 10px; }
+            }
+            Text { text: item.size; color: Theme.fg-dim; font-size: 11px; }
+            Button {
+                icon: @image-url("icons/update-info.svg");
+                icon-size: 16px; colorize-icon: true;
+                accessible-label: "Trash details for " + item.name;
+                clicked => { StorageView.select-trash(index); }
+            }
+        }
+    }
+    if StorageView.trash-items.length > 0: empty-button := Button {
+        x: max(0px, parent.width - self.width);
+        y: 2px; width: 120px; height: 30px;
+        text: "Empty Trash";
+        enabled: !StorageView.busy && !StorageView.trash-loading;
+        clicked => { dwell.dismiss(); StorageView.empty-confirming = true; }
+    }
+    dwell := HoverDwell { hovered: empty-hover.has-hover; }
+    empty-hover := TouchArea {
+        x: max(0px, parent.width - 120px); y: 2px; width: 120px; height: 30px;
+        enabled: StorageView.trash-items.length > 0 && !StorageView.busy && !StorageView.trash-loading;
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { dwell.dismiss(); StorageView.empty-confirming = true; }
+    }
+    HoverTip {
+        shown: dwell.ready;
+        text: "Delete everything permanently";
+        width: min(250px, parent.width);
+        x: max(0px, parent.width - self.width); y: 38px;
+    }
+    if StorageView.empty-confirming: Rectangle {
+        background: #000000cc;
+        TouchArea { }
+        FocusScope {
+            init => { self.focus(); }
+            key-pressed(event) => {
+                if event.text == Key.Escape && !StorageView.busy {
+                    StorageView.empty-confirming = false;
+                    return accept;
+                }
+                reject
+            }
+        }
+        Rectangle {
+            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            width: min(440px, parent.width); height: 145px;
+            background: Theme.bg; border-width: 1px; border-color: Theme.red; border-radius: 6px;
+            VerticalLayout {
+                padding: 16px; spacing: 10px;
+                Text { text: "Empty Trash?"; color: Theme.fg-bright; font-size: 17px; }
+                Text { text: "Permanently delete all listed items? This cannot be undone."; wrap: word-wrap; color: Theme.fg; font-size: 12px; }
+                HorizontalLayout {
+                    spacing: 10px;
+                    Button { text: "Cancel"; enabled: !StorageView.busy; clicked => { StorageView.empty-confirming = false; } }
+                    Button { text: StorageView.busy ? "Deleting…" : "Empty Trash"; enabled: !StorageView.busy; clicked => { StorageView.empty-trash(); } }
+                }
+            }
+        }
+    }
+}

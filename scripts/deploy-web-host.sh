@@ -16,7 +16,7 @@ OUT="$ROOT/.cache/agx-web-host"
 mkdir -p "$OUT"
 # The same sources, flags and libraries as buildroot/package/agx-web/agx-web.mk.
 (cd "$ROOT/apps/web" && PKG_CONFIG_ALLOW_CROSS=1 "$TOOLS/aarch64-linux-gcc" -Os -std=gnu11 -DAGX_WEB_APPLIANCE=1 -Wall -Wextra -Werror \
-    host.c tabs.c platform.c protocol.c dialogs.c storage.c gpu.c \
+    host.c tabs.c platform.c protocol.c dialogs.c downloads.c storage.c gpu.c \
     $("$TOOLS/pkg-config" --cflags --libs wpe-webkit-2.0 libdrm) -o "$OUT/agx-web")
 "$TOOLS/aarch64-linux-strip" -o "$OUT/agx-web.stripped" "$OUT/agx-web"
 HASH=$(sha256sum "$OUT/agx-web.stripped" | cut -c1-16)

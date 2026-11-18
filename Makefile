@@ -86,4 +86,8 @@ agent-test:
 	python3 scripts/test-agent-providers.py
 	python3 scripts/test-agent-scope.py
 	python3 scripts/test-agent-update.py
+	python3 scripts/test-system-updates.py
+	python3 scripts/test-update-sources.py
+	python3 scripts/test-update-restart.py
+	python3 scripts/test-install-progress.py
 	python3 scripts/test-agent-applefit.py

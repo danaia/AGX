@@ -274,6 +274,9 @@ impl App {
             if let Some(error) = updates.error {
                 web.set_error(error.into());
             }
+            if let Some(notice) = updates.download {
+                web.set_download_notice(notice.into());
+            }
             if updates.dead {
                 browser.engine = None;
                 browser.tabs = tabs::Tabs::default();

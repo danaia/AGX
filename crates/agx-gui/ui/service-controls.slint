@@ -1,0 +1,51 @@
+import { Theme } from "data.slint";
+
+// Fixed geometry keeps the glyph and hit target centered, independent of row height.
+export component UpdateButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <bool> icon-only;
+    in property <bool> primary;
+    in property <bool> show-icon: true;
+    in property <image> icon;
+    callback clicked();
+    width: root.icon-only ? 32px : 180px;
+    height: 32px;
+    border-radius: 5px;
+    background: !root.enabled ? transparent : touch.pressed ? Theme.muted
+        : touch.has-hover ? Theme.bg-light : root.primary ? Theme.accent.with-alpha(0.12) : transparent;
+    border-width: focus.has-focus ? 2px : 1px;
+    border-color: !root.enabled ? Theme.muted.with-alpha(0.35)
+        : focus.has-focus || touch.has-hover ? Theme.accent : root.primary ? Theme.accent.with-alpha(0.5) : Theme.muted;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    if root.show-icon: Image {
+        x: root.icon-only ? (parent.width - self.width) / 2 : 12px;
+        y: (parent.height - self.height) / 2; width: 16px; height: 16px;
+        source: root.icon;
+        colorize: root.enabled ? Theme.accent : Theme.fg-dim;
+    }
+    if !root.icon-only: Text {
+        x: root.show-icon ? 36px : 10px; width: parent.width - (root.show-icon ? 44px : 20px); height: parent.height;
+        horizontal-alignment: root.show-icon ? left : center;
+        text: root.label; color: root.enabled ? Theme.fg-bright : Theme.fg-dim;
+        font-size: 12px; vertical-alignment: center;
+    }
+    public function focus-button() { focus.focus(); }
+    out property <bool> focused: focus.has-focus;
+    focus := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if root.enabled && (e.text == Key.Return || e.text == " ") { root.clicked(); return accept; }
+            reject
+        }
+        touch := TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+            clicked => { focus.focus(); root.clicked(); }
+        }
+    }
+}
+

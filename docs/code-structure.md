@@ -24,7 +24,7 @@ Existing large files should be evaluated when touched, rather than forcing unrel
 | Crate | Responsibilities |
 | --- | --- |
 | `agx-core` | `models.rs` owns snapshots and counters; `parsers.rs` owns pure counter parsing; `sampler.rs` owns Linux collection; `vnc.rs` observes VNC TCP sockets and GUI resident memory without connecting or controlling services. |
-| `agx-net` | `protocol.rs` owns wire models; `client.rs` owns socket requests; `ssid.rs` owns byte encoding and scan parsing; `credentials.rs` owns validation and PSK derivation; `service.rs` owns the existing service implementation. |
+| `agx-net` | `protocol.rs` owns wire models; `client.rs` owns socket requests; `ssid.rs` owns byte encoding and scan parsing; `credentials.rs` owns validation and PSK derivation; `service.rs` owns the existing service implementation, and `service/clock.rs` saves network-synchronized time to the hardware clock. |
 | `agx-gui` (standalone) | `graphics/detection.rs` discovers connected HDMI outputs at startup and rejects kernel-forced connections without monitor EDID; `graphics.rs` resolves automatic or explicit renderer selection before threads start. `graphics/kms_input.rs` bridges physical Super keys and native scroll events missing from Slint’s LinuxKMS mapping into the current login/desktop window, tracking native pointer position for scroll targeting. `graphics/virtual_display.rs` owns the optional resizable VNC-only software platform and its event loop. `remote/` owns optional VNC access: `rfb.rs` is the pure wire protocol, `resize.rs` validates single-screen resize requests and encodes layout replies, `frame.rs` captured pixels and change detection, `input.rs` key/pointer translation into Slint events, `server.rs` shared state, listeners and client lifecycle, `server/session.rs` established sessions, framebuffer streaming and message dispatch, `server/tests.rs` live socket and request scheduling tests, `handoff.rs` passing the listener and viewers from the login screen to the desktop across the exec, `mod.rs` configuration, UI-thread capture and resize callbacks. `wm.rs` and `login.rs` retain their existing composition and authentication responsibilities. |
 | `agx-tui` | `app/mod.rs` owns state/navigation; `app/render.rs` owns chrome/composition; `app/screens.rs` owns built-in read-only screens; `runtime.rs` owns the event loop; `terminal.rs` owns terminal cleanup/signals and suspend/resume; `shell.rs` owns foreground process groups, shell/tmux launch and restoring terminal ownership/modes; `app/shell.rs` renders the Terminal launch screen; `worker.rs` owns sampling; `palette.rs` owns shared styling; `remote_access.rs` composes the shared VNC status panel on Network and Services. Feature screens retain their own modules. |
 
@@ -42,7 +42,7 @@ Some feature/service files remain large and are candidates for later focused pas
 
 Run the affected crates' existing tests. For moves across these shared library boundaries, use `scripts/cargo.sh test --workspace --locked -- --test-threads=1` and `scripts/cargo.sh test --manifest-path crates/agx-gui/Cargo.toml --locked`. The GUI is a standalone workspace and is not covered by the root workspace command. Review the diff for altered signatures, visibility, initialization order, and discarded working-tree edits. A pure structural refactor should not require deploying new binaries to the Pi to change product behavior.
 
-The embedded Web app lives in `apps/web/`: `host.c` owns the WPE lifecycle, settings and user data, `platform.c` owns offscreen display/view and bounded frame presentation, `gpu.c` sends bounded DMA-BUF descriptors, `protocol.c` owns the private control channel, `dialogs.c` owns form menus, script dialogs and new-window navigation policy, and `storage.c` owns private NVMe cache/data selection. In the GUI, `browser/protocol.rs` owns validation/encoding and key conversion, `browser/engine.rs` owns process isolation and off-thread frame/IPC transport, `browser/input.rs` maps desktop input, `browser/storage.rs` prepares protected per-user NVMe stores from the root greeter, and `browser/mod.rs` composes lifecycle, geometry and native chrome state. `ui/browser.slint` owns browser chrome and frame display; `ui/browser-popup.slint` owns native option and script popups. `app.rs` owns browser state and close-command coordination; `runtime.rs` installs its callbacks and timer. `wm.rs` only adds a window kind.
+The embedded Web app lives in `apps/web/`: `host.c` owns the WPE lifecycle, settings and user data, `platform.c` owns offscreen display/view and bounded frame presentation, `gpu.c` sends bounded DMA-BUF descriptors, `protocol.c` owns the private control channel, `dialogs.c` owns form menus, script dialogs and new-window navigation policy, `downloads.c` owns the download destination (`~/Downloads`), naming and status notices, and `storage.c` owns private NVMe cache/data selection. In the GUI, `browser/protocol.rs` owns validation/encoding and key conversion, `browser/engine.rs` owns process isolation and off-thread frame/IPC transport, `browser/input.rs` maps desktop input, `browser/storage.rs` prepares protected per-user NVMe stores from the root greeter, and `browser/mod.rs` composes lifecycle, geometry and native chrome state. `ui/browser.slint` owns browser chrome and frame display; `ui/browser-popup.slint` owns native option and script popups. `app.rs` owns browser state and close-command coordination; `runtime.rs` installs its callbacks and timer. `wm.rs` only adds a window kind.
 
 The native Web presentation bridge is isolated under `browser/gpu/`: `transport.rs` validates descriptor messages and owns received file descriptors; `egl.rs` imports DMA-BUF images and manages EGL fences; `renderer.rs` owns reusable GL textures and frame completion; `completion.rs` waits for exported native fences off the UI thread; `mod.rs` wires Slint rendering callbacks and CPU fallback diagnostics. Software/VNC presentation retains the shared-memory path. GPU resources are created and destroyed only with the Slint GL context current.
 
@@ -87,3 +87,36 @@ The memory process overlay uses `memory_processes.rs` for procfs snapshots, risk
 Bluetooth is three small pieces around one service ([bluetooth.md](bluetooth.md)). `agx-bluetooth` is the shared, dependency-light crate: `protocol.rs` owns requests, replies and state, `address.rs` validation, `category.rs` device categories, and `client.rs` the socket client. `agx-bluetoothd` is the service: `backend.rs` is the stack boundary (`Backend`), `bluez.rs` its BlueR implementation with an event-driven device cache and the pairing agent, `prompts.rs` the one pending question for the person, `core.rs` state, authorization policy and dispatch, `peer.rs` who is asking, `rfkill.rs` the radio unblock, and `server.rs` the socket; `tests.rs` runs the policy against a fake stack. `agx-cli/src/bluetooth.rs` holds `agx bluetooth`, kept out of `main.rs`, which is already on the review backlog. In the desktop, `src/bluetooth/mod.rs` owns the worker thread and Status→UI mirroring, `view.rs` the pure wording and grouping, and `tests.rs` the checks that need the headless desktop (called from `pointer_tests.rs`, which owns the one-per-process test platform); `ui/bluetooth.slint` owns the page, and `ui/settings.slint` hosts it as a second page whose choice lives in `MouseSettings.page` because the desktop rebuilds the panel when its window moves. `apps/bluetooth/run.sh` supervises D-Bus, BlueZ and the service as one `agx-init` service.
 
 Web tabs share a single sandboxed WPE context and network session. `apps/web/tabs.c` owns the views and active-tab metadata, `platform.c` tracks which view owns each frame until acknowledgement, and `browser/tabs.rs` owns the desktop tab commands and strip state. Workspace defaults stay in `wm/startup.rs`.
+
+Services and update UI lives in `agx-gui/src/services.rs` (off-thread updater
+commands and model publication) and `ui/services.slint` (update-status dots,
+aligned software/date/status columns, relative installation dates, keyboard-accessible
+update buttons). `ui/service-controls.slint` owns their shared fixed-size, keyboard-accessible
+controls; `ui/services-dialog.slint` owns the desktop-wide activation-impact review and
+install confirmation. `ui/services-progress.slint` owns the live installation and
+verified-result overlay; `src/services/progress.rs` owns NDJSON transport and progress
+publication. `apps/agent/install_progress.py` streams real stage/build events and
+persists receipts, while `releases.py` performs file/link/ledger verification before
+reporting success. `apps/agent/system_updates.py`
+owns the complete supervised-service inventory, update ordering and date formatting, local desktop
+source comparison, and streaming validation of staged Buildroot image candidates.
+`update_sources.py` owns fixed publisher endpoints, stable-version parsing and
+installed-version probes; `update_checks.py` owns per-account persistent results,
+request timestamps, boot-clock gating, bounded retries for transient network failures,
+shared package ownership and background publisher checks.
+`update_restart.py` owns activation-impact policy and compares this account’s running
+desktop with the installed release to identify a real pending restart.
+It never installs a kernel or root filesystem; those need a recovery-capable image
+installer. `update.py` exposes inventory/check alongside the existing guarded GUI
+installer. `ui/app.slint` remains the desktop composition boundary, hosting the
+interactive Services view above the gesture layer just like Settings and Files.
+
+Storage cleanup categories live in `storage/category.rs`. The personal-file policy
+excludes app-managed cache and build trees. The Cache tab uses the existing
+verified npm download plan and revalidates each selected tile before removal.
+`ui/hover-tip.slint` owns tooltip appearance and hover timing for Agent Angie's
+scope toggle and the Overview storage category icons. Each panel owns its tooltip
+copy and placement. `storage/trash_panel.rs` owns the Trash tab's view state,
+and the storage worker moves validated files into the same per-volume Trash
+used by ANGI Files. `files/trash/inventory.rs` reads the per-volume records for
+restore and explicit permanent deletion.

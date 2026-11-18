@@ -25,6 +25,7 @@ static gboolean show_menu(WebKitWebView *web, WebKitOptionMenu *menu, WebKitRect
     WebHost *host = data;
     if (web != host->web) return FALSE;
     if (host->menu) webkit_option_menu_close(host->menu);
+    g_clear_pointer(&host->menu_actions, g_ptr_array_unref);
     guint count = webkit_option_menu_get_n_items(menu);
     if (!count || count > 256) { web_error(host, "This selection has too many options to display."); return FALSE; }
     host->menu = g_object_ref(menu);
@@ -40,6 +41,45 @@ static gboolean show_menu(WebKitWebView *web, WebKitOptionMenu *menu, WebKitRect
         g_byte_array_append(bytes, &flags, 1); append_u16(bytes, size);
         if (size) g_byte_array_append(bytes, (const guint8 *)label, size);
     }
+    web_send(host, 8, bytes->data, bytes->len);
+    return TRUE;
+}
+/* Right-click on an image or link: a native list of saves and opens. Each entry is an action letter
+ * ('s' save, 'o' open) followed by the address, so a choice can be carried out after the popup closes. */
+static gboolean web_address(const char *uri)
+{
+    return uri && (g_str_has_prefix(uri, "https://") || g_str_has_prefix(uri, "http://")) && strlen(uri) <= 8192;
+}
+static void add_context(GPtrArray *items, GByteArray *bytes, char action, const char *uri, const char *label)
+{
+    if (items->len >= 8 || !web_address(uri)) return;
+    g_ptr_array_add(items, g_strdup_printf("%c%s", action, uri));
+    guint8 flags = 1; size_t size = strlen(label);
+    g_byte_array_append(bytes, &flags, 1); append_u16(bytes, size);
+    g_byte_array_append(bytes, (const guint8 *)label, size);
+}
+static gboolean context_menu(WebKitWebView *web, WebKitContextMenu *menu, WebKitHitTestResult *hit, gpointer data)
+{
+    (void)menu;
+    WebHost *host = data;
+    g_printerr("agx-web: context-menu image=%s link=%s\n", webkit_hit_test_result_get_image_uri(hit) ?: "-",
+        webkit_hit_test_result_get_link_uri(hit) ?: "-");
+    if (web != host->web || host->dialog) return TRUE;
+    web_menu_response(host, G_MAXUINT16);
+    g_autoptr(GPtrArray) items = g_ptr_array_new_with_free_func(g_free);
+    g_autoptr(GByteArray) bytes = g_byte_array_new();
+    append_u16(bytes, 0);
+    if (webkit_hit_test_result_context_is_image(hit)) {
+        add_context(items, bytes, 's', webkit_hit_test_result_get_image_uri(hit), "Save image to Downloads");
+        add_context(items, bytes, 'o', webkit_hit_test_result_get_image_uri(hit), "Open image in this tab");
+    }
+    if (webkit_hit_test_result_context_is_link(hit)) {
+        add_context(items, bytes, 's', webkit_hit_test_result_get_link_uri(hit), "Save linked file to Downloads");
+        add_context(items, bytes, 'o', webkit_hit_test_result_get_link_uri(hit), "Open link in this tab");
+    }
+    if (!items->len) return TRUE;
+    guint16 count = GUINT16_TO_BE(items->len); memcpy(bytes->data, &count, 2);
+    host->menu_actions = g_steal_pointer(&items);
     web_send(host, 8, bytes->data, bytes->len);
     return TRUE;
 }
@@ -75,6 +115,16 @@ static gboolean navigation_policy(WebKitWebView *web, WebKitPolicyDecision *deci
 }
 void web_menu_response(WebHost *host, guint16 index)
 {
+    if (host->menu_actions) {
+        g_autoptr(GPtrArray) items = g_steal_pointer(&host->menu_actions);
+        if (index < items->len) {
+            const char *entry = g_ptr_array_index(items, index);
+            if (entry[0] == 's') webkit_web_view_download_uri(host->web, entry + 1);
+            else if (entry[0] == 'o') webkit_web_view_load_uri(host->web, entry + 1);
+        }
+        web_send(host, 10, NULL, 0);
+        return;
+    }
     if (!host->menu) return;
     g_autoptr(WebKitOptionMenu) menu = g_object_ref(host->menu);
     if (index < webkit_option_menu_get_n_items(menu)) {
@@ -105,6 +155,7 @@ void web_dialogs_connect(WebHost *host, WebKitWebView *web)
 {
     g_signal_connect(web, "close", G_CALLBACK(close_window), host);
     g_signal_connect(web, "show-option-menu", G_CALLBACK(show_menu), host);
+    g_signal_connect(web, "context-menu", G_CALLBACK(context_menu), host);
     g_signal_connect(web, "script-dialog", G_CALLBACK(script_dialog), host);
     g_signal_connect(web, "decide-policy", G_CALLBACK(navigation_policy), host);
 }

@@ -48,7 +48,7 @@ pub fn places() -> Vec<Place> {
 }
 
 /// Mount points of real block devices (SD card, NVMe, USB), in mount order.
-fn drives(mounts: &str) -> Vec<PathBuf> {
+pub(super) fn drives(mounts: &str) -> Vec<PathBuf> {
     mounts
         .lines()
         .filter_map(|line| {

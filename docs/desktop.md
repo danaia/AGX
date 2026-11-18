@@ -6,7 +6,18 @@ The desktop starts in **windowed** mode: Settings fills the left half, with the 
 
 Click the **memory** bar in **Memory and storage** on workspace 1 to see live resident memory usage by process. Click the **Memory** heading to reverse the sort order. Select a row to see its risk explanation. **End process…** lets you request a normal stop or explicitly force it. System, other-account, and desktop startup processes are protected. A **Lower risk** label still means the process's current task will stop.
 
-The ANGI overview includes separate **SD card** and **NVMe** personal-file heat maps. Each square is an eligible file of at least 1 MiB, ordered largest first. The map shows the full eligible inventory up to 4,096 files per drive and labels that limit when reached; longer maps scroll with the mouse wheel or touchpad, without visible scroll bars. The system details and logo stay fixed above the scrolling maps; the bottom file readout and refresh icon stay fixed below them. The logo has an extra 30 px of right padding. It no longer uses a 96-file shortlist that refilled a square with a different file after Refresh. Both maps use absolute size thresholds: green below 10 MiB, amber at 100 MiB, and red at 1 GiB and above. Hover to read the path, file size and allocated disk space along the bottom of the panel, beside the refresh icon. Click a square to see file details and the **Estimated removal risk** bar immediately. Choose **Delete…**, then confirm with **Delete permanently**; **Cancel** or Escape backs out. Deletion uses your existing account permissions, checks that the selected file has not changed, and removes the tile and closes the dialog as soon as deletion succeeds. Drive totals refresh in the background. Remaining tiles slide into place, and the current set stays stable after deletion: automatic scans do not refill it with the next-largest file or restore a recreated path. The small **Refresh files** icon in the overview’s bottom-right corner asynchronously loads the next current set while keeping successfully deleted paths hidden for the rest of the desktop session. Files recreated at those paths remain excluded after Refresh and are noted as recreated in the status; overall drive usage still includes their space. Failed deletions retain the tile and show the error. The risk estimate is based on location/type: caches and build output are generally low, unknown personal files medium, and databases, backups, keys, originals and project data high. Database/backup indicators override cache locations. The estimate does not verify backups or inspect file contents, and file size does not affect it. Files are permanently removed, rather than moved to trash.
+The storage grid has tabs for All, Apps & Games, Media, Downloads, Documents,
+Cache, and Other. Personal files are grouped by recognizable file extensions and
+folders. Downloads groups unclassified downloads and downloaded media or
+documents, while recognized installers and game files appear in Apps & Games.
+Tile colors continue to indicate file size. The Cache tab checks for verified
+OpenCode npm download blobs of at least 1 MiB. Browser caches, build outputs,
+and app data are excluded from personal cleanup. OpenCode may download a removed
+blob again when needed.
+
+The ANGI Overview includes separate **SD card** and **NVMe** personal-file heat maps. Use the category icons above the maps to filter files. Downloads includes smaller files, while other personal files normally enter the map at 1 MiB. Tiles are ordered largest first, up to 4,096 files per drive. Colors indicate file size. Hover for the path, size and allocated space, or select a square for file details and estimated removal risk.
+
+Choose **Move to Trash…** and confirm to remove a file from the map. The file stays on the same drive and can be restored. The **Trash** tab also shows items moved to Trash from ANGI Files. Open an item's details to restore it to its original path or explicitly confirm permanent deletion to reclaim its space. A restore leaves an existing file at that path intact. **Clear cache…** separately purges verified, re-downloadable cache files to reclaim space immediately.
 
 The map includes files owned by the signed-in user in their home, personal NVMe files, the `angi-dev` project, and selected browser/OpenCode cache, temporary and build-cache folders. OS files, installed runtimes, SDK files, other accounts' files, Git internals, credentials, configuration directories and `~/.local/bin` are excluded. A file also needs a writable parent directory. A drive can show no eligible personal files even while its overall usage is high; drive totals still include system and other-account space. Symlinks are not followed and hard links are counted once (deleting one hard link may leave its data allocated elsewhere).
 
@@ -242,3 +253,87 @@ Native **Terminal** opens with **Super+Enter** or from Apps. Its Alacritty engin
 Workspace 3 opens three independent Terminal windows in a tiled layout: one full-height terminal on the left and two stacked on the right. Hardware remains available in Apps. Choosing Terminal from Apps always adds a new window on the current workspace. Each terminal window has its own shell sessions, tabs, font size, selection and search state; there is no fixed application limit on terminal windows or tabs. Available memory and process resources determine practical capacity. Agent Angie uses a separate terminal window for Herdr.
 
 **Super+Return** opens a new terminal window in the focused terminal tab’s current working directory. New windows opened from Apps and new tabs inherit that directory too. With no terminal focused, a new terminal starts in your home directory.
+
+### Services and updates
+
+Open **Services** for the system software and supervised services. Installable
+updates appear first, followed by items requiring a check and current software. The panel omits newer upstream versions without an ANGI installer.
+The inventory JSON retains those comparisons for diagnostics.
+Rows align software/version, installation date, last check, status and a compact
+update button. Smaller panels stack the two timestamps beneath the software name.
+Green means up to date. Orange means an update is available to install. A yellow
+dot accompanies an explicit check result such as Not checked yet, Check failed,
+Version unavailable, or Local build. There is no generic “status unknown” label.
+
+Installation dates and check dates are separate. The desktop installation date
+comes from its release ledger, and runtime installation dates from the atomic
+current-link switch. Components without a recorded install date say so. The
+**Last checked** timestamp records a real publisher request, including a failed
+attempt; failure never becomes an up-to-date result. Per-account check results
+persist in `~/.cache/angi/update-checks.json`. Checks share publisher results
+between services owned by the same package and reuse results for one minute to
+avoid rate-limit bursts. Startup reuses successful checks for six hours; the manual
+Check action can refresh them sooner. Publisher rate limits honor the server’s reset
+time, retain previously observed available versions, and retry automatically.
+Visible timestamp text refreshes once a minute. At boot,
+checks wait for a plausible system clock (also bounded by a recorded successful
+check) before making HTTPS requests. The UI says **Waiting for clock**, then
+resumes checks automatically after time synchronization. Transient network
+failures likewise retry with bounded backoff. Waiting for clock synchronization
+never stamps a publisher-check timestamp, and TLS certificate verification is
+always retained. Recovery polling continues while the Services panel is closed
+until the transient condition clears. After network time synchronizes, the network
+service saves it to the Pi’s hardware clock for the next boot.
+
+**Check for updates** refreshes upstream version metadata over HTTPS off the UI
+thread and summarizes the results. Use `angi-update check` to also verify a
+workstation-staged system image. The checker probes installed binaries
+or libraries instead of assuming the source checkout's version was deployed.
+GitHub releases are used for Herdr, OpenCode, Tailscale and tmux. GitHub tags are
+used for Dropbear, BlueZ, OpenSSH, OpenSSL and Buildroot. The Raspberry Pi kernel
+check reads its matching `rpi-X.Y.y` maintenance branch. Buildroot and OpenSSL
+checks stay in their configured maintenance series. BusyBox, WPE WebKit and
+wpa_supplicant are checked against their publishers' release indexes because
+GitHub mirrors/releases do not reliably represent those projects. Preview
+versions are excluded, and numeric version comparison handles tags correctly.
+ANGI checks its GitHub main source tree; a customized installed tree is labeled
+Local build rather than pretending it matches a published binary release.
+The inventory JSON includes each component's exact `source_url`, installed/latest
+versions, check timestamp and any request error.
+
+The per-item icon opens a review overlay for an installable update or a pending
+desktop restart. The overlay names the restart scope and explains session,
+network or Bluetooth interruptions. Its Install action appears only for a supported installer. Enter
+defaults to Cancel; Escape closes the review, and Tab stays within its actions.
+Computer reboot requirements are activation advice, not a claim that an uninstalled
+upstream release already requires a reboot. The desktop release is compared with
+this account’s running GUI to detect a real pending desktop restart; a new pending
+release automatically opens the overlay once. Nothing reboots or restarts
+automatically. Kernel, base image, core BusyBox and OpenSSL updates require a reboot
+under the system-image deployment path; other items identify their application or
+service scope.
+
+A guarded desktop source change can be installed through
+`angi-update gui` after confirmation, retaining its revert guard and previous
+release. To load it, use **Settings → Refresh desktop…**. Services has no desktop
+refresh action. Upstream availability does not imply an automatic installer:
+ANGI uses Buildroot, with no apt repository, and kernel/base updates still need a
+recovery-capable system-image installer. Staged-image checksums establish
+integrity, not authenticity or release freshness.
+
+Supported desktop installs stream real stage transitions and build output through
+`angi-update gui --progress`. The GUI shows an activity bar while building (with no
+invented percentage), then installation and verification stages. Success is emitted
+only after the copied file hash, selected release link and source record are checked.
+A failed verification leaves or restores the prior selected release. **Hide** keeps
+the job running; **View progress** reopens it. Completion is surfaced even after
+hiding the window. A private receipt at `~/.cache/angi/update-job.json` survives
+refreshes and records the installed release and whether desktop activation is still
+pending. Read it with `angi-update job`. Services resumes any running installer
+after a desktop refresh and shows its result when it finishes. Completed receipts
+from earlier sessions stay in the CLI history. This progress view does not implement system
+image installation. The base system and kernel are not downloaded or installed by
+opening their information overlay.
+
+CLI equivalents: `angi-update inventory` reads current inventory and cached
+checks and retries due transient failures; `angi-update check` refreshes publisher checks and validates a staged image.

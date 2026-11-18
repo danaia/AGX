@@ -1,4 +1,6 @@
 //! Root-only network service. Owns authentication, DHCP, saved profiles and reboot.
+mod clock;
+
 use crate::{
     MAX_REQUEST, Reply, Request, SOCKET, SavedNetwork, Security, Status, decode_ssid, display_ssid,
     hex, parse_scan, psk, unhex, validate_credentials,
@@ -743,6 +745,9 @@ impl Manager {
         {
             self.state.time_synced = status.success();
             self.ntp = None;
+            if self.state.time_synced {
+                clock::save_synchronized_time();
+            }
         }
         if let Some(diag) = self.diagnostic.as_mut()
             && let Ok(Some(exit)) = diag.child.try_wait()

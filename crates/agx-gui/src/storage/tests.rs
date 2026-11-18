@@ -84,6 +84,25 @@ fn inventory_does_not_follow_symlinks_or_count_hard_links_twice() {
 }
 
 #[test]
+fn inventories_small_downloads_on_their_actual_volume() {
+    let fixture = Fixture::new("small-download");
+    let path = "agx-web-users/1000/downloads";
+    fs::create_dir_all(fixture.0.join(path)).unwrap();
+    fixture.file(&format!("{path}/image.jpe"), 16_264);
+    fixture.file("small-outside.jpe", 16_264);
+    symlink(fixture.0.join(path), fixture.0.join("Downloads")).unwrap();
+
+    let inventory = fixture.scan();
+    assert_eq!(inventory.files.len(), 1);
+    let file = &inventory.files[0];
+    assert_eq!(file.path, fixture.0.join(path).join("image.jpe"));
+    assert!(super::category::Category::Downloads.includes(&file.path));
+    delete::remove(file, &fixture.policy(), Some(fixture.0.join(".Trash"))).unwrap();
+    assert!(!file.path.exists());
+    assert!(fixture.0.join("small-outside.jpe").exists());
+}
+
+#[test]
 fn keeps_the_largest_files_and_reports_sparse_allocation_separately() {
     let fixture = Fixture::new("largest");
     for i in 1..=scan::CELL_LIMIT + 24 {
@@ -175,10 +194,30 @@ fn deletion_removes_only_the_selected_personal_file_and_rescan_excludes_it() {
     fixture.file("chosen", 2_097_152);
     fixture.file("keep", 1_048_576);
     let file = fixture.scan().files[0].clone();
-    delete::remove(&file, &fixture.policy()).unwrap();
+    delete::remove(&file, &fixture.policy(), Some(fixture.0.join(".Trash"))).unwrap();
     assert!(!fixture.0.join("chosen").exists());
     assert!(fixture.0.join("keep").exists());
     assert_eq!(fixture.scan().files.len(), 1);
+    let entries = crate::files::trash::list(Some(fixture.0.join(".Trash"))).unwrap();
+    let entry = entries
+        .iter()
+        .find(|entry| entry.stored.original == file.path)
+        .unwrap();
+    assert!(entry.stored.file.exists());
+    fixture.file("chosen", 1);
+    assert!(entry.apply(false).is_err(), "restore must not overwrite");
+    fs::remove_file(&file.path).unwrap();
+    entry.apply(false).unwrap();
+    assert_eq!(fs::metadata(&file.path).unwrap().len(), file.bytes);
+    delete::remove(&file, &fixture.policy(), Some(fixture.0.join(".Trash"))).unwrap();
+    let entries = crate::files::trash::list(Some(fixture.0.join(".Trash"))).unwrap();
+    let entry = entries
+        .iter()
+        .find(|entry| entry.stored.original == file.path)
+        .unwrap();
+    entry.apply(true).unwrap();
+    assert!(!entry.stored.file.exists());
+    assert!(!entry.stored.info.exists());
 }
 
 #[test]
@@ -188,7 +227,7 @@ fn deletion_refuses_replaced_modified_and_out_of_scope_files() {
     let file = fixture.scan().files[0].clone();
     fs::rename(&file.path, fixture.0.join("original")).unwrap();
     fixture.file("chosen", file.bytes);
-    assert!(delete::remove(&file, &fixture.policy()).is_err());
+    assert!(delete::remove(&file, &fixture.policy(), Some(fixture.0.join(".Trash"))).is_err());
     assert!(file.path.exists());
     let changed = fixture
         .scan()
@@ -202,9 +241,9 @@ fn deletion_refuses_replaced_modified_and_out_of_scope_files() {
         .unwrap()
         .set_len(changed.bytes + 1)
         .unwrap();
-    assert!(delete::remove(&changed, &fixture.policy()).is_err());
+    assert!(delete::remove(&changed, &fixture.policy(), Some(fixture.0.join(".Trash"))).is_err());
     let outside = Fixture::new("outside");
-    assert!(delete::remove(&changed, &outside.policy()).is_err());
+    assert!(delete::remove(&changed, &outside.policy(), Some(outside.0.join(".Trash"))).is_err());
     assert!(changed.path.exists());
 }
 
@@ -218,7 +257,7 @@ fn deletion_refuses_a_parent_replaced_with_a_symlink() {
     let file = fixture.scan().files[0].clone();
     fs::rename(fixture.0.join("downloads"), fixture.0.join("saved")).unwrap();
     symlink(&outside.0, fixture.0.join("downloads")).unwrap();
-    assert!(delete::remove(&file, &fixture.policy()).is_err());
+    assert!(delete::remove(&file, &fixture.policy(), Some(fixture.0.join(".Trash"))).is_err());
     assert!(outside.0.join("chosen").exists());
     assert!(fixture.0.join("saved/chosen").exists());
 }
@@ -235,15 +274,20 @@ fn deletion_is_published_while_an_inventory_scan_is_still_blocked() {
     let (publish, updates) = mpsc::channel();
     let (started, scan_started) = mpsc::channel();
     let (release, blocked_scan) = mpsc::channel();
-    let worker = Worker::with_collector(fixture.policy(), publish, move || {
-        if let Some(inventory) = stale.take() {
-            started.send(()).unwrap();
-            blocked_scan.recv_timeout(Duration::from_secs(5)).unwrap();
-            [inventory, scan::Inventory::default()]
-        } else {
-            std::array::from_fn(|_| scan::Inventory::default())
-        }
-    });
+    let worker = Worker::with_collector(
+        fixture.policy(),
+        publish,
+        Some(fixture.0.join(".Trash")),
+        move || {
+            if let Some(inventory) = stale.take() {
+                started.send(()).unwrap();
+                blocked_scan.recv_timeout(Duration::from_secs(5)).unwrap();
+                [inventory, scan::Inventory::default()]
+            } else {
+                std::array::from_fn(|_| scan::Inventory::default())
+            }
+        },
+    );
     scan_started.recv_timeout(Duration::from_secs(2)).unwrap();
     worker.delete(file.clone()).unwrap();
     let Update::Deleted(completed, result) = updates.recv_timeout(Duration::from_secs(2)).unwrap()
@@ -281,9 +325,12 @@ fn asynchronous_delete_failure_preserves_the_file() {
         .set_len(file.bytes + 1)
         .unwrap();
     let (publish, updates) = mpsc::channel();
-    let worker = Worker::with_collector(fixture.policy(), publish, || {
-        std::array::from_fn(|_| scan::Inventory::default())
-    });
+    let worker = Worker::with_collector(
+        fixture.policy(),
+        publish,
+        Some(fixture.0.join(".Trash")),
+        || std::array::from_fn(|_| scan::Inventory::default()),
+    );
     worker.delete(file.clone()).unwrap();
     loop {
         if let Update::Deleted(completed, result) =

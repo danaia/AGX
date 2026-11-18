@@ -1,7 +1,11 @@
 """angi-update: the fast, guarded way to change the ANGI desktop on this device.
 
+    angi-update inventory   services and local update availability (JSON)
+    angi-update check-releases  refresh available upstream versions (JSON)
+    angi-update check       also verify the staged kernel/base image (JSON)
     angi-update status      installed release, its source, and whether an install is allowed
     angi-update gui         build the desktop from the checkout and install it as a new release
+    angi-update gui --progress  stream installation stages and a verified result (JSON)
     angi-update refresh     load the installed release into the running desktop (closes ANGI's terminals)
     angi-update rollback    point the desktop back at the previous release
 """
@@ -51,8 +55,17 @@ def build(compile=compile_gui, cache=None):
 
 
 def main(args):
-    if args == ["status"]:
+    if args in (["inventory"], ["check"], ["check-releases"]):
+        import system_updates
+        print(json.dumps(system_updates.inventory(verify=args == ["check"], refresh=args == ["check-releases"])))
+    elif args == ["job"]:
+        import install_progress
+        print(json.dumps(install_progress.status()))
+    elif args == ["status"]:
         print(json.dumps({**releases.status(), "running": sorted(set(refresh.desktops().values())), "last_refresh": refresh.report()}, indent=2))
+    elif args == ["gui", "--progress"]:
+        import install_progress
+        return install_progress.run(build)
     elif args == ["gui"]:
         print(releases.install(build))
     elif args == ["refresh"]:

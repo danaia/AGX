@@ -131,6 +131,7 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
                 host->view, WPE_INPUT_SOURCE_MOUSE, timestamp(), mods, p[1], x, y, count);
         }
         host->pointer_x = x; host->pointer_y = y;
+        if (p[0] == 1 && p[1] == 3) g_printerr("agx-web: secondary button down at %.0f,%.0f\n", x, y);
         break;
     }
     case 9:

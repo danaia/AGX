@@ -10,6 +10,9 @@ Rust in `src/`, Slint UI in `ui/`. Read the checkout's `AGENTS.md` and
 `docs/code-structure.md` before editing (file-size and module rules). User-visible text says
 ANGI; technical names stay `agx`.
 
+For desktop tooltips, read `.agents/skills/angi-desktop-tooltips/SKILL.md` in the
+checkout. Use its shared Slint components from Agent Angie's OS and Project toggle.
+
 ## The loop
 
 1. Edit the source in the checkout. Keep changes small and reviewable.

@@ -23,6 +23,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let app = Rc::new(RefCell::new(App::new()));
+    let _services_watch = crate::services::install(&ui);
     ui.set_wins(ModelRc::from(app.borrow().view.windows.clone()));
     ui.set_ws_occupied(ModelRc::from(app.borrow().occupied.clone()));
     ui.set_mod_name(app.borrow().modk.name().into());

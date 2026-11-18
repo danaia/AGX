@@ -25,6 +25,7 @@ mod app;
 #[cfg(test)]
 mod pointer_tests;
 mod runtime;
+mod services;
 mod settings;
 mod session_refresh;
 mod system_ui;
