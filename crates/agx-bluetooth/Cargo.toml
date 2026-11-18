@@ -1,0 +1,12 @@
+[package]
+name = "agx-bluetooth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Bluetooth protocol, device models and client shared by the ANGI desktop, CLI and agx-bluetoothd"
+
+# Deliberately tiny: the desktop (a standalone workspace) and the CLI link this crate, while
+# BlueR, D-Bus and tokio stay inside agx-bluetoothd.
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

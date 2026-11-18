@@ -1,3 +1,4 @@
+mod bluetooth;
 mod start;
 use agx_core::Sampler;
 use agx_tui::{ColorMode, Options};
@@ -52,6 +53,13 @@ enum Commands {
     Wifi {
         #[command(subcommand)]
         action: Option<WifiCommand>,
+        #[arg(long, global = true)]
+        json: bool,
+    },
+    /// Find, pair and connect Bluetooth devices
+    Bluetooth {
+        #[command(subcommand)]
+        action: Option<bluetooth::Action>,
         #[arg(long, global = true)]
         json: bool,
     },
@@ -496,6 +504,7 @@ fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
                 return Err(reply.message.into());
             }
         }
+        Commands::Bluetooth { action, json } => bluetooth::run(action, json)?,
         Commands::Profile { json } => {
             let reply = agx_net::request(&agx_net::Request::ProfileStatus)?;
             if !reply.ok {

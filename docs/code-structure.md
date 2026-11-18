@@ -83,3 +83,5 @@ ANGI Files lives in `agx-gui/src/files/`. The filesystem layer has no UI types, 
 `files/server.rs` owns session-scoped Python static HTTP servers: isolated process startup, loopback port selection/readiness, per-folder reuse and child cleanup on a worker thread. `files/mod.rs` polls results and opens Web through the existing desktop/browser APIs. `files/hub.rs` remains cohesive at about 500 lines as the shared browser command/state coordinator; server process logic stays outside it.
 
 The memory process overlay uses `memory_processes.rs` for procfs snapshots, risk classification, and PID-safe signal delivery on a worker thread. `ui/memory-processes.slint` owns the sortable process list and termination confirmation. The desktop composition only opens and hosts the overlay.
+
+Web tabs share a single sandboxed WPE context and network session. `apps/web/tabs.c` owns the views and active-tab metadata, `platform.c` tracks which view owns each frame until acknowledgement, and `browser/tabs.rs` owns the desktop tab commands and strip state. Workspace defaults stay in `wm/startup.rs`.

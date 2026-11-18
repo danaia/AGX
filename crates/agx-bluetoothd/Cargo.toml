@@ -1,0 +1,24 @@
+[package]
+name = "agx-bluetoothd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "ANGI Bluetooth service: discovery, pairing and connections over BlueZ"
+
+[dependencies]
+agx-bluetooth.workspace = true
+agx-profile.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+# BlueR talks to bluetoothd over D-Bus (libdbus-1). The daemon reaches it only through the
+# Backend trait, so a native Rust stack could replace it without changing the protocol.
+bluer = { version = "0.17", default-features = false, features = ["bluetoothd"] }
+tokio = { version = "1", default-features = false, features = ["rt", "net", "time", "sync", "macros", "io-util", "signal"] }
+futures-util = { version = "0.3", default-features = false }
+
+[[bin]]
+name = "agx-bluetoothd"
+path = "src/main.rs"
+
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt", "time", "sync", "macros", "test-util"] }

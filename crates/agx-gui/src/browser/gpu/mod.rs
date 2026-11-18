@@ -53,15 +53,20 @@ pub(super) fn install(ui: &crate::AppWindow, app: &std::rc::Rc<std::cell::RefCel
                 if gpu.pending() {
                     return;
                 }
-                let frame = engine.updates.lock().unwrap().gpu.take();
+                let (frame, floor) = {
+                    let mut updates = engine.updates.lock().unwrap();
+                    let floor = updates.tabs.as_ref().map_or(app.browser.frame_floor, |tabs| tabs.frame_floor);
+                    (updates.gpu.take(), floor)
+                };
                 if let Some(frame) = frame {
-                    if !app.browser.visible {
+                    if !app.browser.visible || frame.sequence < floor {
                         engine.send(11, frame.sequence.to_be_bytes().to_vec());
                         return;
                     }
-                    let (width, height) = (frame.width, frame.height);
+                    let (width, height, sequence) = (frame.width, frame.height, frame.sequence);
                     match unsafe { gpu.copy(frame, engine.commands(), ui.as_weak()) } {
                         Ok(image) => {
+                            app.browser.frame_sequence.set(sequence);
                             let web = ui.global::<Web>();
                             web.set_frame_width(width as i32);
                             web.set_frame_height(height as i32);

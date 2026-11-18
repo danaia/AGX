@@ -57,13 +57,13 @@ static gboolean load_local_html(WebHost *host, const char *uri)
     if (!g_str_has_suffix(lower, ".html") && !g_str_has_suffix(lower, ".htm")) return FALSE;
     GStatBuf info;
     if (g_stat(path, &info) || !S_ISREG(info.st_mode) || info.st_size > (goffset)WEB_MAX_LOCAL_HTML) {
-        web_error(host, "That page is not a regular file or is larger than 16 MB.");
+        web_tab_error(host, host->web, "That page is not a regular file or is larger than 16 MB.");
         return TRUE;
     }
     g_autofree char *html = NULL;
     gsize length = 0;
     if (!g_file_get_contents(path, &html, &length, NULL)) {
-        web_error(host, "That page cannot be read.");
+        web_tab_error(host, host->web, "That page cannot be read.");
         return TRUE;
     }
     g_autoptr(GBytes) bytes = g_bytes_new_take(g_steal_pointer(&html), length);
@@ -79,20 +79,21 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
     switch (kind) {
     case 1:
         if (size != 4 || !u16(p) || !u16(p + 2) || u16(p) > WEB_MAX_WIDTH || u16(p + 2) > WEB_MAX_HEIGHT) return FALSE;
-        wpe_toplevel_resize(wpe_view_get_toplevel(host->view), u16(p), u16(p + 2));
+        host->width = u16(p); host->height = u16(p + 2);
+        wpe_toplevel_resize(wpe_view_get_toplevel(host->view), host->width, host->height);
         return TRUE;
     case 2: {
         if (!size || size > 8192 || memchr(p, 0, size) || !g_utf8_validate((const char *)p, size, NULL)) return FALSE;
         g_autofree char *uri = g_strndup((const char *)p, size);
         if (!g_str_has_prefix(uri, "https://") && !g_str_has_prefix(uri, "http://") && !g_str_has_prefix(uri, "file://")) return FALSE;
-        web_error(host, "");
+        web_tab_error(host, host->web, "");
         if (!strcmp(uri, "file:///usr/share/agx/web/start.html")) {
             /* Shared MIME glob databases can classify .html as XHTML without
              * sniffing. Our bundled HTML5 document has a known content type. */
             g_autofree char *html = NULL;
             gsize length = 0;
             if (!g_file_get_contents("/usr/share/agx/web/start.html", &html, &length, NULL)) {
-                web_error(host, "The Web start page is unavailable.");
+                web_tab_error(host, host->web, "The Web start page is unavailable.");
                 return TRUE;
             }
             g_autoptr(GBytes) bytes = g_bytes_new_take(g_steal_pointer(&html), length);
@@ -102,15 +103,20 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
     }
     case 3: if (size) return FALSE; webkit_web_view_go_back(host->web); return TRUE;
     case 4: if (size) return FALSE; webkit_web_view_go_forward(host->web); return TRUE;
-    case 5: if (size) return FALSE; web_error(host, ""); webkit_web_view_reload(host->web); return TRUE;
+    case 5: if (size) return FALSE; web_tab_error(host, host->web, ""); webkit_web_view_reload(host->web); return TRUE;
     case 6:
         if (size != 1) return FALSE;
-        wpe_view_set_visible(host->view, p[0] != 0);
-        if (p[0]) wpe_view_map(host->view); else wpe_view_unmap(host->view);
+        host->visible = p[0] != 0;
+        wpe_view_set_visible(host->view, host->visible);
+        if (p[0]) {
+            wpe_view_map(host->view);
+            web_restore_view(host);
+        } else wpe_view_unmap(host->view);
         return TRUE;
     case 7:
         if (size != 1) return FALSE;
-        if (p[0]) wpe_view_focus_in(host->view); else wpe_view_focus_out(host->view);
+        host->focused = p[0] != 0;
+        if (host->focused) wpe_view_focus_in(host->view); else wpe_view_focus_out(host->view);
         return TRUE;
     case 8: {
         if (size != 10 || p[0] > 2 || p[1] > 3) return FALSE;
@@ -148,7 +154,15 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
         web_dialog_response(host, p[0] != 0, text); return TRUE;
     }
     case 16: if (size != 8) return FALSE; web_gpu_fallback(host, u64(p)); return TRUE;
-    case 15: if (size) return FALSE; webkit_web_view_try_close(host->web); return TRUE;
+    case 15:
+        if (size) return FALSE;
+        host->closing_tab = FALSE;
+        webkit_web_view_try_close(host->web);
+        return TRUE;
+    case 17:
+        if (!host->tabs_enabled || size != 2 || p[0] > 2 || p[1] >= WEB_MAX_TABS) return FALSE;
+        web_tab_command(host, p[0], p[1]);
+        return TRUE;
     default: return FALSE;
     }
     if (event) wpe_view_event(host->view, event);

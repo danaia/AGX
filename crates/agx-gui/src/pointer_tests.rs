@@ -186,6 +186,123 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
         settings_app.borrow().desk.is_open(Kind::Settings),
         "Escape keeps the tile open"
     );
+    // Bluetooth page: PageDown switches pages, daemon state is shown, and the keyboard drives it.
+    {
+        let press = |key: slint::platform::Key| {
+            ui.window().dispatch_event(WindowEvent::KeyPressed { text: key.into() });
+            slint::platform::update_timers_and_animations();
+        };
+        let page = ui.global::<BluetoothSettings>();
+        let calls = Rc::new(RefCell::new(Vec::<String>::new()));
+        let weak = ui.as_weak();
+        page.on_select(move |index| weak.upgrade().unwrap().global::<BluetoothSettings>().set_selected(index));
+        let log = calls.clone();
+        page.on_act(move |address, action| log.borrow_mut().push(format!("act {address} {action}")));
+        let log = calls.clone();
+        page.on_respond(move |accept, _| log.borrow_mut().push(format!("respond {accept}")));
+        let log = calls.clone();
+        page.on_decide(move |id, allow| log.borrow_mut().push(format!("decide {id} {allow}")));
+        let device = |address: &str, name: &str, detail: &str, glyph: &str, header: &str, paired: bool, connected: bool, bars: i32| BtDevice {
+            address: address.into(),
+            name: name.into(),
+            detail: detail.into(),
+            glyph: glyph.into(),
+            header: header.into(),
+            paired,
+            connected,
+            trusted: paired,
+            busy: false,
+            bars,
+        };
+        page.set_available(true);
+        page.set_adapter(true);
+        page.set_powered(true);
+        page.set_scanning(true);
+        page.set_seconds_left(31);
+        page.set_status("Searching for devices…".into());
+        page.set_devices(ModelRc::new(slint::VecModel::from(vec![
+            device("AA:BB:CC:00:00:01", "Desk speaker", "Speaker · Connected · 80% · Auto-connect", "\u{f04c3}", "MY DEVICES", true, true, 0),
+            device("AA:BB:CC:00:00:02", "Keyboard", "Keyboard · Not connected · Auto-connect", "\u{f030c}", "", true, false, 0),
+            device("AA:BB:CC:00:00:03", "Headphones", "Headphones · Very close", "\u{f02cb}", "NEARBY DEVICES", false, false, 4),
+        ])));
+        press(slint::platform::Key::PageDown);
+        render();
+        assert!(page.get_active(), "the service is polled only while the Bluetooth page is showing");
+        press(slint::platform::Key::DownArrow);
+        press(slint::platform::Key::DownArrow);
+        assert_eq!(page.get_selected(), 1, "arrows move through the device list");
+        press(slint::platform::Key::Return);
+        assert_eq!(calls.borrow().last().unwrap(), "act AA:BB:CC:00:00:02 1", "Enter connects a paired, disconnected device");
+        press(slint::platform::Key::Delete);
+        assert_eq!(page.get_confirm_forget(), "AA:BB:CC:00:00:02", "removal asks first");
+        assert_eq!(calls.borrow().len(), 1, "nothing is removed by the first press");
+        press(slint::platform::Key::Escape);
+        assert_eq!(page.get_confirm_forget(), "", "Escape cancels the confirmation");
+        press(slint::platform::Key::Delete);
+        press(slint::platform::Key::Delete);
+        assert_eq!(calls.borrow().last().unwrap(), "act AA:BB:CC:00:00:02 3", "a second press removes");
+        render();
+        // A request from an agent takes Enter and Escape until the person answers it.
+        page.set_approvals(ModelRc::new(slint::VecModel::from(vec![BtApproval { id: 4, text: "pair with and always connect to Headphones.".into() }])));
+        press(slint::platform::Key::Return);
+        assert_eq!(calls.borrow().last().unwrap(), "decide 4 true");
+        press(slint::platform::Key::Escape);
+        assert_eq!(calls.borrow().last().unwrap(), "decide 4 false");
+        page.set_approvals(ModelRc::new(slint::VecModel::from(Vec::<BtApproval>::new())));
+        // A pairing prompt does too.
+        page.set_prompt_text("Does Headphones show this code? Pair only if both screens match.".into());
+        page.set_prompt_code("123456".into());
+        page.set_prompt_kind(1);
+        render();
+        if let Some(path) = std::env::var_os("AGX_BLUETOOTH_SCREENSHOT") {
+            use std::io::Write;
+            let mut pixels = vec![slint::Rgb8Pixel::default(); 1280 * 720];
+            window.request_redraw();
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut pixels, 1280);
+            });
+            let mut file = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
+            file.write_all(b"P6\n1280 720\n255\n").unwrap();
+            for p in pixels {
+                file.write_all(&[p.r, p.g, p.b]).unwrap();
+            }
+        }
+        press(slint::platform::Key::Return);
+        assert_eq!(calls.borrow().last().unwrap(), "respond true");
+        press(slint::platform::Key::Escape);
+        assert_eq!(calls.borrow().last().unwrap(), "respond false");
+        page.set_prompt_kind(0);
+        // Maximizing rebuilds the panel; the chosen page and the service polling must survive it.
+        let tile = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
+        click(tile.right() - 46., tile.y + 14.);
+        render();
+        slint::platform::update_timers_and_animations();
+        assert_eq!(ui.global::<MouseSettings>().get_page(), 1, "the page survives the tile being rebuilt");
+        assert!(page.get_active(), "a rebuilt Bluetooth page keeps polling");
+        if let Some(path) = std::env::var_os("AGX_BLUETOOTH_SCREENSHOT") {
+            // The same page at full width: signal bars appear and the buttons get more room.
+            use std::io::Write;
+            let mut pixels = vec![slint::Rgb8Pixel::default(); 1280 * 720];
+            window.request_redraw();
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut pixels, 1280);
+            });
+            let mut file = std::io::BufWriter::new(std::fs::File::create(std::path::Path::new(&path).with_extension("wide.ppm")).unwrap());
+            file.write_all(b"P6\n1280 720\n255\n").unwrap();
+            for p in pixels {
+                file.write_all(&[p.r, p.g, p.b]).unwrap();
+            }
+        }
+        // Restore the tile and click into the panel so it has the keyboard again.
+        let tile = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
+        click(tile.right() - 46., tile.y + 14.);
+        render();
+        let tile = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
+        click(tile.x + 30., tile.y + 400.);
+        press(slint::platform::Key::PageUp);
+        render();
+        assert!(!page.get_active(), "leaving the page stops polling");
+    }
     let settings_rect = settings_app.borrow().desk.rect_of(Kind::Settings).unwrap();
     click(settings_rect.right() - 12., settings_rect.y + 14.);
     assert!(

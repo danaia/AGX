@@ -10,40 +10,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static void text_property(WebKitWebView *web, GParamSpec *property, gpointer data)
-{
-    WebHost *host = data;
-    const char *value = !strcmp(property->name, "title") ? webkit_web_view_get_title(web) : webkit_web_view_get_uri(web);
-    if (!value) value = "";
-    web_text(host, !strcmp(property->name, "title") ? 2 : 3, value);
-}
-static void progress(WebKitWebView *web, GParamSpec *property, gpointer data)
-{
-    (void)property;
-    guint8 status[2] = {
-        (webkit_web_view_is_loading(web) ? 1 : 0) | (webkit_web_view_can_go_back(web) ? 2 : 0) | (webkit_web_view_can_go_forward(web) ? 4 : 0),
-        (guint8)(100 * webkit_web_view_get_estimated_load_progress(web))
-    };
-    web_send(data, 4, status, sizeof(status));
-}
-static void load_changed(WebKitWebView *web, WebKitLoadEvent event, gpointer data)
-{
-    if (event == WEBKIT_LOAD_STARTED) web_error(data, "");
-    progress(web, NULL, data);
-}
-static gboolean load_failed(WebKitWebView *web, WebKitLoadEvent event, const char *uri, GError *error, gpointer data)
-{
-    (void)web; (void)event; (void)uri;
-    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) return TRUE;
-    web_error(data, "Could not load this page. Check the address and connection, then reload.");
-    return TRUE;
-}
-static void process_terminated(WebKitWebView *web, WebKitWebProcessTerminationReason reason, gpointer data)
-{
-    (void)web;
-    g_printerr("agx-web: web process ended (%d)\n", reason);
-    web_error(data, "Web content stopped unexpectedly. Reload to try again.");
-}
 static gboolean stop(gpointer data) { g_main_loop_quit(data); return G_SOURCE_REMOVE; }
 static int descriptor(const char *text)
 {
@@ -112,32 +78,23 @@ int main(int argc, char **argv)
     g_autofree char *cookies = g_build_filename(data_dir, "cookies.sqlite", NULL);
     webkit_cookie_manager_set_persistent_storage(webkit_network_session_get_cookie_manager(session),
         cookies, WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
-    host.web = g_object_new(WEBKIT_TYPE_WEB_VIEW, "display", display,
-        "web-context", context, "network-session", session, NULL);
-    WebKitColor background = { 1, 1, 1, 1 };
-    webkit_web_view_set_background_color(host.web, &background);
-    WebKitSettings *settings = webkit_web_view_get_settings(host.web);
-    g_object_set(settings, "enable-developer-extras", FALSE,
-        "allow-file-access-from-file-urls", FALSE, "allow-universal-access-from-file-urls", FALSE, NULL);
-    host.view = webkit_web_view_get_wpe_view(host.web);
-    web_dialogs_connect(&host);
-    g_signal_connect(host.web, "notify::title", G_CALLBACK(text_property), &host);
-    g_signal_connect(host.web, "notify::uri", G_CALLBACK(text_property), &host);
-    g_signal_connect(host.web, "notify::estimated-load-progress", G_CALLBACK(progress), &host);
-    g_signal_connect(host.web, "load-changed", G_CALLBACK(load_changed), &host);
-    g_signal_connect(host.web, "load-failed", G_CALLBACK(load_failed), &host);
-    g_signal_connect(host.web, "web-process-terminated", G_CALLBACK(process_terminated), &host);
-    g_autoptr(WPEToplevel) toplevel = wpe_display_create_toplevel(display, 1);
-    wpe_view_set_toplevel(host.view, toplevel);
-    wpe_toplevel_resize(toplevel, 800, 600);
-    wpe_view_set_visible(host.view, FALSE);
+    host.display = display;
+    host.context = context;
+    host.session = session;
+    host.tabs = g_ptr_array_new_with_free_func(g_object_unref);
+    host.tabs_enabled = !g_strcmp0(g_getenv("AGX_WEB_TABS"), "1");
+    host.width = 800;
+    host.height = 600;
+    web_tab_command(&host, 0, 0);
     g_unix_fd_add(control, G_IO_IN | G_IO_HUP | G_IO_ERR, web_read_commands, &host);
     web_send(&host, 6, "ANGIWEB1", 8);
     g_main_loop_run(host.loop);
     web_menu_response(&host, G_MAXUINT16);
     web_dialog_response(&host, FALSE, "");
     web_discard_buffers(&host);
-    g_object_unref(host.web);
+    for (guint i = 0; i < host.tabs->len; i++)
+        web_retire_view(webkit_web_view_get_wpe_view(g_ptr_array_index(host.tabs, i)));
+    g_ptr_array_unref(host.tabs);
     g_byte_array_unref(host.input);
     g_main_loop_unref(host.loop);
     munmap(pixels, WEB_FRAME_BYTES);

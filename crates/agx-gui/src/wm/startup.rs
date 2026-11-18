@@ -40,7 +40,7 @@ impl Desktop {
         for (i, kind) in [
             Kind::AgentAngie,
             Kind::TerminalWindow(0),
-            Kind::Services,
+            Kind::Web,
             Kind::System,
         ]
         .into_iter()

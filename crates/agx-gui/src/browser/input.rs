@@ -1,5 +1,5 @@
 //! Translate desktop content input without interfering with title bars or Super shortcuts.
-use super::{TOOLBAR, protocol, viewport};
+use super::{TAB_BAR, TOOLBAR, protocol, viewport};
 use crate::{
     App, AppWindow, Web,
     input::Drag,
@@ -32,6 +32,9 @@ impl App {
         }
         if mods.alt && (name == "left" || name == "right") {
             self.browser_action(ui, if name == "left" { 0 } else { 1 });
+            return Some(true);
+        }
+        if mods.ctrl && self.browser.tab_shortcut(ui, name, mods.shift) {
             return Some(true);
         }
         if mods.ctrl && name == "l" {
@@ -99,7 +102,10 @@ impl App {
         let rect = placed.rect;
         drop(scene);
         self.last = (x, y);
-        self.cursor = if y < rect.y + HEADER + TOOLBAR {
+        let toolbar_y = rect.y + HEADER + TAB_BAR;
+        self.cursor = if y < toolbar_y {
+            6
+        } else if y < toolbar_y + TOOLBAR {
             if x - rect.x - BORDER >= 144.0 { 7 } else { 6 }
         } else {
             self.browser.cursor
@@ -109,8 +115,8 @@ impl App {
             self.desk.focus(Kind::Web);
         }
         let page = viewport(rect);
-        if body && y < rect.y + HEADER + TOOLBAR && !self.browser.captured {
-            if kind == 0 && button == 0 {
+        if body && y < toolbar_y + TOOLBAR && !self.browser.captured {
+            if kind == 0 && button == 0 && y >= toolbar_y {
                 let local = x - rect.x - BORDER;
                 if (8.0..136.0).contains(&local) {
                     self.browser_action(ui, ((local - 8.0) / 32.0) as i32);

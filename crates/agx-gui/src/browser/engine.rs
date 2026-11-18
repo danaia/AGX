@@ -38,6 +38,7 @@ pub struct Updates {
     pub dialog: Option<(u8, String, String)>,
     pub popup_closed: bool,
     pub close_requested: bool,
+    pub tabs: Option<protocol::TabState>,
     pub ready: bool,
     pub dead: bool,
 }
@@ -91,6 +92,7 @@ impl Engine {
                 "--frame-fd",
                 &fd.to_string(),
             ])
+            .env("AGX_WEB_TABS", "1")
             .env_remove("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS")
             .env_remove("WEBKIT_INSPECTOR_SERVER")
             .env_remove("WEBKIT_INSPECTOR_HTTP_SERVER")
@@ -260,6 +262,7 @@ fn receive(mut control: UnixStream, frame: File, shared: &Mutex<Updates>) -> io:
             9 => shared.lock().unwrap().dialog = Some(protocol::dialog(&data)?),
             10 if data.is_empty() => shared.lock().unwrap().popup_closed = true,
             11 if data.is_empty() => shared.lock().unwrap().close_requested = true,
+            12 => shared.lock().unwrap().tabs = Some(protocol::tabs(&data)?),
             _ => return Err(io::Error::other("invalid web host response")),
         }
     }

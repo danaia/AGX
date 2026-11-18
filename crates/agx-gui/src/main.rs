@@ -3,6 +3,7 @@
 //!
 //! Exit codes let a launcher script react to the user's choice:
 //! 0 = quit, 10 = the user asked for the TUI instead.
+mod bluetooth;
 mod browser;
 mod files;
 mod graphics;

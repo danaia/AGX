@@ -4,6 +4,7 @@ mod gpu;
 mod input;
 mod protocol;
 mod storage;
+mod tabs;
 use crate::{
     App, AppWindow, Web, WebOption,
     wm::{BORDER, HEADER, Kind, Rect},
@@ -11,7 +12,7 @@ use crate::{
 use engine::Engine;
 use slint::{ComponentHandle, Image, ModelRc, VecModel};
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     rc::Rc,
     time::{Duration, Instant},
 };
@@ -28,6 +29,7 @@ pub(crate) fn web_address(text: &str) -> Option<String> {
         .flatten()
 }
 pub(super) use storage::{prepare_accounts, prepare_user_storage};
+const TAB_BAR: f32 = 36.0;
 const TOOLBAR: f32 = 44.0;
 #[derive(Default)]
 pub(super) struct Browser {
@@ -44,13 +46,16 @@ pub(super) struct Browser {
     buttons: u32,
     cursor: i32,
     uri: String,
+    tabs: tabs::Tabs,
+    frame_floor: u64,
+    frame_sequence: Cell<u64>,
 }
 fn viewport(rect: Rect) -> Rect {
     Rect::new(
         rect.x + BORDER,
-        rect.y + HEADER + TOOLBAR,
+        rect.y + HEADER + TAB_BAR + TOOLBAR,
         (rect.w - 2.0 * BORDER).clamp(1.0, protocol::WIDTH as f32),
-        (rect.h - HEADER - TOOLBAR - BORDER).clamp(1.0, protocol::HEIGHT as f32),
+        (rect.h - HEADER - TAB_BAR - TOOLBAR - BORDER).clamp(1.0, protocol::HEIGHT as f32),
     )
 }
 impl Browser {
@@ -79,6 +84,7 @@ impl Browser {
     fn reset(&mut self, ui: &AppWindow) {
         *self = Self::default();
         let web = ui.global::<Web>();
+        self.tabs.publish(&web);
         web.set_frame(Image::default());
         web.set_frame_width(0);
         web.set_frame_height(0);
@@ -113,7 +119,14 @@ impl App {
         }
         let web = ui.global::<Web>();
         let browser = &mut self.browser;
+        let scene = self.view.scene.borrow();
+        let placed = scene
+            .windows
+            .iter()
+            .find(|p| p.kind == Kind::Web && !p.collapsed);
+        let visible = placed.is_some();
         if !browser.attempted {
+            if !visible { return; }
             browser.attempted = true;
             web.set_error("".into());
             match Engine::start(ui) {
@@ -124,12 +137,6 @@ impl App {
                 Err(error) => web.set_error(format!("Could not start Web: {error}").into()),
             }
         }
-        let scene = self.view.scene.borrow();
-        let placed = scene
-            .windows
-            .iter()
-            .find(|p| p.kind == Kind::Web && !p.collapsed);
-        let visible = placed.is_some();
         web.set_popup_visible(
             visible
                 && self.desk.focused() == Some(Kind::Web)
@@ -159,6 +166,16 @@ impl App {
                 state.gpu = gpu;
                 updates
             };
+            if let Some(state) = updates.tabs {
+                if browser.frame_floor != state.frame_floor {
+                    browser.frame_floor = state.frame_floor;
+                    if browser.frame_sequence.get() < state.frame_floor {
+                        web.set_frame(Image::default());
+                        web.set_ready(false);
+                    }
+                }
+                browser.tabs.update(&web, state.active, state.titles);
+            }
             if updates.close_requested {
                 drop(scene);
                 self.desk.close(Kind::Web);
@@ -216,7 +233,8 @@ impl App {
                 browser.send(2, web.get_address().as_bytes().to_vec());
             }
             if let Some(frame) = updates.frame.take() {
-                if visible {
+                if visible && frame.sequence >= browser.frame_floor {
+                    browser.frame_sequence.set(frame.sequence);
                     web.set_frame_width(frame.pixels.width() as i32);
                     web.set_frame_height(frame.pixels.height() as i32);
                     web.set_frame(Image::from_rgba8(frame.pixels));
@@ -250,6 +268,8 @@ impl App {
             }
             if updates.dead {
                 browser.engine = None;
+                browser.tabs = tabs::Tabs::default();
+                browser.tabs.publish(&web);
                 web.set_popup_kind(0);
                 browser.ready = false;
                 browser.starting = None;
@@ -394,7 +414,7 @@ mod tests {
     #[test]
     fn viewport_matches_frame_and_toolbar_and_bounds_memory() {
         let r = viewport(Rect::new(50., 60., 800., 600.));
-        assert_eq!(r, Rect::new(52., 132., 796., 526.));
+        assert_eq!(r, Rect::new(52., 168., 796., 490.));
         let r = viewport(Rect::new(0., 0., 9000., 9000.));
         assert_eq!((r.w, r.h), (4096., 2160.));
     }
@@ -418,6 +438,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> slint::Timer {
         .browser_selection(&ui, index));
     web_hook!(on_dialog_response, |state, ui, accepted, value| state
         .browser_dialog(&ui, accepted, &value));
+    web_hook!(on_tab_command, |state, ui, action, index| state.browser_tab_command(&ui, action, index));
     gpu::install(ui, app);
     let timer = slint::Timer::default();
     let (weak, state) = (ui.as_weak(), app.clone());

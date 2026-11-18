@@ -131,6 +131,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _provider_watch = crate::agent_providers::install(&ui, &app);
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);
+    let _bluetooth_watch = crate::bluetooth::install(&ui, &app);
     crate::agent_swarm::install(&ui, &app);
     let _open_watch = crate::open_request::install(&ui, &app);
     app.borrow().refresh(&ui);

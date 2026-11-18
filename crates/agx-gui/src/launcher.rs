@@ -317,7 +317,9 @@ mod tests {
             apps.iter()
                 .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
         );
-        assert!(!desktop.is_open(Kind::Web), "the engine app starts closed");
+        desktop.goto(3);
+        assert_eq!(desktop.focused(), Some(Kind::Web), "Web is seeded on workspace 4");
+        desktop.goto(0);
         assert_eq!(
             results(&desktop, "Super", "webkit", 0)[0].command,
             Cmd::Open(Kind::Web)

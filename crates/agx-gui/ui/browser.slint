@@ -7,8 +7,8 @@ export global Web {
     in-out property <int> frame-width: 0;
     in-out property <int> frame-height: 0;
     in-out property <string> title: "Web";
-    in-out property <string> site: "file:///usr/share/agx/web/start.html";
-    in-out property <string> address: "file:///usr/share/agx/web/start.html";
+    in-out property <string> site: "https://www.google.com/";
+    in-out property <string> address: "https://www.google.com/";
     in-out property <string> error;
     in-out property <bool> ready: false;
     in-out property <bool> loading: false;
@@ -28,6 +28,9 @@ export global Web {
     in-out property <int> dialog-type: 0;
     in-out property <string> dialog-message;
     in-out property <string> dialog-value;
+    in property <[string]> tabs;
+    in property <int> active-tab;
+    callback tab-command(int, int);
     callback selection(int);
     callback dialog-response(bool, string);
     callback action(int);
@@ -66,7 +69,7 @@ export component BrowserPanel inherits Rectangle {
     background: #f7f9fc;
     clip: true;
     Rectangle {
-        x: 0; y: 0;
+        x: 0; y: 36px;
         width: parent.width;
         height: 44px;
         background: Theme.bg-dark;
@@ -87,7 +90,7 @@ export component BrowserPanel inherits Rectangle {
     }
     page-focus := FocusScope {
         x: 0; width: parent.width;
-        y: 44px; height: parent.height - 44px;
+        y: 80px; height: max(0px, parent.height - 80px);
         Image { x: 0; y: 0; width: Web.frame-width * 1px; height: Web.frame-height * 1px; source: Web.frame; image-fit: fill; }
         if !Web.ready || Web.error != "": Rectangle {
             background: Theme.bg;
@@ -96,6 +99,69 @@ export component BrowserPanel inherits Rectangle {
                 Text { text: Web.error == "" ? "Opening Web…" : "Unable to display this page"; color: Theme.fg-bright; font-size: 18px; horizontal-alignment: center; wrap: word-wrap; }
                 Text { text: Web.error; color: Theme.fg-dim; horizontal-alignment: center; wrap: word-wrap; }
             }
+        }
+    }
+}
+
+component TabControl inherits Rectangle {
+    in property <string> glyph;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    width: 30px;
+    border-radius: 4px;
+    background: hit.has-hover && root.enabled ? Theme.bg-light : transparent;
+    Text {
+        text: root.glyph;
+        font-family: "DejaVu Sans"; font-size: 18px;
+        color: root.enabled ? Theme.fg-bright : Theme.muted;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    hit := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: MouseCursor.pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component BrowserTabs inherits Rectangle {
+    callback pointer-moved(length, length);
+    background: Theme.bg-dark;
+    clip: true;
+    TouchArea {
+        moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+    }
+    HorizontalLayout {
+        padding-left: 8px; padding-right: 8px; padding-top: 4px; padding-bottom: 3px; spacing: 3px;
+        alignment: start;
+        for title[i] in Web.tabs: Rectangle {
+            width: max(0px, min(192px, (root.width - 82px) / max(1, Web.tabs.length) - 3px));
+            border-radius: 4px;
+            border-width: i == Web.active-tab ? 1px : 0px;
+            border-color: Theme.accent;
+            background: i == Web.active-tab || tab-touch.has-hover ? Theme.bg-light : Theme.bg;
+            accessible-role: button;
+            accessible-label: title;
+            Text {
+                x: 8px; width: max(0px, parent.width - 16px);
+                text: title; color: i == Web.active-tab ? Theme.fg-bright : Theme.fg-dim;
+                font-size: 12px; vertical-alignment: center; overflow: elide;
+            }
+            tab-touch := TouchArea {
+                mouse-cursor: MouseCursor.pointer;
+                moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                clicked => { Web.tab-command(1, i); }
+            }
+        }
+        if Web.tabs.length > 0: TabControl {
+            glyph: "+"; label: "New tab"; enabled: Web.tabs.length < 12;
+            clicked => { Web.tab-command(0, 0); }
+        }
+        if Web.tabs.length > 0: TabControl {
+            glyph: "×"; label: "Close active tab";
+            clicked => { Web.tab-command(2, Web.active-tab); }
         }
     }
 }

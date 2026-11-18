@@ -21,8 +21,9 @@ static void menu_closed(WebKitOptionMenu *menu, gpointer data)
 }
 static gboolean show_menu(WebKitWebView *web, WebKitOptionMenu *menu, WebKitRectangle *rectangle, gpointer data)
 {
-    (void)web; (void)rectangle;
+    (void)rectangle;
     WebHost *host = data;
+    if (web != host->web) return FALSE;
     if (host->menu) webkit_option_menu_close(host->menu);
     guint count = webkit_option_menu_get_n_items(menu);
     if (!count || count > 256) { web_error(host, "This selection has too many options to display."); return FALSE; }
@@ -44,8 +45,8 @@ static gboolean show_menu(WebKitWebView *web, WebKitOptionMenu *menu, WebKitRect
 }
 static gboolean script_dialog(WebKitWebView *web, WebKitScriptDialog *dialog, gpointer data)
 {
-    (void)web;
     WebHost *host = data;
+    if (web != host->web) return TRUE;
     if (host->dialog) web_dialog_response(host, FALSE, "");
     host->dialog = webkit_script_dialog_ref(dialog);
     guint8 type = webkit_script_dialog_get_dialog_type(dialog);
@@ -88,6 +89,7 @@ void web_dialog_response(WebHost *host, gboolean accepted, const char *text)
     if (!host->dialog) return;
     WebKitScriptDialog *dialog = host->dialog; host->dialog = NULL;
     WebKitScriptDialogType type = webkit_script_dialog_get_dialog_type(dialog);
+    if (type == WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM && !accepted) host->closing_tab = FALSE;
     if (type == WEBKIT_SCRIPT_DIALOG_CONFIRM || type == WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM)
         webkit_script_dialog_confirm_set_confirmed(dialog, accepted);
     if (type == WEBKIT_SCRIPT_DIALOG_PROMPT && accepted)
@@ -97,13 +99,12 @@ void web_dialog_response(WebHost *host, gboolean accepted, const char *text)
 }
 static void close_window(WebKitWebView *web, gpointer data)
 {
-    (void)web;
-    web_send(data, 11, NULL, 0);
+    web_tab_closed(data, web);
 }
-void web_dialogs_connect(WebHost *host)
+void web_dialogs_connect(WebHost *host, WebKitWebView *web)
 {
-    g_signal_connect(host->web, "close", G_CALLBACK(close_window), host);
-    g_signal_connect(host->web, "show-option-menu", G_CALLBACK(show_menu), host);
-    g_signal_connect(host->web, "script-dialog", G_CALLBACK(script_dialog), host);
-    g_signal_connect(host->web, "decide-policy", G_CALLBACK(navigation_policy), host);
+    g_signal_connect(web, "close", G_CALLBACK(close_window), host);
+    g_signal_connect(web, "show-option-menu", G_CALLBACK(show_menu), host);
+    g_signal_connect(web, "script-dialog", G_CALLBACK(script_dialog), host);
+    g_signal_connect(web, "decide-policy", G_CALLBACK(navigation_policy), host);
 }

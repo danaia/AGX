@@ -7,7 +7,13 @@
 
 typedef struct { WPEDisplay parent; WPEDisplay *gpu; } AngiDisplay;
 typedef struct { WPEDisplayClass parent; } AngiDisplayClass;
-typedef struct { WPEView parent; } AngiView;
+typedef struct {
+    WPEView parent;
+    // Keep the last presented buffer leased until replaced. Static pages may
+    // produce no new damage when a tab returns to the foreground.
+    WPEBuffer *last;
+    gboolean retired;
+} AngiView;
 typedef struct { WPEViewClass parent; } AngiViewClass;
 G_DEFINE_TYPE(AngiDisplay, angi_display, WPE_TYPE_DISPLAY)
 G_DEFINE_TYPE(AngiView, angi_view, WPE_TYPE_VIEW)
@@ -24,6 +30,7 @@ static gboolean view_render(WPEView *view, WPEBuffer *buffer,
 static void view_cursor(WPEView *view, const char *name)
 {
     WebHost *host = g_object_get_data(G_OBJECT(wpe_view_get_display(view)), "angi-host");
+    if (view != host->view) return;
     guint8 cursor = !g_strcmp0(name, "text") || !g_strcmp0(name, "vertical-text") ? 7
         : !g_strcmp0(name, "pointer") || !g_strcmp0(name, "hand2") ? 6 : 0;
     web_send(host, 7, &cursor, 1);
@@ -95,14 +102,14 @@ WPEDisplay *angi_display_new(WebHost *host)
     return display;
 }
 
-static void release_buffer(WebHost *host, WPEBuffer **buffer)
+static void release_buffer(WPEView *view, WPEBuffer **buffer)
 {
     if (!*buffer) return;
-    wpe_view_buffer_rendered(host->view, *buffer);
-    wpe_view_buffer_released(host->view, *buffer);
+    wpe_view_buffer_rendered(view, *buffer);
+    wpe_view_buffer_released(view, *buffer);
     g_clear_object(buffer);
 }
-static gboolean publish(WebHost *host, WPEBuffer *buffer, GError **error)
+static gboolean publish(WebHost *host, WPEView *view, WPEBuffer *buffer, gboolean replay, GError **error)
 {
     int width = wpe_buffer_get_width(buffer), height = wpe_buffer_get_height(buffer);
     if (width < 1 || height < 1 || width > (int)WEB_MAX_WIDTH || height > (int)WEB_MAX_HEIGHT) {
@@ -120,6 +127,8 @@ static gboolean publish(WebHost *host, WPEBuffer *buffer, GError **error)
         && wpe_buffer_dma_buf_get_n_planes(WPE_BUFFER_DMA_BUF(buffer)) == 1) {
         ++host->sequence;
         host->in_flight = g_object_ref(buffer);
+        host->flight_view = g_object_ref(view);
+        host->flight_replay = replay;
         return web_gpu_publish(host, buffer, width, height);
     }
     GBytes *bytes = wpe_buffer_import_to_pixels(buffer, error);
@@ -144,6 +153,8 @@ static gboolean publish(WebHost *host, WPEBuffer *buffer, GError **error)
         }
     }
     host->in_flight = g_object_ref(buffer);
+    host->flight_view = g_object_ref(view);
+    host->flight_replay = replay;
     guint8 frame[16];
     guint32 w = GUINT32_TO_BE(width), h = GUINT32_TO_BE(height);
     ++host->sequence;
@@ -153,44 +164,96 @@ static gboolean publish(WebHost *host, WPEBuffer *buffer, GError **error)
 }
 gboolean web_render(WebHost *host, WPEView *view, WPEBuffer *buffer, GError **error)
 {
-    host->view = view;
+    if (host->view != view) {
+        wpe_view_buffer_rendered(view, buffer);
+        wpe_view_buffer_released(view, buffer);
+        return TRUE;
+    }
     if (host->in_flight) {
-        release_buffer(host, &host->queued);
+        release_buffer(host->view, &host->queued);
         host->queued = g_object_ref(buffer);
         return TRUE;
     }
-    return publish(host, buffer, error);
+    return publish(host, view, buffer, FALSE, error);
 }
 void web_gpu_fallback(WebHost *host, uint64_t sequence)
 {
     if (!host->in_flight || sequence != host->sequence) return;
     host->use_gpu = FALSE;
+    if (host->flight_view != host->view || sequence < host->tab_frame_floor) {
+        web_ack(host, sequence);
+        return;
+    }
     /* Republish this still-owned buffer as CPU pixels. Do not release it back
      * to WebKit until the GUI ACKs the replacement CPU frame. */
     g_autoptr(WPEBuffer) buffer = g_steal_pointer(&host->in_flight);
     g_autoptr(GError) error = NULL;
-    if (!publish(host, buffer, &error)) {
+    g_autoptr(WPEView) view = g_steal_pointer(&host->flight_view);
+    if (!publish(host, view, buffer, host->flight_replay, &error)) {
         web_error(host, error ? error->message : "Web CPU fallback failed");
-        wpe_view_buffer_rendered(host->view, buffer);
-        wpe_view_buffer_released(host->view, buffer);
+        if (!host->flight_replay) wpe_view_buffer_rendered(view, buffer);
+        wpe_view_buffer_released(view, buffer);
     }
 }
+void web_restore_view(WebHost *host)
+{
+    if (host->in_flight || !host->visible) return;
+    AngiView *view = (AngiView *)host->view;
+    g_autoptr(WPEBuffer) buffer = g_steal_pointer(&view->last);
+    if (!buffer) return;
+    g_autoptr(GError) error = NULL;
+    if (!publish(host, host->view, buffer, TRUE, &error)) {
+        wpe_view_buffer_released(host->view, buffer);
+        web_error(host, error ? error->message : "Web frame delivery failed");
+    }
+}
+
 void web_ack(WebHost *host, uint64_t sequence)
 {
     if (!host->in_flight || sequence != host->sequence) return;
-    release_buffer(host, &host->in_flight);
+    g_autoptr(WPEView) view = g_steal_pointer(&host->flight_view);
+    g_autoptr(WPEBuffer) buffer = g_steal_pointer(&host->in_flight);
+    AngiView *owner = (AngiView *)view;
+    if (!host->flight_replay) wpe_view_buffer_rendered(view, buffer);
+    if (owner->retired || !host->tabs_enabled) {
+        wpe_view_buffer_released(view, buffer);
+    } else {
+        if (owner->last) wpe_view_buffer_released(view, owner->last);
+        g_set_object(&owner->last, buffer);
+    }
     if (host->queued) {
         g_autoptr(WPEBuffer) queued = g_steal_pointer(&host->queued);
         g_autoptr(GError) error = NULL;
-        if (!publish(host, queued, &error)) {
+        if (!publish(host, host->view, queued, FALSE, &error)) {
             web_error(host, error ? error->message : "Web frame delivery failed");
             wpe_view_buffer_rendered(host->view, queued);
             wpe_view_buffer_released(host->view, queued);
         }
+    } else if (sequence < host->tab_frame_floor) {
+        web_restore_view(host);
     }
 }
+
+void web_retire_view(WPEView *view)
+{
+    AngiView *owner = (AngiView *)view;
+    owner->retired = TRUE;
+    if (owner->last) wpe_view_buffer_released(view, owner->last);
+    g_clear_object(&owner->last);
+}
+
 void web_discard_buffers(WebHost *host)
 {
-    release_buffer(host, &host->queued);
-    release_buffer(host, &host->in_flight);
+    web_discard_queued(host);
+    if (host->in_flight) {
+        if (!host->flight_replay) wpe_view_buffer_rendered(host->flight_view, host->in_flight);
+        wpe_view_buffer_released(host->flight_view, host->in_flight);
+        g_clear_object(&host->in_flight);
+    }
+    g_clear_object(&host->flight_view);
+}
+
+void web_discard_queued(WebHost *host)
+{
+    release_buffer(host->view, &host->queued);
 }

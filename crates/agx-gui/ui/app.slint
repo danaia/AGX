@@ -2,7 +2,7 @@
 // draws what it places and forwards raw keyboard and pointer input to it.
 import { Theme, Sys, NetRow, HwRow, MenuRow, Win } from "data.slint";
 import { OverviewPanel, CpuPanel, MemoryPanel, NetworkPanel, HardwarePanel, ServicesPanel, SystemPanel } from "panels.slint";
-import { Web, WebOption, BrowserPanel } from "browser.slint";
+import { Web, WebOption, BrowserPanel, BrowserTabs } from "browser.slint";
 export { Web, WebOption }
 import { Terminal, TerminalRow, TerminalRun, TerminalPanel, TerminalView } from "terminal.slint";
 export { Terminal, TerminalRow, TerminalRun, TerminalView }
@@ -19,8 +19,8 @@ export { AgentAngie, AgentProviders, AgentScope, CardModels }
 import { FilesPanel, Files, FileRow, Crumb, PlaceRow, PaneState } from "files.slint";
 import { FolderPicker } from "files-picker.slint";
 export { Files, FileRow, Crumb, PlaceRow, PaneState }
-import { SettingsPanel, MouseSettings } from "settings.slint";
-export { MouseSettings }
+import { SettingsPanel, MouseSettings, BluetoothSettings, BtDevice, BtApproval } from "settings.slint";
+export { MouseSettings, BluetoothSettings, BtDevice, BtApproval }
 import { AppLauncher } from "launcher.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
@@ -85,6 +85,11 @@ component WindowFrame inherits Rectangle {
         hide-cursor: root.hide-cursor;
         pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
         scroll(dx, dy, c, a, s, m) => { root.scroll(dx, dy, c, a, s, m); }
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 7 && !win.collapsed: BrowserTabs {
+        x: 2px; y: 28px;
+        width: max(0px, parent.width - 4px); height: 36px;
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
     }
     if win.kind == 2 && !win.collapsed: MemoryPanel {

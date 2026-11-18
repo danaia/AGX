@@ -4,7 +4,35 @@ use std::io::{self, Read, Write};
 pub const WIDTH: u32 = 4096;
 pub const HEIGHT: u32 = 2160;
 pub const FRAME_BYTES: u64 = WIDTH as u64 * HEIGHT as u64 * 4;
-pub const HOME: &str = "file:///usr/share/agx/web/start.html";
+pub const HOME: &str = "https://www.google.com/";
+const OFFLINE: &str = "file:///usr/share/agx/web/start.html";
+pub const MAX_TABS: usize = 12;
+
+pub struct TabState {
+    pub frame_floor: u64,
+    pub active: usize,
+    pub titles: Vec<String>,
+}
+
+pub fn tabs(data: &[u8]) -> io::Result<TabState> {
+    let invalid = || io::Error::other("invalid Web tabs message");
+    let (floor, data) = data.split_first_chunk::<8>().ok_or_else(invalid)?;
+    let frame_floor = u64::from_be_bytes(*floor);
+    let (&active, mut fields) = data.split_first().ok_or_else(invalid)?;
+    let mut titles = Vec::new();
+    while let Some((&length, rest)) = fields.split_first() {
+        if titles.len() == MAX_TABS || !(1..=240).contains(&length) {
+            return Err(invalid());
+        }
+        let (title, remaining) = rest.split_at_checked(length as usize).ok_or_else(invalid)?;
+        titles.push(std::str::from_utf8(title).map_err(io::Error::other)?.to_owned());
+        fields = remaining;
+    }
+    if frame_floor == 0 || active as usize >= titles.len() {
+        return Err(invalid());
+    }
+    Ok(TabState { frame_floor, active: active as usize, titles })
+}
 
 pub fn write(mut writer: impl Write, kind: u8, data: &[u8]) -> io::Result<()> {
     if data.len() >= 65536 {
@@ -71,7 +99,7 @@ pub fn address(text: &str) -> Option<String> {
     {
         return None;
     }
-    if text == HOME {
+    if text == OFFLINE {
         return Some(text.into());
     }
     if text.starts_with("https://") || text.starts_with("http://") {
@@ -278,4 +306,18 @@ mod popup_tests {
             assert!(dialog(bytes).is_err());
         }
     }
+}
+
+
+#[cfg(test)]
+#[test]
+fn tab_state_rejects_truncated_titles_and_invalid_active_indices() {
+    let mut message = 72u64.to_be_bytes().to_vec();
+    message.extend_from_slice(b"\x01\x03One\x03Two");
+    let state = tabs(&message).unwrap();
+    assert_eq!((state.frame_floor, state.active), (72, 1));
+    assert_eq!(state.titles, ["One", "Two"]);
+    assert!(tabs(&message[..message.len() - 1]).is_err());
+    message[8] = 2;
+    assert!(tabs(&message).is_err());
 }
