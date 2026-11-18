@@ -1,4 +1,5 @@
 //! Lazy, native terminal sessions composed into ANGI's existing window manager.
+mod herdr;
 mod input;
 mod keys;
 mod render;
@@ -205,6 +206,10 @@ impl App {
         if prompt.trim().is_empty() {
             return;
         }
+        self.terminal_launch(ui, |size| Session::agent(size, prompt, project));
+    }
+    /// Opens the Terminal window and adds a tab running an Agent Angie command.
+    fn terminal_launch(&mut self, ui: &AppWindow, start: impl FnOnce(Size) -> std::io::Result<Session>) {
         self.terminal_select(ui, crate::wm::Kind::Terminal);
         self.desk.open(self.terminal_kind);
         self.refresh(ui);
@@ -220,7 +225,7 @@ impl App {
             .unwrap_or(Rect::new(0., 0., 800., 500.));
         let (_, size) = geometry(rect, global.get_font_size(), global.get_search_visible());
         self.terminal.attempted = true;
-        match Session::agent(size, prompt, project) {
+        match start(size) {
             Ok(session) => {
                 self.terminal.sessions.push(session);
                 self.terminal.active = self.terminal.sessions.len() - 1;

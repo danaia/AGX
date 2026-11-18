@@ -18,13 +18,13 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 fn invalid(message: &str) -> io::Error {
     io::Error::other(message)
 }
-fn name(path: &Path) -> io::Result<CString> {
+pub(super) fn name(path: &Path) -> io::Result<CString> {
     CString::new(path.as_os_str().as_bytes()).map_err(|_| invalid("Invalid file path"))
 }
 
 // Walk each parent through a directory descriptor. No ancestor symlink can
 // redirect cleanup into a system or other account's directory.
-fn parent(path: &Path) -> io::Result<fs::File> {
+pub(super) fn parent(path: &Path) -> io::Result<fs::File> {
     if !path.is_absolute() {
         return Err(invalid("An absolute file path is required"));
     }
@@ -104,6 +104,15 @@ pub(super) fn remove(file: &File, policy: &Policy) -> io::Result<()> {
     if !policy.contains(&file.path) {
         return Err(invalid("This is not a personal cleanup file"));
     }
+    remove_checked(file, |meta, moved| {
+        moved || policy.eligible(&file.path, meta)
+    })
+}
+
+pub(super) fn remove_checked(
+    file: &File,
+    allowed: impl Fn(&fs::Metadata, bool) -> bool,
+) -> io::Result<()> {
     let directory = parent(&file.path)?;
     let entry = name(Path::new(
         file.path
@@ -111,7 +120,7 @@ pub(super) fn remove(file: &File, policy: &Policy) -> io::Result<()> {
             .ok_or_else(|| invalid("Missing file name"))?,
     ))?;
     let meta = metadata(&directory, &entry)?;
-    if !matches(file, &meta) || !policy.eligible(&file.path, &meta) {
+    if !matches(file, &meta) || !allowed(&meta, false) {
         return Err(invalid(
             "The file changed or is no longer removable. Close this dialog and select it again.",
         ));
@@ -126,7 +135,8 @@ pub(super) fn remove(file: &File, policy: &Policy) -> io::Result<()> {
     // Verify after moving as well: a replacement between check and rename must
     // be restored, never deleted. Only the exact confirmed file is unlinked.
     let result = (|| {
-        if !matches(file, &metadata(&directory, &temporary)?) {
+        let meta = metadata(&directory, &temporary)?;
+        if !matches(file, &meta) || !allowed(&meta, true) {
             return Err(invalid(
                 "The file changed before deletion. Please select it again.",
             ));

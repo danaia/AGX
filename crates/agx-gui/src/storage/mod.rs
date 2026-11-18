@@ -1,4 +1,6 @@
 //! Storage inventory lifecycle and the heat map's Slint presentation model.
+mod cache;
+mod cache_dialog;
 mod delete;
 mod policy;
 mod risk;
@@ -29,13 +31,14 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
     let catalog = Rc::new(RefCell::new(view::State::default()));
     catalog.borrow().bind(ui);
     let selected = Rc::new(RefCell::new(None::<scan::File>));
+    let cache_dialog = cache_dialog::install(ui, worker.clone());
     {
         let (weak, catalog, selected) = (ui.as_weak(), catalog.clone(), selected.clone());
         ui.global::<StorageView>()
             .on_select_file(move |drive, index| {
                 let Some(ui) = weak.upgrade() else { return };
                 let view = ui.global::<StorageView>();
-                if view.get_busy() {
+                if view.get_selected_open() {
                     return;
                 }
                 let Some(file) = catalog
@@ -71,7 +74,11 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
         ui.global::<StorageView>().on_delete_file(move || {
             let Some(ui) = weak.upgrade() else { return };
             let view = ui.global::<StorageView>();
-            if !view.get_selected_open() || !view.get_confirming() || view.get_busy() {
+            if !view.get_selected_open()
+                || view.get_cache_open()
+                || !view.get_confirming()
+                || view.get_busy()
+            {
                 return;
             }
             if let Some(file) = selected.borrow_mut().take() {
@@ -127,6 +134,12 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
                                 view.set_message(format!("Could not delete: {error}").into())
                             }
                         }
+                    }
+                    worker::Update::CacheChecked(result) => cache_dialog.checked(&ui, result),
+                    worker::Update::CacheCleared(result) => {
+                        catalog.borrow_mut().remove_all(&result.removed);
+                        catalog.borrow().publish(&ui);
+                        cache_dialog::cleared(&ui, &result);
                     }
                 }
             }

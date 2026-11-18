@@ -10,6 +10,7 @@ import { BrowserPopup } from "browser-popup.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { StorageView, StorageCell } from "storage.slint";
 import { StorageDialog } from "storage-dialog.slint";
+import { CacheDialog } from "cache-dialog.slint";
 export { StorageView, StorageCell }
 import { AgentPanel, AgentAngie, AgentProviders, AgentScope, CardModels } from "agent.slint";
 export { AgentAngie, AgentProviders, AgentScope, CardModels }
@@ -389,7 +390,15 @@ export component AppWindow inherits Window {
                     background: session-button.has-hover || root.session-open ? Theme.bg-light : transparent;
                     accessible-role: button;
                     accessible-label: "Session menu";
-                    Text { text: " ⌄"; color: Theme.fg-bright; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+                    Image {
+                        x: 6px;
+                        y: (parent.height - self.height) / 2;
+                        width: 20px;
+                        height: 20px;
+                        source: @image-url("icons/smile.svg");
+                        colorize: Theme.green;
+                    }
+                    Text { x: 28px; width: 16px; text: "⌄"; color: Theme.fg-bright; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
                     session-button := TouchArea {
                         mouse-cursor: MouseCursor.pointer;
                         pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
@@ -491,7 +500,11 @@ export component AppWindow inherits Window {
             dismissed => { root-keys.focus(); }
         }
 
-        if StorageView.selected-open: StorageDialog {
+        if StorageView.selected-open && !StorageView.cache-open: StorageDialog {
+            dismissed => { root-keys.focus(); }
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+        }
+        if StorageView.cache-open: CacheDialog {
             dismissed => { root-keys.focus(); }
             pointer-moved(x, y) => { root.track-cursor(x, y); }
         }

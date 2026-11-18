@@ -97,16 +97,17 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                 global.set_models(ModelRc::new(VecModel::from(models.iter().filter_map(Value::as_str).map(Into::into).collect::<Vec<_>>())));
             }
             if let Some(choices) = response["choices"].as_object() {
-                // Always reset all three, so a service with no choice never shows another service's model.
+                // Always reset every role, so a service with no choice never shows another service's model.
                 let role = |name: &str| choices.get(name).and_then(Value::as_str).unwrap_or("").into();
                 global.set_orchestrator(role("orchestrator"));
                 global.set_builder(role("builder"));
                 global.set_tester(role("tester"));
+                global.set_os_updates(role("os"));
                 // The dropdowns show a model by position, so find each saved model in the list just received.
                 if let Some(models) = response["models"].as_array() {
                     let position = |name: &str| choices.get(name).and_then(Value::as_str)
                         .and_then(|chosen| models.iter().position(|model| model.as_str() == Some(chosen))).map_or(-1, |index| index as i32);
-                    global.set_role_index(ModelRc::new(VecModel::from(vec![position("orchestrator"), position("builder"), position("tester")])));
+                    global.set_role_index(ModelRc::new(VecModel::from(vec![position("orchestrator"), position("builder"), position("tester"), position("os")])));
                 }
             }
             if let Some(url) = response["url"].as_str().filter(|url| url.starts_with("https://")) {
@@ -137,6 +138,6 @@ fn show_cards(global: &AgentProviders<'_>, cards: &serde_json::Map<String, Value
         let full = cards.get(name).and_then(|card| card["models"][role].as_str()).unwrap_or("");
         full.split_once('/').map_or(full, |(_, short)| short).into()
     };
-    let models = order.map(|name| CardModels { orchestrator: model(name, "orchestrator"), builder: model(name, "builder"), tester: model(name, "tester") });
+    let models = order.map(|name| CardModels { orchestrator: model(name, "orchestrator"), builder: model(name, "builder"), tester: model(name, "tester"), os: model(name, "os") });
     global.set_card_models(ModelRc::new(VecModel::from(models.to_vec())));
 }

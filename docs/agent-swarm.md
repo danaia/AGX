@@ -7,6 +7,17 @@ right. Use **Ctrl+B, then Q** to detach while they continue working. Run
 `agent angi` and choose **R** to resume. A new build creates a separate named
 session; old sessions remain available in Herdr rather than being killed.
 
+Closing the terminal tab also detaches Herdr, and the agents keep running (and keep their memory).
+While any are running, Agent Angie's page shows an **Open Herdr** banner with the agent count. It
+focuses the tab already showing Herdr or opens a new one, running **`agent attach`**, which opens
+the newest swarm whose Herdr server is still up.
+
+Herdr shows one session at a time, so the banner's agent count can be larger than what Herdr shows:
+every earlier build still has its own Herdr server, three agents and a mail-delivery worker that
+polls the server every two seconds. **Stop** (it asks first) ends every Agent Angie session of the
+account at once: servers, agents and workers. The files the agents wrote stay; only the running
+sessions end. It does not touch OS-update runs or other Herdr sessions.
+
 Choose **C** to open OpenCode, then run `/connect` to authenticate a model
 provider. The agents use OpenCode's configured/default model and the current
 account's provider credentials. Credentials are not copied from Codex or from
@@ -101,16 +112,24 @@ and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
 
 A switch under the prompt chooses the scope of a run; hovering either side explains it.
 
-* **OS** (the default) extends the operating system. Herdr's agents work strictly on ANGI itself:
-  its source in `/var/lib/agx-data/angi-dev`, services and desktop. They may use `angi-build` and,
-  for installations that need root, `angi-root`.
-* **Project** builds the user's own software. A **Select folder…** button appears for the project
-  folder; Start stays disabled until one is chosen. All three Herdr panes start in that folder,
-  and the agents are told to work only inside it, to leave the operating system and its source
-  alone, and not to use `angi-root`.
+* **OS** (the default) changes the operating system, mostly its desktop. It is **one agent, not a
+  swarm, and does not use Herdr**: OpenCode starts in the terminal with a single `angi-os` agent, its
+  own model (see below), the `angi-gui` skill and ANGI's update script, `angi-update`. A change goes
+  edit, `angi-update gui`, `angi-update refresh`, with no peer messaging in between. Its source is
+  `/var/lib/agx-data/angi-dev`; it may use `angi-build`, and `angi-root` for installations that need
+  root, but desktop releases go in only through `angi-update`.
+* **Project** builds the user's own software with Herdr's orchestrator, builder and tester. A
+  **Select folder…** button appears for the project folder; Start stays disabled until one is
+  chosen. All three Herdr panes start in that folder, and the agents are told to work only inside
+  it, to leave the operating system and its source alone, and not to use `angi-root`.
 
-The scope is the folder the panes start in plus a scope block appended to each role's prompt
-(`apps/agent/scope.py`); the role profiles themselves are scope-neutral. It steers the agents but is
+Provider setup has a model for **OS updates** next to the project roles. It is saved like the others
+(per service, applied to new runs) and, until one is chosen, OpenCode's default model is used.
+`agent angi` resumes the most recent run, whichever kind it was. Runs started before this change that
+were OS swarms still resume as swarms.
+
+The scope is the folder the agents start in plus a scope block appended to each prompt
+(`apps/agent/scope.py`); the swarm role profiles themselves are scope-neutral. It steers the agents but is
 **not a sandbox**: they run as the desktop account with its permissions. Runs record their mode in
 `run.json`, so resuming a run restores its scope, and runs from before project mode resume as OS runs.
 
@@ -137,6 +156,41 @@ search and the places sidebar all work), so the rules above stay in `scope.py` a
 duplicates them. Remembering the last project is not stored today (the choice resets with the
 desktop).
 
+## OS updates: `angi-update` and the revert guard
+
+`angi-update gui` builds the desktop from the checkout (incremental), installs it as a new
+versioned release and switches `/usr/bin/agx-gui` atomically, keeping the previous release.
+`angi-update status` shows the installed release and whether an install is allowed;
+`angi-update rollback` restores the previous release.
+
+`angi-update refresh` loads the installed release into the running desktop without the Settings
+button. The desktop treats `SIGUSR1` from its own account as a refresh request: it saves settings,
+closes its terminals and browser sessions and execs `/usr/bin/agx-gui` again, exactly as the button
+does. Because that closes the terminal the agent runs in, the command returns at once and a detached
+watchdog sends the signal three seconds later; the agent writes its report first and the user resumes
+the run afterwards. The watchdog then makes sure the new release is running and stays up for twenty
+seconds, and if it does not, restores the previous release so the supervisor starts a working
+desktop. The outcome is in `angi-update status` (`running`, `last_refresh`). The command refuses
+when the running desktop was built before this handler existed, because `SIGUSR1` would terminate
+it; one manual **Settings → Refresh desktop…** is needed after upgrading to the first release that
+has it. Do not emulate a refresh with `kill` or `killall`: that exits the desktop without restarting
+it.
+
+The updater exists to make one failure impossible: building from an older checkout and replacing a
+newer desktop. Every installed release is recorded in `/var/lib/agx-data/agx-gui/ledger.json` with a
+git hash of the exact source it was built from, and the source is kept in the checkout's history as
+`refs/angi/<release>`. The checkout carries `.git/angi-base`, naming the release it is based on.
+`angi-update gui` refuses unless that names the release installed now, and it refuses when the source
+changes during the build. A release installed any other way therefore blocks stale installs until
+the checkout contains its source.
+
+`make deploy-gui` from the workstation records the release it installs and syncs the workstation's
+source into the checkout, so device-side updates start from what is installed. The checkout's own
+unsaved edits are first kept as `refs/angi/pi-edits-*`, so a sync never destroys work. If the
+device's agent runtime is not installed yet, deploy it first (`make deploy-agent`) and deploy the GUI
+again. Skills tell the agent never to link, copy or move releases, to stop when `angi-update`
+refuses, and never to reset, stash or clean the checkout.
+
 ## Provider setup on workspace 2
 
 The three cards below the build prompt open provider setup panels. OpenAI uses
@@ -153,6 +207,20 @@ running on the same trusted network as ANGI. Enter the app’s device address an
 port, rather than localhost; ANGI queries `/v1/models` before saving it. The
 current setup supports servers without optional Bearer-token authentication.
 The app offers optional API keys; use a trusted network for this setup.
+
+The Apple model has a small window: 8,192 tokens of context, and an earlier instance of the server
+also refused any request body over 16 KB with `Payload Too Large`. OpenCode's own first request is
+about 25 KB, so only for this service ANGI does two things (`apps/agent/applefit.py`). Agents get
+fewer tools (web fetch, todo, glob, grep and the skill tool are off; skills are read as files), and
+OpenCode talks to a small loopback guard on `127.0.0.1:18081` instead of the server directly. The
+guard starts with the run and exits after an hour without requests. It trims any request over
+about 15 KB in an order that loses the least (long tool output, then the skill list, then tool
+descriptions, then the oldest steps, always keeping the task and the latest step whole) and caps the
+reply at 2,048 tokens. Bytes only approximate tokens, so when the server still refuses a request
+the guard reads how far over it was, retries smaller (up to three times) and keeps the tighter
+budget. The saved address is read on every request. OpenAI and LM Studio runs do not use the guard.
+A tool that returns a very long result therefore reaches the model shortened, with a note saying
+how much was left out. Check it with `python3 scripts/test-agent-applefit.py`.
 
 The third card is LM Studio, a model served from your own computer and reached privately over
 Tailscale. See [Tailscale for LM Studio](tailscale.md) for the setup, the userspace-networking

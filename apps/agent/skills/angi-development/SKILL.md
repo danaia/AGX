@@ -67,7 +67,9 @@ the checked-in image configuration currently uses a workstation cross SDK.
 It needs a native-host Buildroot toolchain configuration before an image can
 be rebuilt on the Pi. Do not claim an image was rebuilt from a GUI-only build.
 
-For deployment, inspect the existing `/usr/bin/agx` and `/usr/bin/agx-gui`
+For the desktop (`agx-gui`), install only with `angi-update gui` (see the angi-gui skill): it
+refuses to replace a newer release with older source. Do not link or copy desktop releases yourself.
+For everything else, inspect the existing `/usr/bin/agx` and `/usr/bin/agx-gui`
 links and supervisor configuration first. Stage versioned output on NVMe,
 keep the prior working executable, then switch links atomically with
 `angi-root`. Restart only the affected application/service. Retain SSH,

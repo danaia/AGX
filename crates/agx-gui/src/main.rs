@@ -10,6 +10,7 @@ mod input;
 mod keymap;
 mod launcher;
 mod login;
+mod open_request;
 mod remote;
 mod scene_model;
 mod terminal;
@@ -17,6 +18,7 @@ mod wm;
 
 mod agent_project;
 mod agent_providers;
+mod agent_swarm;
 mod app;
 #[cfg(test)]
 mod pointer_tests;
@@ -57,9 +59,13 @@ fn mods(ctrl: bool, alt: bool, shift: bool, meta: bool) -> Mods {
 }
 
 fn main() -> ExitCode {
+    // Started as `open FILE` (a link to this binary) or `agx-gui open FILE`: ask the running desktop, never start one.
+    if let Some(targets) = open_request::client_arguments() {
+        return open_request::client(targets);
+    }
     if std::env::args().nth(1).as_deref() == Some("--help") {
         println!(
-            "ANGI desktop\nUsage: agx-gui [--login | --login-preview | --cursor-preview | --prepare-web-storage]"
+            "ANGI desktop\nUsage: agx-gui [--login | --login-preview | --cursor-preview | --prepare-web-storage]\n       agx-gui open FILE_OR_ADDRESS..."
         );
         return ExitCode::SUCCESS;
     }
@@ -102,17 +108,21 @@ fn main() -> ExitCode {
 
 /// The framebuffer backend puts the console in graphics mode and only restores it
 /// when the program exits normally, so Ctrl+C or a kill must end the event loop
-/// instead of the process.
+/// instead of the process. SIGUSR1 is the one exception: it asks for a desktop refresh.
 fn quit_on_signals() {
     use signal_hook::{
-        consts::{SIGHUP, SIGINT, SIGTERM},
+        consts::{SIGHUP, SIGINT, SIGTERM, SIGUSR1},
         iterator::Signals,
     };
-    if let Ok(mut signals) = Signals::new([SIGINT, SIGTERM, SIGHUP]) {
+    if let Ok(mut signals) = Signals::new([SIGINT, SIGTERM, SIGHUP, SIGUSR1]) {
         std::thread::spawn(move || {
-            if signals.forever().next().is_some() {
-                let _ = slint::invoke_from_event_loop(|| {
-                    let _ = slint::quit_event_loop();
+            for signal in signals.forever() {
+                let _ = slint::invoke_from_event_loop(move || {
+                    if signal == SIGUSR1 {
+                        session_refresh::request_from_signal();
+                    } else {
+                        let _ = slint::quit_event_loop();
+                    }
                 });
             }
         });

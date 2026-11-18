@@ -15,6 +15,18 @@ use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
+
+/// `http://` address for a bare local-server name such as `localhost:8000`, else None.
+pub(crate) fn local_server_address(text: &str) -> Option<String> {
+    protocol::local_server(text).then(|| format!("http://{text}"))
+}
+
+/// A web address as the Web app would accept it when typed, for callers that must not guess one from a bare word.
+pub(crate) fn web_address(text: &str) -> Option<String> {
+    (text.starts_with("https://") || text.starts_with("http://"))
+        .then(|| protocol::address(text))
+        .flatten()
+}
 pub(super) use storage::{prepare_accounts, prepare_user_storage};
 const TOOLBAR: f32 = 44.0;
 #[derive(Default)]
@@ -323,6 +335,26 @@ impl App {
             }
             _ => return,
         }
+        self.browser.focus_address(ui, false);
+    }
+    /// Load an address the desktop produced itself, such as a local HTML file from `open`. Typed addresses
+    /// never reach here: they go through `browser_navigate`, which refuses `file:`.
+    pub(super) fn browser_open(&mut self, ui: &AppWindow, uri: &str) {
+        if !(uri.starts_with("file:///")
+            || uri.starts_with("https://")
+            || uri.starts_with("http://"))
+            || uri.len() > 8192
+        {
+            return;
+        }
+        if self.browser.attempted && self.browser.engine.is_none() {
+            // The engine stopped (crashed, or took too long to start). A fresh one loads the address set
+            // below as soon as it is ready, instead of leaving a blank window until Web is closed and reopened.
+            self.browser.reset(ui);
+        }
+        ui.global::<Web>().set_address(uri.into());
+        ui.global::<Web>().set_error("".into());
+        self.browser.send(2, uri.as_bytes().to_vec());
         self.browser.focus_address(ui, false);
     }
     pub(super) fn browser_navigate(&mut self, ui: &AppWindow, address: &str) {

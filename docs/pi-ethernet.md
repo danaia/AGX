@@ -127,6 +127,10 @@ retain its target. Use versioned NVMe application runtimes and atomic link
 replacement. Preserve `/lib`, `/lib64`, libc, the loader and regular SD boot
 scripts, especially `/etc/init.d/S12agx-data`.
 
+`make deploy-gui` also records the release in the device's ledger and syncs the workstation source into
+`/var/lib/agx-data/angi-dev` (see [agent-swarm.md](agent-swarm.md#os-updates-angi-update-and-the-revert-guard)), so
+on-device updates cannot revert it. Run `make deploy-agent` first on a device that lacks `angi-update`.
+
 For a GUI-only update, use **Settings → Refresh desktop… → confirm** in the
 authenticated desktop when appropriate. This closes its terminal/browser
 sessions and execs the installed GUI as the same user. Do not emulate refresh

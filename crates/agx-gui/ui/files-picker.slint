@@ -17,9 +17,10 @@ export component FolderPicker inherits FocusScope {
         background: #000000bb;
         TouchArea { moved => { root.pointer-moved(self.mouse-x, self.mouse-y); } }
         Rectangle {
-            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
-            width: min(940px, parent.width - 32px); height: min(640px, parent.height - 32px);
-            background: Theme.bg; border-width: 1px; border-color: Theme.accent; border-radius: 8px;
+            // Whole pixels only: a half-pixel origin softens every glyph inside the dialog.
+            x: Math.floor((parent.width - self.width) / 2px) * 1px; y: Math.floor((parent.height - self.height) / 2px) * 1px;
+            width: Math.floor(min(940px, parent.width - 32px) / 1px) * 1px; height: Math.floor(min(640px, parent.height - 32px) / 1px) * 1px;
+            background: Theme.bg; border-radius: 8px;
             VerticalLayout {
                 Rectangle {
                     height: 56px;
@@ -52,6 +53,8 @@ export component FolderPicker inherits FocusScope {
                     }
                 }
             }
+            // Drawn last so the opaque rows above cannot cover it.
+            Rectangle { border-width: 1px; border-color: Theme.accent; border-radius: 8px; }
         }
     }
 }

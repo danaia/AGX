@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent"))
 from messaging import current_run, database, enqueue
-from session import deliver_pending
+from session import attach, deliver_pending, live_runs
 
 
 class MailTests(unittest.TestCase):
@@ -66,6 +66,47 @@ class MailTests(unittest.TestCase):
                 os.environ["AGX_SWARM_RUN"] = str(state)
                 with self.assertRaises(RuntimeError):
                     current_run()
+
+
+class AttachTests(unittest.TestCase):
+    def runs(self, state, **sessions):
+        for name, record in sessions.items():
+            (state / name).mkdir()
+            (state / name / "run.json").write_text(__import__("json").dumps(record))
+
+    def test_live_runs_skip_stopped_servers_and_os_runs_newest_first(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            self.runs(state, **{
+                "angi-20261117-100000-1": {"session": "angi-20261117-100000-1"},
+                "angi-20261117-110000-2": {"session": "angi-20261117-110000-2"},
+                "angi-20261117-120000-3": {"session": "angi-20261117-120000-3"},
+                "angi-os-20261117-130000-4": {"mode": "os", "solo": True},
+            })
+
+            def server(name, *arguments, timeout=45):
+                if name == "angi-20261117-110000-2":
+                    raise RuntimeError("no server")
+                return {}
+            with patch("session.herdr", side_effect=server):
+                self.assertEqual([run.name for run in live_runs(state)], ["angi-20261117-120000-3", "angi-20261117-100000-1"])
+
+    def test_attach_opens_the_newest_live_swarm_and_never_starts_one(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            self.runs(state, **{"angi-20261117-100000-1": {"session": "angi-20261117-100000-1"}, "angi-20261117-120000-3": {"session": "angi-20261117-120000-3"}})
+            with patch("session.herdr", return_value={}), patch("session.configure"), patch("session.start_size_guard"), \
+                    patch("session.role_config", return_value="{}"), patch("session.ensure_dispatcher") as dispatcher, \
+                    patch("session.os.execvp") as execute:
+                attach(state)
+            execute.assert_called_once_with("herdr", ["herdr", "--session", "angi-20261117-120000-3"])
+            self.assertEqual(dispatcher.call_args.args[0].name, "angi-20261117-120000-3")
+
+    def test_attach_without_a_running_swarm_says_so(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch("session.herdr", side_effect=RuntimeError("no server")):
+                with self.assertRaisesRegex(RuntimeError, "No Agent Angie swarm is running"):
+                    attach(Path(temporary))
 
 
 if __name__ == "__main__":

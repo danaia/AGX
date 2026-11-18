@@ -16,6 +16,20 @@ pub(crate) fn spawn_cleanup(job: impl FnOnce() + Send + 'static) {
     jobs.push(handle);
 }
 
+/// `angi-update refresh` looks for this text in the running desktop before signalling it: a desktop
+/// without the SIGUSR1 handler below would be terminated by the signal instead of refreshed.
+#[used]
+static SIGNAL_MARKER: &str = "angi-refresh-on-sigusr1";
+
+/// SIGUSR1 from the same account (the update script, after installing a release) refreshes the desktop
+/// exactly as Settings does, saving settings first. Must run on the event loop's thread.
+pub(super) fn request_from_signal() {
+    match crate::settings::flush() {
+        Ok(()) => request(),
+        Err(error) => eprintln!("agx-gui: refresh by signal skipped, settings not saved: {error}"),
+    }
+}
+
 static REQUESTED: AtomicBool = AtomicBool::new(false);
 
 pub(super) fn request() {

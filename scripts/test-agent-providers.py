@@ -154,7 +154,9 @@ class ProviderTests(unittest.TestCase):
                 self.assertIn("default model", first["status"])  # no models chosen yet
                 chosen = {"builder": "openai/gpt-x"}
                 models.atomic_write(models.settings_path(), chosen)
-                self.assertEqual(providers.overview(), {"apple": {"connected": True, "active": False, "models": {}}, "openai": {"connected": True, "active": True, "models": chosen}, "lmstudio": {"connected": False, "active": False, "models": {}}})
+                # Apple has no saved choice, so its card shows the model every role would fall back to, not nothing.
+                everything = {role: "apple/base" for role in ("orchestrator", "builder", "tester", "os")}
+                self.assertEqual(providers.overview(), {"apple": {"connected": True, "active": False, "models": everything}, "openai": {"connected": True, "active": True, "models": chosen}, "lmstudio": {"connected": False, "active": False, "models": {}}})
                 self.assertTrue(service.use("apple")["active"])
                 self.assertFalse(service.status("openai")["active"])
                 overview = providers.overview()

@@ -130,6 +130,8 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _provider_watch = crate::agent_providers::install(&ui, &app);
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);
+    crate::agent_swarm::install(&ui, &app);
+    let _open_watch = crate::open_request::install(&ui, &app);
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change

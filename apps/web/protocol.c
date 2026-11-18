@@ -4,7 +4,9 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <glib/gstdio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 static gboolean write_all(WebHost *host, const void *data, size_t size)
 {
@@ -40,6 +42,36 @@ static guint64 u64(const guint8 *p) { guint64 n; memcpy(&n, p, 8); return GUINT6
 static float f32(const guint8 *p) { guint32 n = u32(p); float f; memcpy(&f, &n, 4); return f; }
 static guint32 timestamp(void) { return (guint32)(g_get_monotonic_time() / 1000); }
 
+#define WEB_MAX_LOCAL_HTML (16u * 1024u * 1024u)
+
+/* Open a local .html/.htm page (from `open FILE` in a terminal). Returns FALSE when `uri` is not one, so the
+ * caller loads it normally. The image's shared MIME database classifies .html as XHTML, and WebKit would then
+ * parse ordinary HTML5 as XML ("StartTag: invalid element name"), so the page is loaded as bytes labelled
+ * text/html. Its own address stays the base, so relative images, styles and links still resolve; the engine
+ * still refuses file-to-file access, so the page cannot read other local files. */
+static gboolean load_local_html(WebHost *host, const char *uri)
+{
+    g_autofree char *path = g_filename_from_uri(uri, NULL, NULL);
+    if (!path) return FALSE;
+    g_autofree char *lower = g_ascii_strdown(path, -1);
+    if (!g_str_has_suffix(lower, ".html") && !g_str_has_suffix(lower, ".htm")) return FALSE;
+    GStatBuf info;
+    if (g_stat(path, &info) || !S_ISREG(info.st_mode) || info.st_size > (goffset)WEB_MAX_LOCAL_HTML) {
+        web_error(host, "That page is not a regular file or is larger than 16 MB.");
+        return TRUE;
+    }
+    g_autofree char *html = NULL;
+    gsize length = 0;
+    if (!g_file_get_contents(path, &html, &length, NULL)) {
+        web_error(host, "That page cannot be read.");
+        return TRUE;
+    }
+    g_autoptr(GBytes) bytes = g_bytes_new_take(g_steal_pointer(&html), length);
+    /* No charset: WebKit then honours a byte-order mark or <meta charset>, as for any local file. */
+    webkit_web_view_load_bytes(host->web, bytes, "text/html", NULL, uri);
+    return TRUE;
+}
+
 static gboolean command(WebHost *host, const guint8 *p, guint32 size)
 {
     guint8 kind = *p++; --size;
@@ -65,7 +97,7 @@ static gboolean command(WebHost *host, const guint8 *p, guint32 size)
             }
             g_autoptr(GBytes) bytes = g_bytes_new_take(g_steal_pointer(&html), length);
             webkit_web_view_load_bytes(host->web, bytes, "text/html", "UTF-8", uri);
-        } else webkit_web_view_load_uri(host->web, uri);
+        } else if (!load_local_html(host, uri)) webkit_web_view_load_uri(host->web, uri);
         return TRUE;
     }
     case 3: if (size) return FALSE; webkit_web_view_go_back(host->web); return TRUE;

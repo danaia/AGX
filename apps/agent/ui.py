@@ -18,20 +18,20 @@ def _form(screen, can_resume):
             if 0 <= y < height - 1:
                 screen.addnstr(y, 2, text, max(0, width - 4), style)
         line(1, "ANGI / Agent workshop", curses.A_BOLD)
-        line(3, "Orchestrator  /  Builder  /  Tester")
+        line(3, "OS updates: one fast agent   ·   Projects: orchestrator / builder / tester")
         line(4, "Native Pi builds · NVMe workspace · administrator tools")
         if editing:
             line(6, "What would you like to build?", curses.A_BOLD)
             for index, chunk in enumerate(textwrap.wrap(brief or " ", max(1, width - 6))[-max(1, height - 11):]):
                 line(8 + index, chunk)
-            line(height - 2, "Enter: start swarm    Esc: back    Backspace: edit")
+            line(height - 2, "Enter: start    Esc: back    Backspace: edit")
         else:
             line(7, "N  Start a new build", curses.A_BOLD)
             if can_resume:
-                line(9, "R  Resume the last swarm")
+                line(9, "R  Resume the last run")
             line(11, "C  Open OpenCode to connect a model provider (/connect)")
             line(13, "Q  Back to terminal")
-            line(height - 3, "Herdr: Ctrl+B then Q detaches; agent angi resumes.")
+            line(height - 3, "Project runs use Herdr: Ctrl+B then Q detaches; agent angi resumes.")
             line(height - 2, "Source: /var/lib/agx-data/angi-dev")
         screen.refresh()
         key = screen.get_wch()

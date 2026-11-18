@@ -2,14 +2,18 @@
 use super::scan;
 use crate::{AppWindow, StorageCell, StorageView};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
-use std::{collections::HashSet, path::PathBuf, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    rc::Rc,
+};
 
 #[derive(Default)]
 pub(super) struct State {
     pub files: [Vec<scan::File>; 2],
     models: [Rc<VecModel<StorageCell>>; 2],
     batches: [Option<HashSet<PathBuf>>; 2],
-    removed: Vec<scan::File>,
+    removed: HashMap<PathBuf, scan::File>,
     summaries: [String; 2],
     statuses: [String; 2],
     minimum_generation: u64,
@@ -52,13 +56,13 @@ impl State {
                 .iter()
                 .filter(|file| {
                     self.removed
-                        .iter()
-                        .any(|removed| file.path == removed.path && !file.same_version(removed))
+                        .get(&file.path)
+                        .is_some_and(|removed| !file.same_version(removed))
                 })
                 .count();
             inventory
                 .files
-                .retain(|file| !self.removed.iter().any(|removed| file.path == removed.path));
+                .retain(|file| !self.removed.contains_key(&file.path));
             if let Some(batch) = &self.batches[drive] {
                 inventory.files.retain(|file| batch.contains(&file.path));
             }
@@ -93,19 +97,25 @@ impl State {
     }
 
     pub fn remove(&mut self, file: &scan::File) {
-        self.removed.push(file.clone());
+        self.remove_all(std::slice::from_ref(file));
+    }
+
+    pub fn remove_all(&mut self, files: &[scan::File]) {
+        let paths: HashSet<_> = files.iter().map(|file| &file.path).collect();
+        self.removed
+            .extend(files.iter().map(|file| (file.path.clone(), file.clone())));
         for drive in 0..2 {
             if self.files[drive]
                 .iter()
-                .any(|candidate| candidate.path == file.path)
+                .any(|candidate| paths.contains(&candidate.path))
             {
                 let batch = self.batches[drive].get_or_insert_with(|| {
                     self.files[drive].iter().map(|f| f.path.clone()).collect()
                 });
-                batch.remove(&file.path);
+                batch.retain(|path| !paths.contains(path));
                 let remaining = self.files[drive]
                     .iter()
-                    .filter(|f| f.path != file.path)
+                    .filter(|f| !paths.contains(&f.path))
                     .cloned()
                     .collect();
                 self.sync(drive, remaining);

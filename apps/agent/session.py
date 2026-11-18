@@ -38,9 +38,15 @@ def configure():
     result = subprocess.run(["herdr", "integration", "install", "opencode"], env={**os.environ, "HOME": str(installer_home)}, capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip())
-    skill = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/skills/angi-development"
-    skill.mkdir(parents=True, exist_ok=True)
-    (skill / "SKILL.md").write_text((ASSETS / "skills/angi-development/SKILL.md").read_text())
+    install_skills()
+
+
+def install_skills():
+    """Copy the shipped skills into the account's OpenCode configuration."""
+    for source in sorted((ASSETS / "skills").iterdir()):
+        skill = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/skills" / source.name
+        skill.mkdir(parents=True, exist_ok=True)
+        (skill / "SKILL.md").write_text((source / "SKILL.md").read_text())
 
 
 def start_server(name, run):
@@ -72,13 +78,37 @@ def role_config(project=None):
         }
         if role in choices:
             profiles[f"angi-{role}"]["model"] = choices[role]
+    return opencode_config(profiles)
+
+
+def opencode_config(profiles):
+    """OpenCode configuration (JSON) for these agent profiles, with the active local provider if any."""
     from providers import apple_config, lmstudio_config
     config = {"agent": profiles, "share": "disabled", "autoupdate": False}
     service = active()
     local = {"apple": apple_config, "lmstudio": lmstudio_config}.get(service)
     if local and local():
         config["provider"] = {service: local()}
+        if service == "apple":
+            # Apple Intelligence servers refuse large requests: leaner agents, and a local guard that trims the rest.
+            import applefit
+            config["agent"] = {name: applefit.lean(profile) for name, profile in profiles.items()}
+            fallback = applefit.default_model(config["agent"], local())
+            for profile in config["agent"].values():
+                if fallback:
+                    profile.setdefault("model", fallback)
+            config["provider"] = {service: applefit.provider_config(local())}
     return json.dumps(config)
+
+
+def start_size_guard():
+    """Run the local request guard, only while Apple Intelligence is the active service and its server is configured.
+
+    OpenAI and LM Studio runs never touch it; their provider settings and agent profiles are left as they are."""
+    from providers import apple_config
+    if active() == "apple" and apple_config():
+        import applefit
+        applefit.ensure()
 
 
 def launch(state, brief, project=None):
@@ -90,6 +120,7 @@ def launch(state, brief, project=None):
         workdir = validate_project(project)
         label = f"Project: {workdir.name}"
     configure()
+    start_size_guard()
     name = "angi-" + time.strftime("%Y%m%d-%H%M%S") + f"-{os.getpid()}"
     run = state / name
     run.mkdir(mode=0o700)
@@ -133,8 +164,33 @@ def selected(state):
 
 
 def resume(state):
+    attach_run(selected(state))
+
+
+def live_runs(state):
+    """Runs whose Herdr server is still up, newest first. Closing a terminal tab does not stop its swarm."""
+    runs = []
+    for manifest in state.glob("angi-*/run.json"):
+        try:
+            herdr(json.loads(manifest.read_text())["session"], "workspace", "list", timeout=3)
+        except (RuntimeError, OSError, ValueError, KeyError, subprocess.TimeoutExpired):
+            continue  # an OS run (no session), a stopped server, or an unreadable record
+        runs.append(manifest.parent)
+    # Run names start with a timestamp, so the name order is the start order.
+    return sorted(runs, key=lambda run: run.name, reverse=True)
+
+
+def attach(state):
+    """Open Herdr on the newest swarm that is still running (the desktop's "Open Herdr" button)."""
+    runs = live_runs(state)
+    if not runs:
+        raise RuntimeError("No Agent Angie swarm is running.")
+    attach_run(runs[0])
+
+
+def attach_run(run):
     configure()
-    run = selected(state)
+    start_size_guard()
     manifest = json.loads((run / "run.json").read_text())
     # A resumed run keeps the scope it started with; runs from before project mode are OS runs.
     project = validate_project(manifest["project"]) if manifest.get("project") else None

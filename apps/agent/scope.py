@@ -55,8 +55,10 @@ def describe(project):
 OS_SCOPE = """Scope: the ANGI operating system.
 Work only on the operating system of this device: its source in {source}, packages, services,
 desktop and system configuration. Do not create or modify unrelated projects or the user's personal
-files. Use angi-build for native builds. The user has authorized administrator access through
-angi-root for this operating-system work; use it when an installation needs root."""
+files. Use angi-build for native builds. Install desktop (agx-gui) changes only with angi-update: it
+builds, records the release and refuses to replace a newer release with older source. The user has
+authorized administrator access through angi-root for other operating-system work; use it when an
+installation needs root, but never to install, link or copy a desktop release yourself."""
 
 PROJECT_SCOPE = """Scope: the user's project at {project}.
 Work only inside that folder: read, create, edit, build and run things there, and keep the run's

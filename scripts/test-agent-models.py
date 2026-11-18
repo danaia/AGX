@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent"))
+import applefit
 import models
 import session
 
@@ -70,8 +71,11 @@ class ModelTests(unittest.TestCase):
                 self.assertNotIn("provider", config)  # Apple's server is not offered while OpenAI is active
                 models.activate("apple")
                 config = json.loads(session.role_config())
-                self.assertNotIn("model", config["agent"]["angi-builder"])  # OpenAI's choice is kept, not used
-                self.assertEqual(config["provider"], {"apple": apple})
+                # OpenAI's choice is kept but not used: the builder runs on an Apple model, not on OpenCode's last-used default.
+                self.assertEqual(config["agent"]["angi-builder"]["model"], "apple/base")
+                # Apple's server is reached through the local size guard, with its own models unchanged.
+                self.assertEqual(config["provider"]["apple"]["models"], apple["models"])
+                self.assertEqual(config["provider"]["apple"]["options"]["baseURL"], applefit.URL)
             self.assertEqual(models.selections(), {"builder": "openai/example"})
             models.activate("openai")
             with self.roles(temporary):

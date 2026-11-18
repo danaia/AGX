@@ -7,6 +7,10 @@ mkdir -m700 -- "$build_store" 2>/dev/null || true
 [[ -d $build_store && -O $build_store && ! -L $build_store ]] || { echo 'Unsafe ANGI build storage.' >&2; exit 1; }
 chmod 700 "$build_store"
 cd /var/lib/agx-data/angi-dev
+# The desktop's Slint UI compiles into 8 MB of generated Rust. Without incremental compilation every
+# change recompiles all of it (about 50 s on a 16-core workstation, 2 minutes here); with it, only
+# what changed (about 5 s on the workstation). The first build after this is a full one.
+export CARGO_INCREMENTAL=1
 case "${1:-}" in
     cli) cargo build --locked --release -p agx-cli ;;
     gui) cargo build --locked --release --manifest-path crates/agx-gui/Cargo.toml --no-default-features --features kms ;;

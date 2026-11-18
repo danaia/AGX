@@ -15,7 +15,8 @@ import urllib.request
 from urllib.parse import urlsplit
 
 import tailnet
-from models import activate, active, save, selections, settings_path
+from messaging import ROLES
+from models import ALL_ROLES, activate, active, save, selections, settings_path
 
 
 class Providers:
@@ -88,7 +89,7 @@ class Providers:
             return {"connected": bool(config), "active": active() == "lmstudio" and bool(config), "models": ["lmstudio/" + key for key in config.get("models", {})], "status": text, "choices": selections("lmstudio"), "tailscale": network}
         if provider == "apple":
             config = apple_config()
-            return {"connected": bool(config), "active": active() == "apple", "models": ["apple/" + key for key in config.get("models", {})], "status": "Server configured. Test the connection again if the device address changes." if config else "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running.", "choices": selections("apple")}
+            return {"connected": bool(config), "active": active() == "apple", "models": ["apple/" + key for key in config.get("models", {})], "status": "Server configured. A role with no model chosen uses Apple's too. Test the connection again if the device address changes." if config else "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running.", "choices": apple_models()}
         connected = signed_in(provider)
         models = []
         if connected:
@@ -148,7 +149,7 @@ def overview():
     """Connection and use of every card, from local files only so it never starts OpenCode."""
     current = active()
     ready = {"apple": bool(apple_config()), "openai": signed_in("openai"), "lmstudio": bool(lmstudio_config())}
-    return {name: {"connected": connected, "active": connected and name == current, "models": selections(name) if connected else {}} for name, connected in ready.items()}
+    return {name: {"connected": connected, "active": connected and name == current, "models": ((apple_models() if name == "apple" else selections(name)) if connected else {})} for name, connected in ready.items()}
 
 
 def local_config(service):
@@ -158,6 +159,12 @@ def local_config(service):
 
 def apple_config():
     return local_config("apple")
+
+
+def apple_models():
+    """Each role's Apple model as a run will use it: the saved choice, or the Apple model it falls back to."""
+    import applefit
+    return applefit.effective(selections("apple"), apple_config(), ROLES, ALL_ROLES)
 
 
 def lmstudio_config():

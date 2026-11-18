@@ -14,6 +14,8 @@ Software/VNC desktops and unsupported GPU imports retain the CPU bridge: WPE ren
 
 This build includes JavaScript, CSS, Canvas and WebGL, subject to the installed Mesa driver. Multimedia (video, audio, WebRTC), WebDriver, spellchecking and speech synthesis are disabled at build time to reduce dependencies. The host disables developer extras and removes inspector-server environment overrides. Web content runs as the signed-in user with WebKit's bubblewrap sandbox enabled. The host refuses root. Normal HTTPS certificate verification remains enabled; on the appliance, cookies and caches live in `/var/lib/agx-data/agx-web-users/<uid>` with mode 0700. The greeter prepares this private store before dropping privileges. Other development hosts use XDG directories. Shader cache defaults to a 64 MiB limit. There is no privileged JavaScript bridge or remote debugging listener.
 
+Local `.html`/`.htm` pages (from `open FILE` in a terminal) are loaded by the host as `text/html` bytes with their own `file://` address as the base, because the image's MIME database would otherwise make WebKit parse them as XHTML; `make deploy-web-host` rebuilds and installs only the host. Servers on this device (`localhost`, `127.x.x.x`, `[::1]`) are ordinary `http://` pages, and bare names of that kind typed in the address bar default to `http://`.
+
 The offline home makes no startup network requests. **Alt+Left/Right** navigates history; the page viewport follows the content area rather than stretching a fixed-resolution image.
 
 The appliance bubblewrap patch retains its existing safe-open fallback when the external toolchain lacks the `openat2` syscall definition, even with a recent target kernel. It does not disable sandboxing.

@@ -1,5 +1,5 @@
 //! Independent deletion and inventory workers: deletion never waits for a scan.
-use super::{delete, policy::Policy, scan};
+use super::{cache, delete, policy::Policy, scan};
 use std::{
     sync::{
         Arc,
@@ -12,6 +12,8 @@ use std::{
 pub(super) enum Update {
     Snapshot(u64, [scan::Inventory; 2]),
     Deleted(scan::File, Result<(), String>),
+    CacheChecked(Result<cache::Plan, String>),
+    CacheCleared(cache::Outcome),
 }
 
 enum ScanCommand {
@@ -20,6 +22,8 @@ enum ScanCommand {
 }
 enum DeleteCommand {
     File(scan::File),
+    CheckCache,
+    ClearCache(cache::Plan),
     Stop,
 }
 
@@ -69,13 +73,29 @@ impl Worker {
         let (delete, deletions) = mpsc::channel();
         let refresh = scan.clone();
         std::thread::spawn(move || {
-            while let Ok(DeleteCommand::File(file)) = deletions.recv() {
-                let result = delete::remove(&file, &policy).map_err(|error| error.to_string());
+            while let Ok(command) = deletions.recv() {
+                let (update, rescan) = match command {
+                    DeleteCommand::Stop => break,
+                    DeleteCommand::File(file) => {
+                        let result =
+                            delete::remove(&file, &policy).map_err(|error| error.to_string());
+                        (Update::Deleted(file, result), true)
+                    }
+                    DeleteCommand::CheckCache => (
+                        Update::CacheChecked(
+                            cache::Plan::check(policy.uid).map_err(|error| error.to_string()),
+                        ),
+                        false,
+                    ),
+                    DeleteCommand::ClearCache(plan) => (Update::CacheCleared(plan.clear()), true),
+                };
                 // Publish completion before requesting any expensive inventory work.
-                if publish.send(Update::Deleted(file, result)).is_err() {
+                if publish.send(update).is_err() {
                     break;
                 }
-                let _ = refresh.send(ScanCommand::Refresh);
+                if rescan {
+                    let _ = refresh.send(ScanCommand::Refresh);
+                }
             }
         });
         Self {
@@ -89,6 +109,13 @@ impl Worker {
         self.delete
             .send(DeleteCommand::File(file))
             .map_err(|_| "Could not start deletion")
+    }
+
+    pub fn check_cache(&self) -> bool {
+        self.delete.send(DeleteCommand::CheckCache).is_ok()
+    }
+    pub fn clear_cache(&self, plan: cache::Plan) -> bool {
+        self.delete.send(DeleteCommand::ClearCache(plan)).is_ok()
     }
 
     pub fn refresh(&self) -> Result<u64, &'static str> {

@@ -10,6 +10,8 @@ The map includes files owned by the signed-in user in their home, personal NVMe 
 
 Scans run off the UI thread every minute after completion, limited to 500,000 entries or 15 seconds per drive. Partial scans and skipped entries are labeled. Only mounted SD/NVMe filesystems are shown; an unmounted boot partition is not scanned.
 
+On Workspace 1, **Clear cache…** next to **Refresh files** checks the signed-in user's OpenCode npm download cache and previews the verified file count and disk space before asking for confirmation. It only selects single-link regular files whose SHA-512 contents match their npm cache path and whose last modification was at least an hour ago. Files changed after the preview are kept. Projects, sessions, settings, installed tools, cache indexes and other cache directories are kept. Packages may need to be downloaded again after cleanup.
+
 Run a preview window on a desktop: `scripts/cargo.sh run --manifest-path crates/agx-gui/Cargo.toml`.
 
 ## Boot and graphical login
@@ -157,6 +159,33 @@ Use [the shared Ethernet access and control procedure](pi-ethernet.md) for Claud
 ## Modifier
 
 The main modifier is **Super** in both appliance and preview builds. **Super+Space** opens Applications. For a nested preview whose host compositor reserves Super, explicitly set `AGX_GUI_MOD=alt`; `AGX_GUI_MOD=super` selects the normal default. Below, `Mod` means that key. "A little" is Alt with Super (Ctrl with Alt); "a lot" is Ctrl with Super (Super with Alt).
+
+## Opening files from a terminal
+
+`open FILE_OR_ADDRESS...` hands a file or web address to the desktop, which shows it in the app that
+handles it. Today that is **Web**: `.html`, `.htm` and `.xhtml` files, `http(s)://` addresses, and servers on
+this device. Anything else is refused with a reason (for example "ANGI has no app for .txt files yet"), and so
+is a folder; a bare word such as `example.org` is never guessed to be a website.
+
+Servers on this device work too, for example a Python server started with `python3 -m http.server 8000`:
+`open localhost:8000` (or `127.0.0.1:8000/page.html`, `[::1]:8000`) opens `http://localhost:8000`. Bare
+`localhost`, `127.x.x.x` and `[::1]` names, with an optional port and path, default to plain `http://` here
+and in Web's address bar, because such servers rarely have a certificate; every other bare name still gets
+`https://`, and a file that really is called `localhost:8000` is opened as a file. Relative paths work from the terminal's own
+folder, links are followed before the file type is judged, and Web comes forward without opening a second
+window.
+
+`open` is the desktop binary under another name (`/usr/bin/open` links to `agx-gui`, so it always matches the
+running release; `agx-gui open FILE` is the same thing). The desktop listens on a Unix socket in the signed-in
+account's own folder (`$XDG_RUNTIME_DIR`, else `~/.cache/angi`; mode 0600 in a 0700 folder) and only answers
+that account, so `open` also works from an SSH session of the same user and does nothing for other accounts.
+It prints `The ANGI desktop is not running for this account.` when there is nothing to answer, including
+right after `open` is first installed, until the desktop has been refreshed once to load the listener.
+
+Local pages load as `file://` addresses, which the address bar still refuses when typed; only `open` can ask
+for one. The Web engine keeps local pages from reading other local files (`allow-file-access-from-file-urls`
+is off). `open` works from the app code in `crates/agx-gui/src/open_request.rs`; adding another file type
+means adding its app to `resolve()` there.
 
 ## Applications launcher
 

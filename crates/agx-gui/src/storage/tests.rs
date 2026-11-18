@@ -6,9 +6,9 @@ use super::{
 };
 use std::{fs, os::unix::fs::symlink, path::PathBuf, time::Duration};
 
-struct Fixture(PathBuf);
+pub(super) struct Fixture(pub PathBuf);
 impl Fixture {
-    fn new(name: &str) -> Self {
+    pub(super) fn new(name: &str) -> Self {
         let path = std::env::temp_dir().join(format!("agx-storage-{name}-{}", std::process::id()));
         fs::create_dir_all(&path).unwrap();
         Self(path)

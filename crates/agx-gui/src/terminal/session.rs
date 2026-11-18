@@ -113,6 +113,8 @@ pub(super) struct Session {
     worker: Option<JoinHandle<()>>,
     child_handle: OwnedFd,
     child_pid: i32,
+    /// Started by `Session::herdr`: counts as a Herdr tab even before `agent` has exec'd into it.
+    attaches: bool,
 }
 impl Session {
     pub fn new(size: Size) -> io::Result<Self> {
@@ -146,6 +148,23 @@ impl Session {
             Some(("/usr/bin/agent", agent_arguments(prompt, project), "Agent Angie")),
             None,
         )
+    }
+    /// Herdr on the newest swarm that is still running (`agent attach`).
+    pub fn herdr(size: Size) -> io::Result<Self> {
+        let mut session = Self::start(size, Some(("/usr/bin/agent", vec!["attach".into()], "Agent Angie")), None)?;
+        session.attaches = true;
+        Ok(session)
+    }
+    /// Whether this tab is a live Herdr client. Closing such a tab leaves its swarm running.
+    pub fn runs_herdr(&self) -> bool {
+        if self.signals.exited.load(Ordering::Acquire) {
+            return false;
+        }
+        self.attaches
+            || std::fs::read(format!("/proc/{}/cmdline", self.child_pid))
+                .ok()
+                .and_then(|bytes| bytes.split(|b| *b == 0).next().map(<[u8]>::to_vec))
+                .is_some_and(|program| program.rsplit(|b| *b == b'/').next() == Some(b"herdr"))
     }
     fn start(
         size: Size,
@@ -235,6 +254,7 @@ impl Session {
             worker: Some(worker),
             child_handle,
             child_pid: pid,
+            attaches: false,
         })
     }
     pub fn write(&self, bytes: Vec<u8>) {
@@ -326,6 +346,35 @@ mod tests {
         wait_for(&shell, "/usr");
         let inherited = Session::in_directory(size, shell.working_directory()).unwrap();
         wait_for(&inherited, "/usr");
+    }
+    #[test]
+    fn a_tab_counts_as_herdr_only_while_its_client_is_alive() {
+        if unsafe { libc::geteuid() } == 0 {
+            return;
+        }
+        let size = Size { cols: 80, lines: 24 };
+        // `exec -a` makes the process look like `herdr --session …`, as after `agent` execs into it.
+        let command = |script: &str| Some(("/bin/bash", vec!["-c".into(), script.into()], "Herdr test"));
+        let client = Session::start(size, command("exec -a /usr/bin/herdr sleep 30"), None).unwrap();
+        let shell = Session::start(size, command("exec sleep 30"), None).unwrap();
+        let mut waited = 0;
+        while !client.runs_herdr() && waited < 100 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            waited += 1;
+        }
+        assert!(client.runs_herdr(), "an exec'd herdr client is a Herdr tab");
+        assert!(!shell.runs_herdr(), "an ordinary program is not");
+        // A tab started by the button counts at once, before `agent` has exec'd into Herdr.
+        let attaching = Session::start(size, command("exec sleep 30"), None).map(|mut tab| { tab.attaches = true; tab }).unwrap();
+        assert!(attaching.runs_herdr());
+        // Once the client has gone, the tab is no longer one, so the button starts a new one.
+        let ended = Session::start(size, command("exit 0"), None).map(|mut tab| { tab.attaches = true; tab }).unwrap();
+        let mut waited = 0;
+        while ended.runs_herdr() && waited < 100 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            waited += 1;
+        }
+        assert!(!ended.runs_herdr(), "an exited tab is not a Herdr tab");
     }
     #[test]
     fn closing_a_tab_terminates_a_shell_that_ignores_hangup() {

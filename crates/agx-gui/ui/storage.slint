@@ -21,6 +21,11 @@ export global StorageView {
     callback select-file(int, int);
     callback delete-file();
     callback refresh-files();
+    callback check-cache();
+    callback clear-cache();
+    callback close-cache();
+    in property <bool> cache-open: false;
+    in property <bool> cache-ready: false;
     in property <bool> refreshing: false;
 }
 

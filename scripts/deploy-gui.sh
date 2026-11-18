@@ -60,6 +60,7 @@ done
 rm "$archive"
 modprobe v3d'
 
+PREVIOUS=$("${SSH[@]}" 'basename "$(readlink -f /usr/bin/agx-gui)"')
 echo 'Staging desktop, graphical login and startup binaries'
 "${SCP[@]}" "$STRIPPED" "$DESTINATION:/var/lib/agx-data/agx-gui/agx-gui.new"
 "${SCP[@]}" "$RELEASE/agx" "$DESTINATION:/usr/bin/agx.new"
@@ -93,7 +94,22 @@ gui=/var/lib/agx-data/agx-gui/agx-gui.$gui_hash
 mv /var/lib/agx-data/agx-gui/agx-gui.new "$gui"
 ln -sf "$gui" /usr/bin/agx-gui.new
 mv -f /usr/bin/agx-gui.new /usr/bin/agx-gui
+# `open FILE` is this same binary under another name; it follows whichever release agx-gui points at.
+ln -sf agx-gui /usr/bin/open.new
+mv -f /usr/bin/open.new /usr/bin/open
 mv /usr/sbin/agx-init.new /usr/sbin/agx-init'
+
+# Record this release and put its source where the device's agents build from. Without this, an update
+# made on the device would start from an older checkout and replace this release with older code.
+if "${SSH[@]}" 'test -f /usr/libexec/agx-agent/update.py'; then
+    echo 'Recording the release and syncing its source to the device'
+    TREE=$(python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); import releases; print(releases.tree_hash(sys.argv[2]))' "$ROOT/apps/agent" "$ROOT")
+    (cd "$ROOT" && git ls-files -z --cached --others --exclude-standard | while IFS= read -r -d '' file; do [[ -e $file || -L $file ]] && printf '%s\0' "$file"; done | tar --null -T - -cf "$ROOT/.cache/angi-source.tar")
+    "${SCP[@]}" "$ROOT/.cache/angi-source.tar" "$DESTINATION:/var/lib/agx-data/angi-source.tar"
+    "${SSH[@]}" "set -e; python3 /usr/libexec/agx-agent/update.py adopt agx-gui.$(sha256sum "$STRIPPED" | cut -c1-16) workstation $TREE '$PREVIOUS' /var/lib/agx-data/angi-source.tar auto; rm -f /var/lib/agx-data/angi-source.tar"
+else
+    echo 'warning: angi-update is not installed on the device (run make deploy-agent, then deploy the GUI again), so this release is not recorded.' >&2
+fi
 
 # fontconfig finds no fonts on the bare image, and Slint's text stack panics on that.
 echo 'Installing a system font'

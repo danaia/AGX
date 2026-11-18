@@ -31,6 +31,37 @@ pub fn modifiers(m: Mods) -> u32 {
         | (u32::from(m.alt) << 2)
         | (u32::from(m.meta) << 3)
 }
+/// True for `localhost`, `127.x.x.x` or `[::1]`, with an optional `:port` (1-65535) and an optional path: this
+/// device's own servers, such as `python3 -m http.server`, which speak plain HTTP.
+pub fn local_server(text: &str) -> bool {
+    let end = text.find(['/', '?', '#']).unwrap_or(text.len());
+    let authority = &text[..end];
+    // Split into the host and what follows it (`:port` or nothing).
+    let (host, rest) = match authority.strip_prefix('[') {
+        Some(inside) => match inside.find(']') {
+            Some(close) => authority.split_at(close + 2),
+            None => return false,
+        },
+        None => authority.split_at(authority.find(':').unwrap_or(authority.len())),
+    };
+    let port_ok = rest.is_empty()
+        || rest.strip_prefix(':').is_some_and(|digits| {
+            (1..=5).contains(&digits.len())
+                && digits.bytes().all(|b| b.is_ascii_digit())
+                && digits
+                    .parse::<u32>()
+                    .is_ok_and(|port| (1..=65535).contains(&port))
+        });
+    let octets: Vec<&str> = host.split('.').collect();
+    let loopback = host.eq_ignore_ascii_case("localhost")
+        || host == "[::1]"
+        || (octets.len() == 4
+            && octets[0] == "127"
+            && octets
+                .iter()
+                .all(|octet| octet.len() <= 3 && octet.parse::<u8>().is_ok()));
+    port_ok && loopback
+}
 pub fn address(text: &str) -> Option<String> {
     let text = text.trim();
     if text.is_empty()
@@ -53,7 +84,11 @@ pub fn address(text: &str) -> Option<String> {
     {
         return None;
     }
-    Some(format!("https://{text}"))
+    // A server on this device is plain HTTP; a bare `localhost:8000` must not be sent to https://.
+    Some(format!(
+        "{}://{text}",
+        if local_server(text) { "http" } else { "https" }
+    ))
 }
 pub fn keysym(text: &str) -> Option<u32> {
     // Reuse the RFB/Slint mapping so navigation, editing and modifiers agree.
@@ -100,6 +135,30 @@ mod tests {
             Some("https://example.org")
         );
         assert_eq!(address(HOME).as_deref(), Some(HOME));
+        for (typed, loaded) in [
+            ("localhost:8000", "http://localhost:8000"),
+            ("localhost", "http://localhost"),
+            ("LOCALHOST:5000/app?x=1", "http://LOCALHOST:5000/app?x=1"),
+            (
+                "127.0.0.1:8080/index.html",
+                "http://127.0.0.1:8080/index.html",
+            ),
+            ("127.1.2.3", "http://127.1.2.3"),
+            ("[::1]:3000", "http://[::1]:3000"),
+            ("http://localhost:8000", "http://localhost:8000"),
+            ("https://localhost:8443", "https://localhost:8443"),
+            // Only this device's own names get plain HTTP; look-alikes and other hosts stay on https.
+            ("localhost.example.org", "https://localhost.example.org"),
+            ("evil-localhost:8000", "https://evil-localhost:8000"),
+            ("localhost:99999", "https://localhost:99999"),
+            ("localhost:0", "https://localhost:0"),
+            ("localhost:", "https://localhost:"),
+            ("128.0.0.1", "https://128.0.0.1"),
+            ("127.0.0.256", "https://127.0.0.256"),
+            ("192.168.1.175:8080", "https://192.168.1.175:8080"),
+        ] {
+            assert_eq!(address(typed).as_deref(), Some(loaded), "{typed}");
+        }
         for value in [
             "javascript:alert(1)",
             "file:///etc/passwd",

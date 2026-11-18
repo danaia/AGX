@@ -47,11 +47,14 @@ gui-build:
 deploy-gui: gui-build init-build
 	./scripts/deploy-gui.sh
 
-.PHONY: web-build deploy-web
+.PHONY: web-build deploy-web deploy-web-host
 web-build:
 	./scripts/build-web.sh
 deploy-web: web-build gui-build
 	./scripts/deploy-web.sh
+# Only the small Web embedding host (apps/web/*.c); leaves the WebKit runtime and the GUI release alone.
+deploy-web-host:
+	./scripts/deploy-web-host.sh
 
 .PHONY: terminal-build deploy-terminal
 terminal-build:
@@ -77,3 +80,5 @@ agent-test:
 	python3 scripts/test-agent-models.py
 	python3 scripts/test-agent-providers.py
 	python3 scripts/test-agent-scope.py
+	python3 scripts/test-agent-update.py
+	python3 scripts/test-agent-applefit.py

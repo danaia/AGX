@@ -20,6 +20,7 @@ define AGX_AGENT_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m0755 $(@D)/angi-root $(TARGET_DIR)/usr/bin/angi-root
 	$(INSTALL) -D -m0755 $(AGX_AGENT_ASSETS)/agent.sh $(TARGET_DIR)/usr/bin/agent
 	$(INSTALL) -D -m0755 $(AGX_AGENT_ASSETS)/angi-build.sh $(TARGET_DIR)/usr/bin/angi-build
+	$(INSTALL) -D -m0755 $(AGX_AGENT_ASSETS)/angi-update.sh $(TARGET_DIR)/usr/bin/angi-update
 	$(INSTALL) -d $(TARGET_DIR)/usr/libexec/agx-agent $(TARGET_DIR)/usr/share/agx/agent
 	$(INSTALL) -m0644 $(AGX_AGENT_ASSETS)/*.py $(TARGET_DIR)/usr/libexec/agx-agent/
 	cp -R $(AGX_AGENT_ASSETS)/skills $(AGX_AGENT_ASSETS)/profiles $(TARGET_DIR)/usr/share/agx/agent/

@@ -16,6 +16,7 @@ mkdir -p "$stage/usr/bin" "$stage/usr/libexec/agx-agent" "$stage/usr/share/agx/a
 install -m755 "$binary" "$stage/usr/bin/herdr"
 install -m755 "$ROOT/apps/agent/agent.sh" "$stage/usr/bin/agent"
 install -m755 "$ROOT/apps/agent/angi-build.sh" "$stage/usr/bin/angi-build"
+install -m755 "$ROOT/apps/agent/angi-update.sh" "$stage/usr/bin/angi-update"
 "$ROOT/output/host/bin/aarch64-linux-gcc" -Os -Wall -Wextra -Werror "$ROOT/apps/agent/angi-root.c" -o "$stage/usr/bin/angi-root"
 install -m644 "$ROOT"/apps/agent/*.py "$stage/usr/libexec/agx-agent/"
 cp -R "$ROOT/apps/agent/skills" "$ROOT/apps/agent/profiles" "$stage/usr/share/agx/agent/"

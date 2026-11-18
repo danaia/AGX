@@ -110,12 +110,20 @@ export component OverviewPanel inherits Rectangle {
     }
     if sd-map.hover-path != "" || nvme-map.hover-path != "": Rectangle {
         x: 12px; y: max(0px, root.height - 40px);
-        width: max(0px, root.width - 72px); height: 32px;
+        width: max(0px, root.width - 192px); height: 32px;
         VerticalLayout {
             spacing: 2px;
             Text { text: sd-map.hover-path != "" ? sd-map.hover-path : nvme-map.hover-path; color: Theme.fg; font-size: 11px; overflow: elide; }
             Text { text: sd-map.hover-path != "" ? sd-map.hover-detail : nvme-map.hover-detail; color: Theme.fg-dim; font-size: 10px; overflow: elide; }
         }
+    }
+    Button {
+        x: max(0px, root.width - self.width - 56px);
+        y: max(0px, root.height - self.height - 8px);
+        width: 124px; height: 32px;
+        text: "Clear cache…";
+        enabled: !StorageView.selected-open;
+        clicked => { StorageView.check-cache(); }
     }
     Button {
         x: max(0px, root.width - self.width - 8px);
@@ -125,7 +133,7 @@ export component OverviewPanel inherits Rectangle {
         icon-size: 16px;
         colorize-icon: true;
         accessible-label: StorageView.refreshing ? "Refreshing files" : "Refresh files";
-        enabled: !StorageView.busy && !StorageView.refreshing;
+        enabled: !StorageView.selected-open && !StorageView.refreshing;
         clicked => { StorageView.refresh-files(); }
     }
 }

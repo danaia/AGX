@@ -1,6 +1,6 @@
 import { Theme } from "data.slint";
 import { Button, LineEdit, ComboBox, ScrollView } from "std-widgets.slint";
-export struct CardModels { orchestrator: string, builder: string, tester: string }
+export struct CardModels { orchestrator: string, builder: string, tester: string, os: string }
 export global AgentProviders {
     in-out property <bool> open;
     in-out property <string> provider: "openai";
@@ -16,14 +16,16 @@ export global AgentProviders {
     in-out property <string> orchestrator;
     in-out property <string> builder;
     in-out property <string> tester;
+    // The model for OS updates: one fast agent, no swarm.
+    in-out property <string> os-updates;
     // Cards in display order: Apple Intelligence, OpenAI, LM Studio. Only one service is active.
     out property <[string]> names: ["Apple Intelligence", "OpenAI", "LM Studio"];
     in-out property <[bool]> ready: [false, false, false];
     in-out property <int> active-index: -1;
     // Models saved per card, without the provider prefix, for the card footers.
     // Position of each role's saved model in `models` (-1 when none), for the drawer's dropdowns.
-    in-out property <[int]> role-index: [-1, -1, -1];
-    in-out property <[CardModels]> card-models: [{ orchestrator: "", builder: "", tester: "" }, { orchestrator: "", builder: "", tester: "" }, { orchestrator: "", builder: "", tester: "" }];
+    in-out property <[int]> role-index: [-1, -1, -1, -1];
+    in-out property <[CardModels]> card-models: [{ orchestrator: "", builder: "", tester: "", os: "" }, { orchestrator: "", builder: "", tester: "", os: "" }, { orchestrator: "", builder: "", tester: "", os: "" }];
     callback action(int, string);
     callback use-service(string);
     callback save(string, string);
@@ -54,22 +56,25 @@ component ModelFooter inherits VerticalLayout {
     in property <CardModels> models;
     in property <bool> in-use;
     spacing: 2px;
-    if root.models.orchestrator != "" || root.models.builder != "" || root.models.tester != "": VerticalLayout {
+    if root.models.orchestrator != "" || root.models.builder != "" || root.models.tester != "" || root.models.os != "": VerticalLayout {
         spacing: 2px;
+        ModelRow { role: "OS updates"; model: root.models.os; in-use: root.in-use; }
         ModelRow { role: "orchestrator"; model: root.models.orchestrator; in-use: root.in-use; }
         ModelRow { role: "builder"; model: root.models.builder; in-use: root.in-use; }
         ModelRow { role: "tester"; model: root.models.tester; in-use: root.in-use; }
     }
-    if root.models.orchestrator == "" && root.models.builder == "" && root.models.tester == "" && root.in-use: Text {
+    if root.models.orchestrator == "" && root.models.builder == "" && root.models.tester == "" && root.models.os == "" && root.in-use: Text {
         text: "Default models"; color: Theme.fg-dim; font-size: 11px; horizontal-alignment: right;
     }
 }
 component RoleModel inherits VerticalLayout {
     in property <string> role;
+    // What the person sees; the role is what is saved.
+    in property <string> label;
     in property <string> selected;
     in property <int> index;
     spacing: 6px;
-    Text { text: root.role.to-uppercase(); color: Theme.fg-dim; font-size: 11px; }
+    Text { text: (root.label != "" ? root.label : root.role).to-uppercase(); color: Theme.fg-dim; font-size: 11px; }
     Text { text: root.selected == "" ? "OpenCode default" : root.selected; color: Theme.accent; font-size: 11px; wrap: word-wrap; }
     ComboBox {
         model: AgentProviders.models;
@@ -163,6 +168,9 @@ export component ProviderPanel inherits Rectangle {
                 if AgentProviders.connected && AgentProviders.active-index == AgentProviders.index-of(AgentProviders.provider): VerticalLayout {
                     alignment: start; spacing: 18px;
                     Text { text: "Models for new builds"; color: Theme.fg-bright; font-size: 17px; font-weight: 600; }
+                    RoleModel { role: "os"; label: "OS updates"; selected: AgentProviders.os-updates; index: AgentProviders.role-index[3]; }
+                    Text { text: "Changes to the desktop and system. One agent, no swarm, installs through angi-update."; color: Theme.fg-dim; font-size: 11px; wrap: word-wrap; }
+                    Text { text: "Projects"; color: Theme.fg-bright; font-size: 14px; font-weight: 600; }
                     RoleModel { role: "orchestrator"; selected: AgentProviders.orchestrator; index: AgentProviders.role-index[0]; }
                     RoleModel { role: "builder"; selected: AgentProviders.builder; index: AgentProviders.role-index[1]; }
                     RoleModel { role: "tester"; selected: AgentProviders.tester; index: AgentProviders.role-index[2]; }

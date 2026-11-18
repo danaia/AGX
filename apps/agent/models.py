@@ -7,6 +7,11 @@ import tempfile
 
 from messaging import ROLES
 
+# The swarm roles (Herdr runs, project mode) plus the model for OS updates. OS updates run as one
+# fast agent with ANGI's update script and no Herdr, so they get a model of their own.
+OS_ROLE = "os"
+ALL_ROLES = (*ROLES, OS_ROLE)
+
 
 # Services Agent Angie can use, one at a time.
 SERVICES = ("apple", "openai", "lmstudio")
@@ -26,7 +31,7 @@ def selections(service=None):
     if not path.exists():
         return {}
     result = json.loads(path.read_text())
-    if not isinstance(result, dict) or any(role not in ROLES or not isinstance(model, str) or not model.strip() or "/" not in model for role, model in result.items()):
+    if not isinstance(result, dict) or any(role not in ALL_ROLES or not isinstance(model, str) or not model.strip() or "/" not in model for role, model in result.items()):
         raise RuntimeError("Invalid saved Agent Angie model choices.")
     if service is None:
         return result
@@ -75,7 +80,7 @@ def catalog(provider):
 
 
 def save(role, model):
-    if role not in ROLES:
+    if role not in ALL_ROLES:
         raise ValueError("Unknown workshop role.")
     provider = model.partition("/")[0]
     if provider != active():

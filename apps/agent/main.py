@@ -5,7 +5,8 @@ from pathlib import Path
 import sys
 
 from messaging import inbox, send
-from session import launch, resume, status, dispatch
+import solo
+from session import attach, launch, resume, status, dispatch
 from ui import welcome
 from models import activate, active, catalog, save, selections
 from scope import describe, validate_project
@@ -67,22 +68,29 @@ def main():
     if args == ["status"]:
         status()
         return
+    if args == ["attach"]:
+        if os.getuid() == 0:
+            raise RuntimeError("Run agent attach as your desktop account.")
+        attach(Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm")
+        return
     request = angi_request(args)
     if request is False:
-        print("Usage: agent angi [--prompt BRIEF [--project DIR]] | agent status | agent tell ROLE MESSAGE | agent inbox")
+        print("Usage: agent angi [--prompt BRIEF [--project DIR]] | agent attach | agent status | agent tell ROLE MESSAGE | agent inbox")
         return
     brief, project = request
     if os.getuid() == 0:
         raise RuntimeError("Run agent angi as your desktop account. Use angi-root for privileged work.")
     state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
-    action, brief = ("start", brief) if brief else welcome((state / "current").exists())
+    action, brief = ("start", brief) if brief else welcome((state / "current").exists() or (state / "os-current").exists())
     if action == "connect":
         os.execvp("opencode", ["opencode", "/var/lib/agx-data/angi-dev"])
     elif action == "resume":
-        resume(state)
+        # The most recent run decides: an OS update run is one agent, a project run is a Herdr swarm.
+        (solo.resume if solo.newest(state) else resume)(state)
     elif action == "start":
-        launch(state, brief, project)
+        # OS updates are a single fast agent that installs through angi-update; only projects use Herdr.
+        solo.launch(state, brief) if project is None else launch(state, brief, project)
 
 
 if __name__ == "__main__":
