@@ -18,7 +18,7 @@ fn apps_include_running_and_closed_tools_and_open_them_from_any_workspace() {
     let mut desktop = desktop();
     desktop.close(Kind::Services);
     let apps = results(&desktop, "Super", "", SETTINGS, &available);
-    assert_eq!(apps.len(), Kind::ALL.len() + 1, "Chromium is listed with installed apps");
+    assert_eq!(apps.len(), Kind::ALL.len() + 2);
     assert_eq!(
         results(&desktop, "Super", "terminal", SETTINGS, &available)[0].command,
         Cmd::Open(Kind::Terminal)
@@ -162,7 +162,7 @@ fn every_install_state_shows_what_is_happening_and_what_enter_does() {
 #[test]
 fn desktop_apps_that_cannot_run_without_a_display_server_are_not_offered() {
     let desktop = desktop();
-    for query in ["firefox", "vlc", "libreoffice", "gimp"] {
+    for query in ["firefox", "chrome", "vlc", "libreoffice", "gimp"] {
         assert!(
             results(&desktop, "Super", query, APPS, &available).is_empty(),
             "{query} needs X11 or Wayland, which ANGI does not have"
@@ -208,7 +208,7 @@ fn installed_apps_come_first_under_their_own_heading_and_the_rest_follow() {
     assert_eq!(listed[0].heading, "INSTALLED  ·  2");
     assert_eq!(listed[2].heading, format!("AVAILABLE  ·  {}", apps::index().len() - 2));
     assert_eq!(listed.iter().filter(|entry| !entry.heading.is_empty()).count(), 2, "only the first row of a group has a heading");
-    assert_eq!(listed[2].label, "Chromium", "the rest keep their curated order");
+    assert_eq!(listed[2].label, "GitHub CLI", "the rest keep their curated order");
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn installing_apps_stay_put_and_headings_only_appear_without_a_search() {
         }
     };
     let listed = results(&desktop, "Super", "", APPS, &state);
-    assert_eq!(listed[0].label, "Chromium", "an app mid-install does not jump to the top");
+    assert_eq!(listed[0].label, "GitHub CLI", "an app mid-install does not jump to the top");
     let searched = results(&desktop, "Super", "find", APPS, &with_installed(&["fd"]));
     assert!(searched.iter().all(|entry| entry.heading.is_empty()), "search results are one flat list");
     assert_eq!(searched[0].label, "fd", "a match you already have is listed first");
@@ -247,18 +247,4 @@ fn only_a_few_apps_and_the_built_in_browser_carry_the_recommended_badge() {
     let web = tools.iter().find(|entry| entry.command == Cmd::Open(Kind::Web)).unwrap();
     assert_eq!(web.badge, "Recommended", "ANGI Web is the tuned WebKit browser");
     assert_eq!(tools.iter().filter(|entry| !entry.badge.is_empty()).count(), 1);
-}
-
-#[test]
-fn chromium_is_a_graphical_library_entry_with_a_launch_command() {
-    let desktop = desktop();
-    let found = results(&desktop, "Super", "chrome", APPS, &available);
-    let chromium = found.iter().find(|entry| entry.label == "Chromium").expect("Chromium is in the library");
-    assert!(matches!(chromium.command, Cmd::Package(_)));
-    assert_eq!(chromium.status.action, "Install", "it installs like any other entry");
-    assert_eq!(chromium.hint, "Graphical");
-    assert!(chromium.description.contains("Wayland"), "the row is honest about what it needs: {}", chromium.description);
-    let package = apps::index().iter().find(|app| app.id == "chromium").unwrap();
-    assert_eq!((package.kind.as_str(), package.commands.as_slice()), ("Graphical", ["chromium".to_string()].as_slice()));
-    assert_eq!(package.launch, "chromium");
 }

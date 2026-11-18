@@ -15,12 +15,15 @@ use std::{
     fs,
     io::{self, Read},
     os::unix::fs::MetadataExt,
+    path::Path,
     process::{Child, Command, Stdio},
     sync::mpsc::{self, Receiver, Sender},
 };
 use zeroize::{Zeroize, Zeroizing};
-const PACKAGE: &str = "/var/lib/agx-update/candidate.tar.gz";
-const DIRECTORY: &str = "/var/lib/agx-update";
+const PACKAGE: &str = "/var/lib/agx-data/agx-update/candidate.tar.gz";
+const DIRECTORY: &str = "/var/lib/agx-data/agx-update";
+const LEGACY_PACKAGE: &str = "/var/lib/agx-update/candidate.tar.gz";
+const LEGACY_DIRECTORY: &str = "/var/lib/agx-update";
 
 pub(super) enum Event {
     Phase(&'static str, u64, u64),
@@ -78,7 +81,14 @@ impl Ui {
         match std::thread::Builder::new()
             .name("agx-update-check".into())
             .spawn(move || {
-                if let Err(error) = check(PACKAGE, DIRECTORY, &send) {
+                let result = Path::new(PACKAGE).try_exists().and_then(|exists| {
+                    if exists {
+                        check(PACKAGE, DIRECTORY, &send)
+                    } else {
+                        check(LEGACY_PACKAGE, LEGACY_DIRECTORY, &send)
+                    }
+                });
+                if let Err(error) = result {
                     let _ = send.send(Event::Failed(error.to_string()));
                 }
             }) {

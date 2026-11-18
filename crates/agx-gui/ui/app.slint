@@ -7,8 +7,6 @@ export { Services, ServiceRow }
 import { ServiceUpdateDialog } from "services-dialog.slint";
 import { ServiceUpdateProgress } from "services-progress.slint";
 import { Web, WebOption, BrowserPanel, BrowserTabs } from "browser.slint";
-import { ChromiumPanel } from "chromium.slint";
-export { ChromiumView } from "chromium.slint";
 export { Web, WebOption }
 import { Terminal, TerminalRow, TerminalRun, TerminalPanel, TerminalView } from "terminal.slint";
 export { Terminal, TerminalRow, TerminalRun, TerminalView }
@@ -63,7 +61,7 @@ component WindowFrame inherits Rectangle {
                 HorizontalLayout {
                     padding-left: 10px;
                     Text {
-                        text: win.kind == 7 ? Web.title : win.kind == 8 || win.kind >= 13 ? Terminal.windows[win.kind == 8 ? 0 : win.kind - 12].title : win.title;
+                        text: win.kind == 7 ? Web.title : win.kind == 8 || win.kind >= 12 ? Terminal.windows[win.kind == 8 ? 0 : win.kind - 11].title : win.title;
                         color: win.focused ? Theme.accent : Theme.fg-dim;
                         font-weight: 700;
                         font-size: 12px;
@@ -83,8 +81,7 @@ component WindowFrame inherits Rectangle {
                 if win.kind == 4: HardwarePanel { }
                 if win.kind == 6: SystemPanel { }
                 if win.kind == 7: BrowserPanel { active: win.focused; }
-                if win.kind == 12: ChromiumPanel { }
-                if win.kind == 8 || win.kind >= 13: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 12; }
+                if win.kind == 8 || win.kind >= 12: TerminalPanel { active: win.focused; window-id: win.kind == 8 ? 0 : win.kind - 11; }
             }
         }
     }

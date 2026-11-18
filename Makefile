@@ -46,12 +46,9 @@ deploy-init: init-build
 bluetooth-build:
 	PKG_CONFIG=$(CURDIR)/output/host/bin/pkg-config PKG_CONFIG_ALLOW_CROSS=1 ./scripts/cargo.sh build --locked --release --target aarch64-unknown-linux-gnu --package agx-bluetoothd
 
-.PHONY: gui-build gui-wayland-build deploy-gui
+.PHONY: gui-build deploy-gui
 gui-build:
 	PKG_CONFIG=$(CURDIR)/output/host/bin/pkg-config PKG_CONFIG_ALLOW_CROSS=1 ./scripts/cargo.sh build --manifest-path crates/agx-gui/Cargo.toml --release --target aarch64-unknown-linux-gnu --no-default-features --features kms
-gui-wayland-build:
-	PKG_CONFIG=$(CURDIR)/output/host/bin/pkg-config PKG_CONFIG_ALLOW_CROSS=1 ./scripts/cargo.sh build --locked --manifest-path crates/agx-gui/Cargo.toml --release --target aarch64-unknown-linux-gnu --no-default-features --features kms,wayland-client
-	cp $(or $(CARGO_TARGET_DIR),$(CURDIR)/.cache/cargo-target)/aarch64-unknown-linux-gnu/release/agx-gui .cache/agx-gui-wayland
 deploy-gui: gui-build init-build
 	./scripts/deploy-gui.sh
 

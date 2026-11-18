@@ -52,6 +52,17 @@ class Updates(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual(updates.check_candidate(Path(directory) / 'missing')[0], 'No candidate')
 
+    def test_default_candidate_prefers_nvme_and_can_read_older_staging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            legacy = self.candidate(directory)
+            nvme = legacy.with_name('nvme-candidate.tar.gz')
+            with patch.object(updates, 'CANDIDATE', nvme), \
+                 patch.object(updates, 'LEGACY_CANDIDATE', legacy):
+                self.assertEqual(updates.check_candidate()[0], 'Candidate checked')
+                legacy.replace(nvme)
+                legacy.write_bytes(b'invalid old candidate')
+                self.assertEqual(updates.check_candidate()[0], 'Candidate checked')
+
     def test_desktop_only_offers_update_for_changed_guarded_source(self):
         with patch.object(updates.releases, 'installed', return_value='release'), \
              patch.object(updates.releases, 'guard', return_value=None), \

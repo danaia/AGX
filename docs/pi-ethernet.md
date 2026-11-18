@@ -76,7 +76,9 @@ pi_ssh 'readlink -f /usr/bin/agx-gui'
 For a transfer, use `pi_scp ./LOCAL_FILE "$AGX_SSH_HOST:/var/lib/agx-data/REMOTE_FILE"`
 or `pi_scp "$AGX_SSH_HOST:/REMOTE_FILE" ./LOCAL_FILE`, replacing the file paths
 with the intended files. Dropbear supports legacy SCP, so retain `-O` in the
-function. Stage application payloads on NVMe, not the small root filesystem.
+function. Stage application payloads on NVMe. `make stage-system-update` transfers
+system image candidates to `/var/lib/agx-data/agx-update` and verifies their
+transfer digest before publishing them.
 Use single quotes around remote shell programs; for example,
 `pi_ssh 'readlink -f /usr/bin/agx-gui'`. Local variables outside those quotes
 expand on the workstation.

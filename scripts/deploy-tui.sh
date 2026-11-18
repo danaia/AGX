@@ -14,5 +14,16 @@ if [[ -n "${AGX_SSH_HOST_KEY_ALIAS:-}" ]]; then
 fi
 # Dropbear includes legacy SCP, rather than an SFTP subsystem.
 scp -O "${SSH_OPTIONS[@]}" "$BINARY" "$DESTINATION:/usr/bin/agx.new"
-ssh "${SSH_OPTIONS[@]}" "$DESTINATION" \
-    'chmod 755 /usr/bin/agx.new && /usr/bin/agx.new --version && { test ! -f /usr/bin/agx || cp /usr/bin/agx /usr/bin/agx.prev; } && mv /usr/bin/agx.new /usr/bin/agx'
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" 'set -eu
+    backup=/usr/bin
+    if mountpoint -q /var/lib/agx-data; then
+        backup=/var/lib/agx-data/rollback-backups/agx-tui
+        install -d -m 700 /var/lib/agx-data/rollback-backups "$backup"
+    fi
+    chmod 755 /usr/bin/agx.new
+    /usr/bin/agx.new --version
+    if test -f /usr/bin/agx; then
+        cp -p /usr/bin/agx "$backup/agx.prev.new"
+        mv -f "$backup/agx.prev.new" "$backup/agx.prev"
+    fi
+    mv /usr/bin/agx.new /usr/bin/agx'

@@ -30,12 +30,6 @@ const MAX_REQUEST: u64 = 8192;
 const MAX_URI: usize = 8000;
 const SOCKET: &str = "angi-open.sock";
 
-#[derive(Debug, PartialEq, Eq)]
-enum Request {
-    Open(String),
-    Chromium(Vec<String>),
-}
-
 /// Where this account's desktop listens: the runtime directory if the system has one, else `~/.cache/angi`.
 pub fn socket_path() -> Option<PathBuf> {
     let directory = match std::env::var_os("XDG_RUNTIME_DIR").filter(|d| !d.is_empty()) {
@@ -163,7 +157,7 @@ fn bind(path: &Path) -> io::Result<UnixListener> {
     Ok(listener)
 }
 
-fn handle(stream: &mut UnixStream, found: &mpsc::Sender<Request>) -> io::Result<()> {
+fn handle(stream: &mut UnixStream, found: &mpsc::Sender<String>) -> io::Result<()> {
     stream.set_read_timeout(Some(Duration::from_secs(2)))?;
     stream.set_write_timeout(Some(Duration::from_secs(2)))?;
     if peer_uid(stream) != Some(effective_uid()) {
@@ -174,28 +168,23 @@ fn handle(stream: &mut UnixStream, found: &mpsc::Sender<Request>) -> io::Result<
     }
     let mut line = String::new();
     BufReader::new((&*stream).take(MAX_REQUEST)).read_line(&mut line)?;
-    let text = line.trim_end_matches(['\r', '\n']);
-    let request = if let Some(target) = text.strip_prefix("open ") {
-        resolve(target).map(Request::Open)
-    } else if let Some(arguments) = text.strip_prefix("chromium ") {
-        serde_json::from_str(arguments)
-            .map(Request::Chromium)
-            .map_err(|_| "Invalid Chromium arguments.".to_string())
-    } else {
-        Err("Unknown request.".to_string())
-    };
-    let reply = match request {
-        Ok(request) => match found.send(request) {
+    let reply = match line
+        .trim_end_matches(['\r', '\n'])
+        .strip_prefix("open ")
+        .map(resolve)
+    {
+        Some(Ok(uri)) => match found.send(uri) {
             Ok(()) => "ok".to_string(),
             Err(_) => "error The desktop is shutting down.".to_string(),
         },
-        Err(message) => format!("error {message}"),
+        Some(Err(message)) => format!("error {message}"),
+        None => "error Unknown request.".to_string(),
     };
     writeln!(stream, "{reply}")
 }
 
 /// Start listening; every accepted request arrives on the returned channel as the address to load.
-fn listen(path: &Path) -> io::Result<mpsc::Receiver<Request>> {
+fn listen(path: &Path) -> io::Result<mpsc::Receiver<String>> {
     let listener = bind(path)?;
     let (send, receive) = mpsc::channel();
     std::thread::spawn(move || {
@@ -216,23 +205,18 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
         .map_err(|error| eprintln!("agx-gui: `open` is unavailable: {error}"))
         .ok();
     let (weak, state) = (ui.as_weak(), app.clone());
-    let mut pending = VecDeque::new();
+    let mut pending: VecDeque<String> = VecDeque::new();
     let timer = Timer::default();
     timer.start(TimerMode::Repeated, Duration::from_millis(150), move || {
         let Some(receiver) = &receiver else { return };
         pending.extend(receiver.try_iter().take(8));
-        while !pending.is_empty() {
+        while let Some(uri) = pending.front() {
             let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) else {
                 return;
             };
-            match pending.pop_front() {
-                Some(Request::Open(uri)) => {
-                    app.run(&ui, Cmd::Open(Kind::Web));
-                    app.browser_open(&ui, &uri);
-                }
-                Some(Request::Chromium(arguments)) => app.chromium_open(&ui, arguments),
-                None => break,
-            }
+            app.run(&ui, Cmd::Open(Kind::Web));
+            app.browser_open(&ui, uri);
+            pending.pop_front();
         }
     });
     timer
@@ -421,7 +405,7 @@ mod tests {
         // A relative name is made absolute by the client, from its own working directory.
         ask(&socket, &directory, OsStr::new("game.html")).unwrap();
         let uri = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
-        assert_eq!(uri, Request::Open(file_uri(&directory.join("game.html"))));
+        assert_eq!(uri, file_uri(&directory.join("game.html")));
         let refused = ask(&socket, &directory, OsStr::new("missing.html")).unwrap_err();
         assert!(refused.contains("no such file"), "{refused}");
         assert!(
@@ -455,7 +439,7 @@ mod tests {
             ask(&socket, &directory, OsStr::new(typed)).unwrap();
             assert_eq!(
                 receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
-                Request::Open(loaded.into())
+                loaded
             );
         }
         // Other hosts are not guessed to be websites, and a file that really has that name wins.

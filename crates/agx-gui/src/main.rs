@@ -5,7 +5,6 @@
 //! 0 = quit, 10 = the user asked for the TUI instead.
 mod bluetooth;
 mod browser;
-mod chromium;
 mod files;
 mod graphics;
 mod input;

@@ -15,8 +15,6 @@ import shutil
 import tempfile
 
 FORMAT = 'angi-apps-v1'
-CHROMIUM_LAUNCHER = '.angi-chromium'
-CHROMIUM_BINARY = '.angi-chromium-bin'
 
 
 def version_label(tag, app_id, name):
@@ -103,33 +101,6 @@ class Store:
         temporary.unlink(missing_ok=True)
         os.symlink(os.path.join('..', 'pkg', app_id, 'current', relative), temporary)
         os.replace(temporary, destination)
-
-    def prepare_programs(self, release, app_id, programs):
-        """Add ANGI's launch script beside Chromium's verified release binary."""
-        if app_id != 'chromium' or 'chromium' not in programs:
-            return programs
-        raw = release / CHROMIUM_BINARY
-        if not raw.is_symlink() or os.readlink(raw) != programs['chromium']:
-            temporary = release / f'{CHROMIUM_BINARY}.{os.getpid()}'
-            temporary.unlink(missing_ok=True)
-            os.symlink(programs['chromium'], temporary)
-            os.replace(temporary, raw)
-        launcher = release / CHROMIUM_LAUNCHER
-        with tempfile.NamedTemporaryFile('w', dir=release, delete=False) as stream:
-            temporary = Path(stream.name)
-            try:
-                stream.write('#!/bin/sh\n'
-                             'if [ ! -x /usr/bin/angi-chromium ]; then\n'
-                             '    echo "Chromium needs the ANGI Wayland runtime." >&2\n'
-                             '    exit 1\n'
-                             'fi\n'
-                             'exec /usr/bin/angi-chromium "$@"\n')
-                stream.flush()
-                temporary.chmod(0o755)
-                os.replace(temporary, launcher)
-            finally:
-                temporary.unlink(missing_ok=True)
-        return dict(programs, chromium=CHROMIUM_LAUNCHER)
 
     def unlink(self, name, app_id):
         if self.owns(name, app_id):

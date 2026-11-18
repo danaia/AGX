@@ -133,11 +133,9 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
                            down| {
         a.terminal_key(&ui, &text, mods(ctrl, alt, shift, meta), down)
             || a.browser_key(&ui, &text, mods(ctrl, alt, shift, meta), down)
-            || a.chromium_key(&ui, &text, mods(ctrl, alt, shift, meta), down)
     });
     let _terminal_watch = terminal::install(&ui, &app);
     let _browser_watch = browser::install(&ui, &app);
-    let _chromium_watch = crate::chromium::install(&ui, &app);
     let _provider_watch = crate::agent_providers::install(&ui, &app);
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);

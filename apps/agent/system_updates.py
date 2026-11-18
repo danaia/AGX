@@ -10,7 +10,8 @@ import time
 
 import releases
 
-CANDIDATE = Path('/var/lib/agx-update/candidate.tar.gz')
+CANDIDATE = Path('/var/lib/agx-data/agx-update/candidate.tar.gz')
+LEGACY_CANDIDATE = Path('/var/lib/agx-update/candidate.tar.gz')
 
 def updated_ago(timestamp, now=None):
     """Describe an installation time; missing dates are never inferred from age/version."""
@@ -55,7 +56,9 @@ def desktop():
 
 
 def check_candidate(path=None):
-    path = Path(path or CANDIDATE)
+    path = Path(path) if path is not None else (
+        CANDIDATE if CANDIDATE.exists() else LEGACY_CANDIDATE
+    )
     if not path.exists():
         return 'No candidate', 'No system image has been staged from the workstation.'
     with tarfile.open(path, 'r:gz') as bundle:

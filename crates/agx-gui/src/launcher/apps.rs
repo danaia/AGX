@@ -1,7 +1,9 @@
 //! The searchable index of software ANGI can install.
 //!
-//! ANGI is a minimal Buildroot system. The index lists ready-made aarch64 Linux applications from
-//! GitHub. Chromium needs the optional Wayland runtime.
+//! ANGI is a minimal Buildroot system: no package manager, no X11 or Wayland, and a desktop that
+//! draws straight to the screen. So the index lists only command-line tools and servers that ship as
+//! ready-made aarch64 Linux binaries on GitHub. Graphical applications such as Firefox or VLC have no
+//! display server to draw on and are deliberately absent.
 //!
 //! The list lives in `apps/agent/apps.json`, most useful first, and is compiled in so search works
 //! offline. The same file tells the installer (`apps/agent/app_install.py`) which release asset to
@@ -14,8 +16,7 @@ pub(super) struct Package {
     pub id: String,
     pub name: String,
     pub summary: String,
-    /// "Terminal" for a command-line tool, "Server" for a long-running service, or "Graphical" for a
-    /// windowed application that needs a Wayland display.
+    /// "Terminal" for a command-line tool or "Server" for a long-running service.
     pub kind: String,
     pub aliases: String,
     /// The commands it adds, such as `rg` for ripgrep.
@@ -90,7 +91,7 @@ mod tests {
         let mut seen = std::collections::HashSet::new();
         for app in index() {
             assert!(!app.summary.is_empty(), "{} is incomplete", app.name);
-            assert!(matches!(app.kind.as_str(), "Terminal" | "Server" | "Graphical"), "{} has no kind", app.name);
+            assert!(matches!(app.kind.as_str(), "Terminal" | "Server"), "{} has no kind", app.name);
             assert!(seen.insert(app.id.clone()), "{} is listed twice", app.id);
             assert!(
                 app.launch.is_empty() || app.commands.contains(&app.launch),

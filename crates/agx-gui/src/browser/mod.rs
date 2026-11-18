@@ -29,7 +29,6 @@ pub(crate) fn web_address(text: &str) -> Option<String> {
         .flatten()
 }
 pub(super) use storage::{prepare_accounts, prepare_user_storage};
-pub(super) use protocol::keysym;
 const TAB_BAR: f32 = 36.0;
 const TOOLBAR: f32 = 44.0;
 #[derive(Default)]

@@ -6,7 +6,7 @@
 #
 # Everything is taken from the last `make build` (output/target). The new init and the boot
 # parameter take effect at the next boot; this script does not reboot. Previous copies of every
-# replaced file are kept in /root/agx-bluetooth-backup on the Pi.
+# replaced file are kept under /var/lib/agx-data/rollback-backups on the Pi.
 #
 # Export AGX_SSH_HOST, AGX_SSH_KEY and AGX_SSH_HOST_KEY_ALIAS first (docs/pi-ethernet.md).
 set -euo pipefail
@@ -57,11 +57,14 @@ PY
 KERNEL=$(cat output/build/linux-custom/include/config/kernel.release)
 REMOTE_KERNEL=$(ssh "${SSH_OPTIONS[@]}" "$DESTINATION" uname -r)
 [[ "$KERNEL" == "$REMOTE_KERNEL" ]] || { echo "Kernel mismatch ($KERNEL built, $REMOTE_KERNEL running): refusing" >&2; exit 1; }
+ssh "${SSH_OPTIONS[@]}" "$DESTINATION" 'mountpoint -q /var/lib/agx-data'
 
 scp -O "${SSH_OPTIONS[@]}" "$ARCHIVE" "$DESTINATION:/var/lib/agx-data/bluetooth-stack.tar"
 ssh "${SSH_OPTIONS[@]}" "$DESTINATION" 'sh -s' <<'REMOTE'
 set -eu
-backup=/root/agx-bluetooth-backup
+mountpoint -q /var/lib/agx-data
+backup=/var/lib/agx-data/rollback-backups/agx-bluetooth-backup
+install -d -m 700 /var/lib/agx-data/rollback-backups
 install -d -m 700 "$backup"
 for file in /usr/sbin/agx-init /usr/bin/agx /etc/passwd /etc/group /etc/shadow; do
     test ! -f "$file" || cp -p "$file" "$backup/$(basename "$file").$(date +%s)"
