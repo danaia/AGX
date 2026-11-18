@@ -24,6 +24,7 @@ export { MouseSettings, BluetoothSettings, BtDevice, BtApproval }
 import { AppLauncher } from "launcher.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
+import { HoverTip } from "hover-tip.slint";
 export { CursorPreviewWindow }
 import { LineEdit, Button } from "std-widgets.slint";
 export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
@@ -258,6 +259,7 @@ export component AppWindow inherits Window {
     in property <bool> dragging: false;
     in property <int> cursor: 0;
     in property <bool> draw-cursor: false;
+    property <bool> mode-tip: false;
     in property <bool> resize-cursor-overlay: false;
     in-out property <length> cursor-x;
     in-out property <length> cursor-y;
@@ -377,7 +379,7 @@ export component AppWindow inherits Window {
         }
 
         // Top bar (hidden while a window is fullscreen).
-        if !root.screen-full: Rectangle {
+        if !root.screen-full: top-bar := Rectangle {
             y: 0;
             height: 34px;
             background: Theme.bg-dark;
@@ -411,19 +413,34 @@ export component AppWindow inherits Window {
                     pointer-moved(x, y) => { root.track-cursor(x, y); }
                     picked => { root.workspace-select(i); }
                 }
-                Rectangle {
-                    width: mode-label.preferred-width + 26px;
+                mode-box := Rectangle {
+                    width: 34px;
                     background: mode-button.has-hover ? Theme.bg-light : transparent;
                     border-radius: 5px;
                     accessible-role: button;
                     accessible-label: root.windowed-mode ? "Switch to tiled mode" : "Switch to windowed mode";
-                    mode-label := Text { text: root.windowed-mode ? "windowed" : "tiled"; color: Theme.magenta; horizontal-alignment: center; vertical-alignment: center; }
+                    accessible-checkable: true;
+                    accessible-checked: !root.windowed-mode;
+                    // Tiled layout icon: full opacity while tiled, half while windowed.
+                    Image {
+                        width: 20px; height: 20px;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        source: @image-url("icons/layout-tiled.svg");
+                        colorize: Theme.magenta;
+                        opacity: root.windowed-mode ? 0.5 : 1.0;
+                    }
                     mode-button := TouchArea {
                         mouse-cursor: MouseCursor.pointer;
                         pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
                         moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
-                        clicked => { root.layout-toggle(); root-keys.focus(); }
+                        clicked => { root.mode-tip = false; root.layout-toggle(); root-keys.focus(); }
+                        changed has-hover => {
+                            mode-dwell.running = self.has-hover;
+                            if (!self.has-hover) { root.mode-tip = false; }
+                        }
                     }
+                    mode-dwell := Timer { interval: 400ms; running: false; triggered => { self.running = false; root.mode-tip = true; } }
                 }
                 Text { text: "  " + root.focus-title; color: Theme.fg-dim; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 Text { text: "󰍛 \{Math.round(Sys.cpu-percent)}%"; color: Theme.cyan; vertical-alignment: center; }
@@ -461,6 +478,15 @@ export component AppWindow inherits Window {
                 color: Theme.fg-bright;
                 horizontal-alignment: center;
                 vertical-alignment: center;
+            }
+            // Layout toggle tooltip, same style as the Agent Angie scope tip.
+            HoverTip {
+                shown: root.mode-tip;
+                text: root.windowed-mode
+                    ? "Windowed: windows float freely. Click to tile them (\{root.mod-name}+L)."
+                    : "Tiled: windows fill the screen in a grid. Click to float them (\{root.mod-name}+L).";
+                x: mode-box.absolute-position.x - top-bar.absolute-position.x;
+                y: mode-box.absolute-position.y - top-bar.absolute-position.y + mode-box.height + 8px;
             }
         }
 

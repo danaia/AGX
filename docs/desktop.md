@@ -2,7 +2,7 @@
 
 `agx-gui` is a Slint front end with Omarchy/Hyprland-style window management. The tiling engine is `crates/agx-gui/src/wm.rs`, and the key bindings are `keymap.rs`. Both are unit-tested (`scripts/cargo.sh test --manifest-path crates/agx-gui/Cargo.toml`).
 
-The desktop starts in **windowed** mode: Settings fills the left half, with the ANGI overview above CPU and Memory and storage on the right. The overview uses `brand/brand-mark-text.svg`. All five workspaces start in windowed mode; click **windowed** or press **Super+L** to switch to tiling. Windows still at their initial positions follow display size changes; moved or resized windows keep their custom geometry.
+The desktop starts in **windowed** mode: Settings fills the left half, with the ANGI overview above CPU and Memory and storage on the right. The overview uses `brand/brand-mark-text.svg`. All five workspaces start in windowed mode; click the layout icon in the top bar or press **Super+L** to switch to tiling. Windows still at their initial positions follow display size changes; moved or resized windows keep their custom geometry.
 
 Click the **memory** bar in **Memory and storage** on workspace 1 to see live resident memory usage by process. Click the **Memory** heading to reverse the sort order. Select a row to see its risk explanation. **End process…** lets you request a normal stop or explicitly force it. System, other-account, and desktop startup processes are protected. A **Lower risk** label still means the process's current task will stop.
 
@@ -210,7 +210,7 @@ On November 16, 2026, the launcher passed visual checks at 1280×900, 720×700 a
 | Mod+T | Float or tile the window |
 | Mod+F | Fullscreen (bars hidden) |
 | Mod+(a little)+F | Maximize (full width) |
-| Mod+L | Toggle tiled/windowed mode; the header's layout label is also clickable |
+| Mod+L | Toggle tiled/windowed mode; the top bar's layout icon is also clickable |
 | Mod+1..5 | Switch workspace (plain 1..5 also works) |
 | Mod+Shift+1..5 | Move the window to a workspace and follow it; add "a little" to stay |
 | Mod+Tab, Mod+Shift+Tab | Next, previous workspace |
@@ -221,7 +221,7 @@ On November 16, 2026, the launcher passed visual checks at 1280×900, 720×700 a
 
 ## Mouse
 
-Click **tiled** / **windowed** in the top bar to switch layout. Windowed mode lets you freely move windows by their title bars and resize their edges. The first switch preserves the current tiled positions; later switches restore your previous floating positions. Double-click a floating window's title bar to collapse its body into a movable header, then double-click again to restore its full size at the new position. A drag does not count as a double-click. Returning to tiled mode expands collapsed windows, and opening a collapsed app from Applications expands it too. Display resizing keeps floating title bars reachable.
+Click the tiled-layout icon in the top bar to switch layout: it is half opacity in windowed mode and full opacity in tiled mode, and hovering it for a moment shows a tooltip (same style as the Agent Angie OS/Project tip). Windowed mode lets you freely move windows by their title bars and resize their edges. The first switch preserves the current tiled positions; later switches restore your previous floating positions. Double-click a floating window's title bar to collapse its body into a movable header, then double-click again to restore its full size at the new position. A drag does not count as a double-click. Returning to tiled mode expands collapsed windows, and opening a collapsed app from Applications expands it too. Display resizing keeps floating title bars reachable.
 
 Verified on November 16, 2026 in both the software preview and on the Pi over VNC: clicking the layout label, collapsing to a 30-pixel header, moving that header, restoring the full body, returning to tiled, and restoring the saved floating position all passed. The workspace suite and 77 GUI tests passed, including double-click timing, drag rejection, collapse hit testing and keeping headers reachable after a display resize. The development Pi runs the tested executable; the previous executable link is retained under `/root/agx-windowed-backup/`.
 
