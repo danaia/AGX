@@ -126,6 +126,15 @@ def latest(config, get=fetch):
         tag = data['tag_name'].removeprefix('v')
         version(tag)
         return tag
+    if kind == 'tag':
+        # Installed apps keep whatever tag scheme their project uses ("v2.1", "15.2.0", "r42"), so this
+        # is compared for equality by the app updater rather than parsed as a version.
+        if data.get('draft') or data.get('prerelease'):
+            raise ValueError('Publisher returned a preview release')
+        tag = data['tag_name']
+        if not isinstance(tag, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+-]{0,63}', tag):
+            raise ValueError('Unrecognized release tag')
+        return tag
     if kind == 'commit':
         tree = data['commit']['tree']['sha']
         if not re.fullmatch('[0-9a-f]{40}', tree):

@@ -78,7 +78,6 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
             let view = ui.global::<StorageView>();
             if !view.get_selected_open()
                 || view.get_cache_open()
-                || !view.get_confirming()
                 || view.get_busy()
             {
                 return;
@@ -195,8 +194,16 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
                                 state.restore(&entry.stored.original, generation);
                             }
                         }
-                        trash_panel::TrashPanel::acted(&ui, result);
                         trash_panel::TrashPanel::refresh(&ui, &timer_worker);
+                        if view.get_selected_open() {
+                            trash_panel::TrashPanel::acted(&ui, result);
+                        } else {
+                            view.set_busy(false);
+                            view.set_trash_message(match result {
+                                Ok(()) => "Item restored.".into(),
+                                Err(error) => error.into(),
+                            });
+                        }
                     }
                     worker::Update::CacheTiles(result) => {
                         let mut state = catalog.borrow_mut();

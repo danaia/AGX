@@ -51,6 +51,24 @@ impl TrashPanel {
                 view.set_trash_message("Trash is unavailable.".into());
             }
         });
+        let (weak, list, restore_worker) = (ui.as_weak(), panel.clone(), worker.clone());
+        ui.global::<StorageView>().on_restore_trash(move |index| {
+            let Some(ui) = weak.upgrade() else { return };
+            let view = ui.global::<StorageView>();
+            if view.get_category() != 7 || view.get_busy() || view.get_trash_loading()
+                || view.get_selected_open() || view.get_empty_confirming()
+            {
+                return;
+            }
+            if let Some(entry) = list.entries.borrow().get(index as usize).cloned() {
+                if restore_worker.act_on_trash(entry, false) {
+                    view.set_busy(true);
+                    view.set_trash_message("Restoring item…".into());
+                } else {
+                    view.set_trash_message("Trash is unavailable.".into());
+                }
+            }
+        });
         let (weak, list) = (ui.as_weak(), panel.clone());
         ui.global::<StorageView>().on_restore_file(move || {
             let Some(ui) = weak.upgrade() else { return };

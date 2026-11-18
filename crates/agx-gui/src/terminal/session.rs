@@ -138,6 +138,10 @@ impl Session {
         let directory = std::fs::read_link(format!("/proc/{}/cwd", self.child_pid)).ok()?;
         (alive() && directory.is_dir()).then_some(directory)
     }
+    /// An installed program (an absolute path) running in its own tab, titled `title`.
+    pub fn program(size: Size, path: &str, title: &str) -> io::Result<Self> {
+        Self::start(size, Some((path, vec![], title)), None)
+    }
     pub fn opencode(size: Size) -> io::Result<Self> {
         Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }
@@ -225,6 +229,8 @@ impl Session {
                 ("TERM_PROGRAM".into(), "ANGI".into()),
                 ("AGX_TERMINAL_CONTEXT".into(), "gui".into()),
                 ("LC_CTYPE".into(), "C.UTF-8".into()),
+                // Apps installed from the launcher are found by name, even in terminals already open.
+                ("PATH".into(), crate::library::terminal_path()),
             ]
             .into(),
             ..tty::Options::default()

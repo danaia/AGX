@@ -5,7 +5,12 @@ import "fonts/JetBrainsMonoNerdFont-Bold.ttf";
 
 export struct NetRow { name: string, state: string, mac: string, ipv4: string }
 export struct HwRow { kind: string, name: string, state: string, detail: string }
-export struct MenuRow { label: string, description: string, hint: string, icon: int, app: bool, running: bool }
+// state: 0 plain row; for installable packages 1 available, 2 queued, 3 installing, 4 installed, 5 update ready, 6 failed.
+// progress is 0..1 while installing; action names what Enter does; keeps-open leaves the launcher up (installs queue).
+export struct MenuRow { label: string, description: string, hint: string, icon: int, app: bool, running: bool,
+    state: int, progress: float, action: string, keeps-open: bool, removable: bool,
+    // top: where the row starts in the list; heading: a section title drawn above the row; badge: e.g. "Recommended".
+    top: length, heading: string, badge: string }
 // One window on the current workspace, already placed by the tiling engine.
 export struct Win {
     kind: int,

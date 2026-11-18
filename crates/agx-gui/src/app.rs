@@ -30,6 +30,9 @@ pub(super) struct App {
     pub(super) cursor: i32,
     pub(super) menu: Vec<Cmd>,
     pub(super) menu_workspace: usize,
+    /// What the launcher's search box holds, so state changes can re-render the same results.
+    pub(super) menu_query: String,
+    pub(super) library: crate::library::Library,
     pub(super) pending: Option<Cmd>,
     /// Logical size of the window as last laid out.
     pub(super) size: (f32, f32),
@@ -67,6 +70,8 @@ impl App {
             cursor: 0,
             menu: vec![],
             menu_workspace: 0,
+            menu_query: String::new(),
+            library: crate::library::Library::start(),
             pending: None,
             size: (1280.0, 720.0),
             header_clicks: input::HeaderClicks::default(),
@@ -204,6 +209,12 @@ impl App {
                 }
             }
             Cmd::OpenCode => self.terminal_open_opencode(ui),
+            Cmd::Package(index) => {
+                self.package_activate(ui, index);
+                // Not the refresh below: it hands keyboard focus to the desktop, and an install keeps the
+                // launcher open so more apps can be chosen. Opening an app refreshes through the terminal.
+                return;
+            }
             Cmd::Tui => quit(EXIT_TUI),
             Cmd::Logout => quit(0),
             Cmd::Reboot | Cmd::Shutdown | Cmd::RefreshDesktop => {

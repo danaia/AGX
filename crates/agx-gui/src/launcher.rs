@@ -1,10 +1,38 @@
-//! App catalogue, searchable desktop commands and launcher model updates.
+//! Launcher tabs, built-in tools, searchable desktop commands and model updates. `apps.rs` owns the
+//! index of command-line tools and servers that run on ANGI; `packages.rs` their install state and actions.
+mod apps;
+mod packages;
+
 use crate::{
     App, AppWindow, MenuRow,
     keymap::Cmd,
+    library::Availability,
     wm::{Desktop, Kind, Mode, WORKSPACES},
 };
 use slint::{ModelRc, VecModel};
+
+/// Launcher tabs, in the order the tab strip shows them. The numbers are `AppLauncher.section`.
+/// Apps is the landing tab; Settings, the built-in tools, comes last.
+const APPS: i32 = 0;
+const COMMANDS: i32 = 1;
+const SETTINGS: i32 = 2;
+/// Vertical space one row takes in the results list, and the space a section heading adds above its first row.
+const ROW_STRIDE: f32 = 70.0;
+const HEADING: f32 = 34.0;
+/// `AppIcon` kind for installable applications.
+const APP_ICON: i32 = 16;
+
+/// How a row presents an install: its state (see `MenuRow.state`), progress and what Enter does.
+#[derive(Default)]
+struct Status {
+    state: i32,
+    progress: f32,
+    /// What Enter does, shown in the footer; empty means "Open".
+    action: String,
+    /// Installing keeps the launcher open so several apps can be queued; launching closes it.
+    keeps_open: bool,
+    removable: bool,
+}
 
 struct Entry {
     label: String,
@@ -12,12 +40,21 @@ struct Entry {
     hint: String,
     aliases: &'static str,
     icon: i32,
-    app: bool,
+    section: i32,
     running: bool,
     command: Cmd,
+    status: Status,
+    /// "Recommended" or empty: a badge beside the name.
+    badge: &'static str,
+    /// Set on the first row of a section ("INSTALLED · 2"); the list draws it above that row.
+    heading: String,
 }
 
-fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
+fn catalogue(
+    desktop: &Desktop,
+    modifier: &str,
+    availability: &dyn Fn(&str) -> Availability,
+) -> Vec<Entry> {
     let mut entries = Vec::new();
     for (kind, (label, description, aliases)) in Kind::ALL.into_iter().zip([
         (
@@ -97,9 +134,13 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             } else {
                 kind.index() as i32
             },
-            app: true,
+            section: SETTINGS,
             running: desktop.is_open(kind),
             command: Cmd::Open(kind),
+            status: Status::default(),
+            // Web is ANGI's own WPE WebKit build, tuned for the Pi's GPU; there is no better one to install.
+            badge: if kind == Kind::Web { "Recommended" } else { "" },
+            heading: String::new(),
         });
     }
     entries.push(Entry {
@@ -108,9 +149,12 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         hint: "Terminal".into(),
         aliases: "opencode ai coding agent assistant",
         icon: 13,
-        app: true,
+        section: SETTINGS,
         running: false,
         command: Cmd::OpenCode,
+        status: Status::default(),
+        badge: "",
+        heading: String::new(),
     });
     entries.push(Entry {
         label: "System Console".into(),
@@ -118,9 +162,12 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         hint: "TUI".into(),
         aliases: "console tui recovery",
         icon: 7,
-        app: true,
+        section: SETTINGS,
         running: false,
         command: Cmd::Tui,
+        status: Status::default(),
+        badge: "",
+        heading: String::new(),
     });
     let mut command = |label: String, description: String, hint: String, icon, cmd| {
         entries.push(Entry {
@@ -130,8 +177,11 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
             icon,
             command: cmd,
             aliases: "",
-            app: false,
+            section: COMMANDS,
             running: false,
+            status: Status::default(),
+            badge: "",
+            heading: String::new(),
         });
     };
     if let Some(focused) = desktop.focused() {
@@ -223,16 +273,31 @@ fn catalogue(desktop: &Desktop, modifier: &str) -> Vec<Entry> {
         10,
         Cmd::Shutdown,
     );
+    entries.extend(
+        apps::index()
+            .iter()
+            .enumerate()
+            .map(|(index, package)| packages::entry(index, package, availability(&package.id))),
+    );
     entries
 }
 
-fn results(desktop: &Desktop, modifier: &str, query: &str, section: i32) -> Vec<Entry> {
+/// Without a query a tab lists its own entries. A query searches every tab at once, so a built-in
+/// tool, an installable app and a command can all be found from wherever the launcher is open;
+/// the open tab's matches come first among equally good ones.
+fn results(
+    desktop: &Desktop,
+    modifier: &str,
+    query: &str,
+    section: i32,
+    availability: &dyn Fn(&str) -> Availability,
+) -> Vec<Entry> {
     let query = query.trim().to_lowercase();
-    let mut entries: Vec<_> = catalogue(desktop, modifier)
+    let mut entries: Vec<_> = catalogue(desktop, modifier, availability)
         .into_iter()
         .filter(|entry| {
             if query.is_empty() {
-                return entry.app == (section == 0);
+                return entry.section == section;
             }
             let searchable =
                 format!("{} {} {}", entry.label, entry.description, entry.aliases).to_lowercase();
@@ -243,23 +308,61 @@ fn results(desktop: &Desktop, modifier: &str, query: &str, section: i32) -> Vec<
         .collect();
     if !query.is_empty() {
         // A title match wins over an incidental word in a description.
-        entries.sort_by_key(|entry| (!entry.label.to_lowercase().starts_with(&query), !entry.app));
+        entries.sort_by_key(|entry| {
+            let label = entry.label.to_lowercase();
+            let title = if label.starts_with(&query) {
+                0
+            } else if format!(" {label}").contains(&format!(" {query}")) {
+                // A later word, as in "Google Chrome"; not the middle of one, as in "Telegram".
+                1
+            } else {
+                2
+            };
+            // Installed apps come before ones that are not, wherever they match.
+            (title, entry.section != section, !packages::is_installed(entry), entry.section)
+        });
+    } else if section == APPS {
+        entries = packages::arrange(entries);
     }
     entries
 }
 
 impl App {
     pub(super) fn set_menu_rows(&mut self, ui: &AppWindow, query: &str) {
-        let entries = results(&self.desk, self.modk.name(), query, ui.get_menu_section());
+        self.menu_query = query.to_string();
+        let library = self.library.clone();
+        let entries = results(
+            &self.desk,
+            self.modk.name(),
+            query,
+            ui.get_menu_section(),
+            &|id| library.availability(id),
+        );
+        let mut top = 0.0;
         let rows: Vec<_> = entries
             .iter()
             .map(|entry| MenuRow {
+                top: {
+                    if !entry.heading.is_empty() {
+                        top += HEADING;
+                    }
+                    let here = top;
+                    top += ROW_STRIDE;
+                    here
+                },
+                heading: entry.heading.clone().into(),
+                badge: entry.badge.into(),
                 label: entry.label.clone().into(),
                 description: entry.description.clone().into(),
                 hint: entry.hint.clone().into(),
                 icon: entry.icon,
-                app: entry.app,
+                app: entry.section != COMMANDS,
                 running: entry.running,
+                state: entry.status.state,
+                progress: entry.status.progress,
+                action: entry.status.action.clone().into(),
+                keeps_open: entry.status.keeps_open,
+                removable: entry.status.removable,
             })
             .collect();
         self.menu = entries.into_iter().map(|entry| entry.command).collect();
@@ -269,10 +372,12 @@ impl App {
     pub(super) fn open_menu(&mut self, ui: &AppWindow) {
         self.menu_workspace = self.desk.current();
         ui.set_session_open(false);
-        ui.set_menu_section(0);
+        ui.set_menu_section(APPS);
         self.set_menu_rows(ui, "");
         ui.set_menu_index(0);
         ui.set_menu_open(true);
+        // Cheap when the cached answer is fresh; otherwise learns of newer releases of installed apps.
+        self.library.check_if_stale();
     }
 
     pub(super) fn menu_accept(&mut self, ui: &AppWindow, index: i32) {
@@ -286,85 +391,4 @@ impl App {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::wm::Rect;
-
-    fn desktop() -> Desktop {
-        Desktop::new(
-            Rect::new(0., 0., 1280., 720.),
-            Rect::new(0., 34., 1280., 660.),
-        )
-    }
-
-    #[test]
-    fn apps_include_running_and_closed_tools_and_open_them_from_any_workspace() {
-        let mut desktop = desktop();
-        desktop.close(Kind::Services);
-        let apps = results(&desktop, "Super", "", 0);
-        assert_eq!(apps.len(), Kind::ALL.len() + 2);
-        assert_eq!(
-            results(&desktop, "Super", "terminal", 0)[0].command,
-            Cmd::Open(Kind::Terminal)
-        );
-        assert!(
-            !desktop.is_open(Kind::Terminal),
-            "shells are started on demand"
-        );
-        assert!(apps.iter().all(|entry| entry.app));
-        assert_eq!(
-            results(&desktop, "Super", "opencode", 0)[0].command,
-            Cmd::OpenCode
-        );
-        assert_eq!(apps[0].command, Cmd::Open(Kind::Overview));
-        assert!(
-            apps.iter()
-                .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
-        );
-        desktop.goto(3);
-        assert_eq!(desktop.focused(), Some(Kind::Web), "Web is seeded on workspace 4");
-        desktop.goto(0);
-        assert_eq!(
-            results(&desktop, "Super", "webkit", 0)[0].command,
-            Cmd::Open(Kind::Web)
-        );
-        desktop.open(Kind::Web);
-        assert_eq!(desktop.focused(), Some(Kind::Web));
-        desktop.close(Kind::Web);
-        assert!(!desktop.is_open(Kind::Web));
-        desktop.goto(4);
-        desktop.open(Kind::Overview);
-        assert_eq!(desktop.focused(), Some(Kind::Overview));
-    }
-
-    #[test]
-    fn search_finds_app_aliases_and_secondary_commands() {
-        let desktop = desktop();
-        for query in ["wifi", "  WIFI  ", "remote access"] {
-            assert_eq!(
-                results(&desktop, "Super", query, 0)[0].command,
-                Cmd::Open(Kind::Network)
-            );
-        }
-        assert_eq!(
-            results(&desktop, "Super", "ram", 0)[0].command,
-            Cmd::Open(Kind::Memory)
-        );
-        assert_eq!(
-            results(&desktop, "Super", "workspace 3", 0)[0].command,
-            Cmd::Workspace(2)
-        );
-        for query in ["settings", "mouse", "sensitivity", "bluetooth"] {
-            assert_eq!(
-                results(&desktop, "Super", query, 0)[0].command,
-                Cmd::Open(Kind::Settings)
-            );
-        }
-        assert!(results(&desktop, "Super", "not-an-app", 0).is_empty());
-        assert!(
-            results(&desktop, "Super", "", 1)
-                .iter()
-                .all(|entry| !entry.app)
-        );
-    }
-}
+mod tests;

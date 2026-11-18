@@ -6,6 +6,7 @@
     angi-update status      installed release, its source, and whether an install is allowed
     angi-update gui         build the desktop from the checkout and install it as a new release
     angi-update gui --progress  stream installation stages and a verified result (JSON)
+    angi-update apps        installed apps (JSON); `app install|remove ID [--progress]` changes them
     angi-update refresh     load the installed release into the running desktop (closes ANGI's terminals)
     angi-update rollback    point the desktop back at the previous release
 """
@@ -58,6 +59,9 @@ def main(args):
     if args in (["inventory"], ["check"], ["check-releases"]):
         import system_updates
         print(json.dumps(system_updates.inventory(verify=args == ["check"], refresh=args == ["check-releases"])))
+    elif args[:1] in (["apps"], ["app"]):
+        import app_install
+        return app_install.main(args)
     elif args == ["job"]:
         import install_progress
         print(json.dumps(install_progress.status()))

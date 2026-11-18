@@ -20,6 +20,8 @@ export global Services {
     in property <string> operation-log;
     in property <string> operation-phase;
     in property <string> operation-release;
+    // What is being updated: "ANGI desktop" or an installed app's name.
+    in property <string> operation-component;
     in property <int> operation-step;
     in property <int> operation-total: 7;
     in property <bool> operation-indeterminate;
@@ -132,8 +134,8 @@ export component ServicesPanel inherits Rectangle {
         if Services.operation-state != "": Rectangle {
             height: 52px; background: Theme.bg-light; border-radius: 4px;
             Text { x: 12px; y: 0px; width: max(0px, parent.width - 190px); height: parent.height;
-                text: Services.operation-state == "running" ? "Desktop update in progress…"
-                    : Services.operation-state == "succeeded" ? "Desktop installation verified" : "Desktop update failed";
+                text: Services.operation-state == "running" ? Services.operation-component + " update in progress…"
+                    : Services.operation-state == "succeeded" ? Services.operation-component + " installation verified" : Services.operation-component + " update failed";
                 color: Services.operation-state == "failed" ? Theme.red : Theme.fg-bright;
                 font-size: 12px; vertical-alignment: center; overflow: elide;
             }

@@ -148,6 +148,11 @@ def inventory(verify=False, *, refresh=False):
         for item in rows:
             item.setdefault('checked_ago', 'Not checked yet')
             item.setdefault('checked_at', None)
+    import app_updates
+    try:
+        rows.extend(app_updates.rows(updated_ago, refresh_now=verify or refresh))
+    except (OSError, ValueError, RuntimeError) as error:
+        errors.append(f'Installed app checks unavailable: {error}')
     import update_restart
     update_restart.decorate(rows, update_checks.OWNERS)
     rank = {'update': 0, 'unknown': 1, 'current': 2}

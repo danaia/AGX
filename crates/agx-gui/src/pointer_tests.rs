@@ -253,8 +253,7 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     for keysym in [32, 0xffeb] {
         remote::input::dispatch(ui.window(), remote::input::Input::Key { down: false, keysym });
     }
-    // A map tile opens details. Deletion needs a second activation, and Escape
-    // cancels confirmation without invoking the deletion callback.
+    // Moving a tile to Trash takes one activation. Permanent deletion requires confirmation.
     let storage = ui.global::<StorageView>();
     storage.set_sd_cells(ModelRc::new(slint::VecModel::from(vec![StorageCell {
         path: "/home/test/Downloads/archive.zip".into(),
@@ -302,17 +301,26 @@ fn session_button_opens_dropdown_and_mouse_selects_tui() {
     };
     key(slint::platform::Key::Tab.into());
     key(slint::platform::Key::Return.into());
+    assert!(!storage.get_confirming());
+    assert_eq!(*deletions.borrow(), 1);
+    storage.set_selected_open(false);
+    render();
+    storage.set_selected_trashed(true);
+    storage.set_selected_open(true);
+    render();
+    key(slint::platform::Key::Tab.into());
+    key(slint::platform::Key::Return.into());
     assert!(storage.get_confirming());
-    assert_eq!(*deletions.borrow(), 0);
+    assert_eq!(*deletions.borrow(), 1);
     key(slint::platform::Key::Escape.into());
     assert!(!storage.get_confirming());
-    assert_eq!(*deletions.borrow(), 0);
+    assert_eq!(*deletions.borrow(), 1);
     key(slint::platform::Key::Tab.into());
     key(slint::platform::Key::Return.into());
     assert!(storage.get_confirming());
     key(slint::platform::Key::Tab.into());
     key(slint::platform::Key::Return.into());
-    assert_eq!(*deletions.borrow(), 1);
+    assert_eq!(*deletions.borrow(), 2);
     storage.set_selected_open(false);
     floating_drag_tracks_each_physical_move(&ui, &render);
     crate::services::tests::review(&ui, &render);

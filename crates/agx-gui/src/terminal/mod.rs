@@ -202,6 +202,10 @@ impl App {
         self.refresh(ui);
         self.terminal_action(ui, 10, 0);
     }
+    /// Opens a terminal tab running an installed program, such as `btop`.
+    pub(crate) fn terminal_open_program(&mut self, ui: &AppWindow, path: String, title: String) {
+        self.terminal_launch(ui, |size| Session::program(size, &path, &title));
+    }
     pub(crate) fn terminal_open_agent(&mut self, ui: &AppWindow, prompt: String, project: Option<String>) {
         if prompt.trim().is_empty() {
             return;
@@ -232,7 +236,7 @@ impl App {
                 global.set_error("".into());
                 global.set_busy(true);
             }
-            Err(error) => global.set_error(format!("Unable to start Agent Angie: {error}").into()),
+            Err(error) => global.set_error(format!("Unable to start this tab: {error}").into()),
         }
     }
     fn terminal_action(&mut self, ui: &AppWindow, action: i32, index: i32) {

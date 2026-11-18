@@ -59,8 +59,16 @@ static void load_changed(WebKitWebView *web, WebKitLoadEvent event, WebHost *hos
 static gboolean load_failed(WebKitWebView *web, WebKitLoadEvent event, const char *uri, GError *error, WebHost *host)
 {
     (void)event; (void)uri;
-    if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    /* A link that turns out to be a file (a release archive, say) becomes a download and WebKit reports the
+     * navigation as interrupted by that policy change. The page that was showing is still correct and
+     * downloads.c reports the outcome, so this is not a load failure; showing the error page would also
+     * cover the "Saved to Downloads" notice. */
+    if (g_error_matches(error, WEBKIT_POLICY_ERROR, WEBKIT_POLICY_ERROR_FRAME_LOAD_INTERRUPTED_BY_POLICY_CHANGE))
+        return TRUE;
+    if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+        g_printerr("agx-web: page load failed (%s %d): %s\n", g_quark_to_string(error->domain), error->code, error->message);
         web_tab_error(host, web, "Could not load this page. Check the address and connection, then reload.");
+    }
     return TRUE;
 }
 static void process_terminated(WebKitWebView *web, WebKitWebProcessTerminationReason reason, WebHost *host)

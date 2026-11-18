@@ -13,6 +13,7 @@ export { Terminal, TerminalRow, TerminalRun, TerminalView }
 import { BrowserPopup } from "browser-popup.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { StorageView, StorageCell, StorageTrashRow } from "storage.slint";
+import { EmptyTrashDialog } from "storage-trash.slint";
 import { StorageDialog } from "storage-dialog.slint";
 import { CacheDialog } from "cache-dialog.slint";
 import { MemoryProcesses, ProcessRow, MemoryProcessDialog } from "memory-processes.slint";
@@ -297,6 +298,7 @@ export component AppWindow inherits Window {
     callback workspace-select(int);
     callback menu-query(string);
     callback menu-accept(int);
+    callback menu-remove(int);
     callback confirm(bool);
     callback session-action(int);
     callback layout-toggle();
@@ -322,7 +324,7 @@ export component AppWindow inherits Window {
 
     root-keys := FocusScope {
         key-pressed(e) => {
-            if Services.progress-open || Services.review-open || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
+            if Services.progress-open || Services.review-open || StorageView.empty-confirming || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
                 if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
@@ -529,10 +531,14 @@ export component AppWindow inherits Window {
             section <=> root.menu-section;
             query(text) => { root.menu-query(text); }
             accepted(index) => {
-                root.menu-open = false;
-                root-keys.focus();
+                // Installing keeps the launcher open so more apps can be queued; anything else closes it.
+                if !root.menu-rows[index].keeps-open {
+                    root.menu-open = false;
+                    root-keys.focus();
+                }
                 root.menu-accept(index);
             }
+            remove(index) => { root.menu-remove(index); }
             dismissed => { root.menu-open = false; root-keys.focus(); }
             pointer-moved(x, y) => { root.track-cursor(x, y); }
         }
@@ -579,6 +585,10 @@ export component AppWindow inherits Window {
         }
 
         if StorageView.selected-open && !StorageView.cache-open: StorageDialog {
+            dismissed => { root-keys.focus(); }
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+        }
+        if StorageView.empty-confirming: EmptyTrashDialog {
             dismissed => { root-keys.focus(); }
             pointer-moved(x, y) => { root.track-cursor(x, y); }
         }

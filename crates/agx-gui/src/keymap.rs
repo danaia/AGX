@@ -70,6 +70,8 @@ pub enum Cmd {
     Menu,
     Open(Kind),
     OpenCode,
+    /// Choose one entry of the ANGI software index: install it, update it, or open it once installed.
+    Package(usize),
     Tui,
     Logout,
     RefreshDesktop,

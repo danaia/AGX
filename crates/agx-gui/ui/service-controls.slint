@@ -34,6 +34,7 @@ export component UpdateButton inherits Rectangle {
         font-size: 12px; vertical-alignment: center;
     }
     public function focus-button() { focus.focus(); }
+    out property <bool> hovered: touch.has-hover;
     out property <bool> focused: focus.has-focus;
     focus := FocusScope {
         enabled: root.enabled;

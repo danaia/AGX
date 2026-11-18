@@ -10,6 +10,7 @@ mod graphics;
 mod input;
 mod keymap;
 mod launcher;
+mod library;
 mod login;
 mod memory_processes;
 mod open_request;

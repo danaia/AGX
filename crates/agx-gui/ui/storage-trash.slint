@@ -1,83 +1,148 @@
-import { Button, ListView } from "std-widgets.slint";
+import { ListView } from "std-widgets.slint";
 import { Theme } from "data.slint";
 import { StorageView } from "storage.slint";
 import { HoverDwell, HoverTip } from "hover-tip.slint";
+import { UpdateButton } from "service-controls.slint";
+
+component TrashButton inherits UpdateButton {
+    callback hint(string, length);
+    delay := HoverDwell {
+        hovered: root.hovered;
+        changed ready => { root.hint(self.ready ? root.label : "", root.absolute-position.y + root.height); }
+    }
+}
 
 export component StorageTrash inherits Rectangle {
-    if StorageView.trash-items.length == 0: Text {
-        y: 8px;
-        text: StorageView.trash-loading ? "Reading Trash…"
-            : StorageView.trash-message != "" ? StorageView.trash-message : "Trash is empty.";
-        color: Theme.fg-dim; wrap: word-wrap; font-size: 12px;
+    private property <int> count: StorageView.trash-items.length;
+    private property <bool> available: !StorageView.busy && !StorageView.trash-loading;
+    private property <string> tip;
+    private property <length> tip-y;
+    function show-tip(text: string, bottom: length) {
+        root.tip = text;
+        root.tip-y = bottom - root.absolute-position.y + 8px;
     }
-    if StorageView.trash-message != "" && StorageView.trash-items.length > 0: Text {
-        x: 0px; y: 4px; width: max(0px, parent.width - 130px);
-        text: StorageView.trash-message; color: Theme.red; font-size: 11px; overflow: elide;
-    }
-    if StorageView.trash-items.length > 0: ListView {
-        y: 38px;
-        height: max(0px, parent.height - 38px);
-        for item[index] in StorageView.trash-items: HorizontalLayout {
-            height: 42px; spacing: 12px;
-            VerticalLayout {
-                alignment: center; horizontal-stretch: 1;
-                Text { text: item.name; color: Theme.fg-bright; overflow: elide; font-size: 12px; }
-                Text { text: item.location; color: Theme.fg-dim; overflow: elide; font-size: 10px; }
+
+    VerticalLayout {
+        spacing: 8px;
+        HorizontalLayout {
+            height: 36px; spacing: 9px;
+            Image {
+                width: 18px; height: 18px;
+                source: @image-url("icons/storage-categories/trash.svg"); colorize: Theme.fg-dim;
             }
-            Text { text: item.size; color: Theme.fg-dim; font-size: 11px; }
-            Button {
-                icon: @image-url("icons/update-info.svg");
-                icon-size: 16px; colorize-icon: true;
-                accessible-label: "Trash details for " + item.name;
-                clicked => { StorageView.select-trash(index); }
+            Text {
+                text: root.count == 1 ? "1 item" : "\{root.count} items";
+                color: Theme.fg-bright; font-size: 13px; font-weight: 600;
+            }
+            Rectangle { horizontal-stretch: 1; }
+            if root.count > 0: empty := TrashButton {
+                width: 136px;
+                label: "Empty Trash";
+                icon: @image-url("icons/storage-categories/trash.svg");
+                enabled: root.available;
+                hint(label, bottom) => { root.show-tip(label == "" ? "" : "Delete everything permanently", bottom); }
+                clicked => { root.tip = ""; StorageView.empty-confirming = true; }
             }
         }
-    }
-    if StorageView.trash-items.length > 0: empty-button := Button {
-        x: max(0px, parent.width - self.width);
-        y: 2px; width: 120px; height: 30px;
-        text: "Empty Trash";
-        enabled: !StorageView.busy && !StorageView.trash-loading;
-        clicked => { dwell.dismiss(); StorageView.empty-confirming = true; }
-    }
-    dwell := HoverDwell { hovered: empty-hover.has-hover; }
-    empty-hover := TouchArea {
-        x: max(0px, parent.width - 120px); y: 2px; width: 120px; height: 30px;
-        enabled: StorageView.trash-items.length > 0 && !StorageView.busy && !StorageView.trash-loading;
-        mouse-cursor: MouseCursor.pointer;
-        clicked => { dwell.dismiss(); StorageView.empty-confirming = true; }
+        if StorageView.trash-message != "": Text {
+            text: StorageView.trash-message; color: Theme.fg; font-size: 12px; wrap: word-wrap;
+        }
+        if root.count == 0: Rectangle {
+            background: Theme.bg-dark; border-radius: 8px;
+            VerticalLayout {
+                alignment: center; spacing: 10px; padding: 8px;
+                Image {
+                    height: 26px; source: @image-url("icons/storage-categories/trash.svg");
+                    colorize: Theme.fg-dim; image-fit: contain;
+                }
+                Text {
+                    text: StorageView.trash-loading ? "Reading Trash…" : "Trash is empty";
+                    color: Theme.fg; font-size: 13px; horizontal-alignment: center;
+                }
+            }
+        }
+        if root.count > 0: ListView {
+            vertical-stretch: 1;
+            for item[index] in StorageView.trash-items: Rectangle {
+                height: 51px; border-radius: 5px;
+                background: mod(index, 2) == 0 ? Theme.bg-dark : transparent;
+                HorizontalLayout {
+                    padding-left: 10px; padding-right: 10px; spacing: 9px;
+                    Image {
+                        width: 18px; height: 18px;
+                        source: @image-url("icons/storage-categories/documents.svg"); colorize: Theme.fg-dim;
+                    }
+                    VerticalLayout {
+                        alignment: center; horizontal-stretch: 1; spacing: 3px;
+                        Text { text: item.name; color: Theme.fg-bright; overflow: elide; font-size: 12px; }
+                        Text { text: item.location; color: Theme.fg-dim; overflow: elide; font-size: 11px; }
+                    }
+                    if root.width > 370px: Text { text: item.size; color: Theme.fg-dim; font-size: 11px; }
+                    TrashButton {
+                        label: "Restore"; icon-only: root.width < 420px; width: root.width < 420px ? 32px : 102px;
+                        icon: @image-url("icons/restore.svg"); enabled: root.available;
+                        hint(label, bottom) => { root.show-tip(label, bottom); }
+                        clicked => { root.tip = ""; StorageView.restore-trash(index); }
+                    }
+                    TrashButton {
+                        label: "Details"; icon-only: true;
+                        icon: @image-url("icons/update-info.svg"); enabled: root.available;
+                        hint(label, bottom) => { root.show-tip(label, bottom); }
+                        clicked => { root.tip = ""; StorageView.select-trash(index); }
+                    }
+                }
+            }
+        }
     }
     HoverTip {
-        shown: dwell.ready;
-        text: "Delete everything permanently";
-        width: min(250px, parent.width);
-        x: max(0px, parent.width - self.width); y: 38px;
+        shown: root.tip != "" && !StorageView.empty-confirming && !StorageView.selected-open;
+        text: root.tip; width: min(235px, root.width);
+        x: root.width - self.width;
+        y: min(root.tip-y, max(0px, root.height - self.height));
     }
-    if StorageView.empty-confirming: Rectangle {
-        background: #000000cc;
-        TouchArea { }
-        FocusScope {
-            init => { self.focus(); }
-            key-pressed(event) => {
-                if event.text == Key.Escape && !StorageView.busy {
-                    StorageView.empty-confirming = false;
-                    return accept;
-                }
-                reject
-            }
+}
+
+export component EmptyTrashDialog inherits FocusScope {
+    callback dismissed();
+    callback pointer-moved(length, length);
+    init => { cancel.focus-button(); }
+    function close() {
+        StorageView.empty-confirming = false;
+        root.dismissed();
+    }
+    key-pressed(event) => {
+        if event.text == Key.Escape && !StorageView.busy { root.close(); return accept; }
+        if event.text == Key.Tab || event.text == Key.Backtab {
+            if cancel.focused { remove.focus-button(); } else { cancel.focus-button(); }
+            return accept;
         }
+        reject
+    }
+    Rectangle {
+        background: #00000099;
+        TouchArea { moved => { root.pointer-moved(self.mouse-x, self.mouse-y); } }
         Rectangle {
+            width: min(440px, parent.width - 32px); height: content.preferred-height;
             x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
-            width: min(440px, parent.width); height: 145px;
-            background: Theme.bg; border-width: 1px; border-color: Theme.red; border-radius: 6px;
-            VerticalLayout {
-                padding: 16px; spacing: 10px;
-                Text { text: "Empty Trash?"; color: Theme.fg-bright; font-size: 17px; }
-                Text { text: "Permanently delete all listed items? This cannot be undone."; wrap: word-wrap; color: Theme.fg; font-size: 12px; }
+            background: Theme.bg; border-color: Theme.muted; border-width: 1px; border-radius: 10px;
+            content := VerticalLayout {
+                padding: 22px; spacing: 14px;
+                Text { text: "Empty Trash?"; color: Theme.fg-bright; font-size: 19px; font-weight: 700; }
+                Text {
+                    text: "Permanently delete all \{StorageView.trash-items.length} items shown in Trash? This can’t be undone.";
+                    color: Theme.fg; font-size: 12px; wrap: word-wrap;
+                }
                 HorizontalLayout {
-                    spacing: 10px;
-                    Button { text: "Cancel"; enabled: !StorageView.busy; clicked => { StorageView.empty-confirming = false; } }
-                    Button { text: StorageView.busy ? "Deleting…" : "Empty Trash"; enabled: !StorageView.busy; clicked => { StorageView.empty-trash(); } }
+                    spacing: 10px; alignment: end;
+                    cancel := UpdateButton {
+                        width: 90px; show-icon: false; label: "Cancel"; enabled: !StorageView.busy;
+                        clicked => { root.close(); }
+                    }
+                    remove := UpdateButton {
+                        width: 132px; show-icon: false; enabled: !StorageView.busy;
+                        label: StorageView.busy ? "Deleting…" : "Empty Trash";
+                        clicked => { StorageView.empty-trash(); }
+                    }
                 }
             }
         }

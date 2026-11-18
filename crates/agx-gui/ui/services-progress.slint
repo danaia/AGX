@@ -26,8 +26,8 @@ export component ServiceUpdateProgress inherits FocusScope {
             VerticalLayout {
                 padding: 24px; spacing: 16px;
                 Text {
-                    text: Services.operation-state == "succeeded" ? "Desktop installation verified"
-                        : Services.operation-state == "failed" ? "Desktop update failed" : "Installing ANGI desktop";
+                    text: Services.operation-state == "succeeded" ? Services.operation-component + " installation verified"
+                        : Services.operation-state == "failed" ? Services.operation-component + " update failed" : "Installing " + Services.operation-component;
                     color: Theme.fg-bright; font-size: 20px; font-weight: 700; wrap: word-wrap;
                 }
                 Text { text: Services.operation-message; color: Services.operation-state == "failed" ? Theme.red : Theme.fg; font-size: 13px; wrap: word-wrap; }
@@ -38,7 +38,7 @@ export component ServiceUpdateProgress inherits FocusScope {
                 }
                 Text {
                     text: Services.operation-state == "running" ? "Stage " + (Services.operation-step + 1) + " of " + Services.operation-total + " · Live installer output"
-                        : Services.operation-state == "succeeded" ? "Installed file and release record verified" : "No successful installation was confirmed.";
+                        : Services.operation-state == "succeeded" ? "Download checked against its published checksum and installed" : "No successful installation was confirmed.";
                     color: Theme.fg-dim; font-size: 12px; wrap: word-wrap;
                 }
                 ScrollView {
@@ -48,7 +48,7 @@ export component ServiceUpdateProgress inherits FocusScope {
                 }
                 Text {
                     text: Services.operation-state == "running" ? "You can hide this window. The update will continue."
-                        : Services.operation-state == "succeeded" ? (Services.operation-activation-pending ? "Desktop restart required to load this update. Use Settings when ready; nothing restarts automatically." : "The verified desktop release is selected.") : "Review the error before retrying.";
+                        : Services.operation-state == "succeeded" ? (Services.operation-activation-pending ? "Desktop restart required to load this update. Use Settings when ready; nothing restarts automatically." : Services.operation-component == "ANGI desktop" ? "The verified desktop release is selected." : "The new version is used the next time the program starts.") : "Review the error before retrying.";
                     color: Theme.fg-dim; font-size: 12px; wrap: word-wrap;
                 }
                 HorizontalLayout {

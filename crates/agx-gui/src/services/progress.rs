@@ -9,8 +9,18 @@ use std::{
 };
 
 pub(super) fn run(events: &Sender<Value>) -> Result<String, String> {
+    run_args(events, &["gui", "--progress"])
+}
+
+/// Updates one installed app (`key` is its Services row key, `app:ID`) with the same live progress.
+pub(super) fn run_app(events: &Sender<Value>, key: &str) -> Result<String, String> {
+    let id = key.strip_prefix("app:").filter(|id| !id.is_empty()).ok_or("Unknown app.")?;
+    run_args(events, &["app", "update", id, "--progress"])
+}
+
+fn run_args(events: &Sender<Value>, args: &[&str]) -> Result<String, String> {
     let mut child = Command::new("/usr/bin/angi-update")
-        .args(["gui", "--progress"])
+        .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -96,4 +106,5 @@ pub(super) fn apply(ui: &AppWindow, event: &Value) {
     global.set_operation_total(event["total"].as_i64().unwrap_or(7) as i32);
     global.set_operation_indeterminate(event["indeterminate"].as_bool().unwrap_or(false));
     global.set_operation_release(event["release"].as_str().unwrap_or("").into());
+    global.set_operation_component(event["component"].as_str().unwrap_or("").into());
 }

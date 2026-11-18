@@ -37,7 +37,7 @@ export component ServiceUpdateDialog inherits FocusScope {
             VerticalLayout {
                 padding: 24px; spacing: 16px;
                 Text {
-                    text: Services.pending.restart-pending ? "Restart required to finish" : Services.pending.action == "" ? "Upstream version details" : "Install desktop update";
+                    text: Services.pending.restart-pending ? "Restart required to finish" : Services.pending.action == "" ? "Upstream version details" : Services.pending.key == "desktop" ? "Install desktop update" : "Install update";
                     color: Theme.fg-bright; font-size: 20px; font-weight: 700;
                 }
                 Text {

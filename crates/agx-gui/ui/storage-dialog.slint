@@ -45,7 +45,7 @@ export component StorageDialog inherits FocusScope {
                 padding: 20px; spacing: 14px;
                 Text {
                     text: StorageView.confirming
-                        ? (StorageView.selected-trashed ? "Permanently delete this item?" : "Move this file to Trash?")
+                        ? "Permanently delete this item?"
                         : (StorageView.selected-trashed ? "Trash item" : "File details");
                     color: Theme.fg-bright; font-size: 19px; font-weight: 700;
                 }
@@ -112,10 +112,10 @@ export component StorageDialog inherits FocusScope {
                     delete-button := Button {
                         text: StorageView.selected-trashed
                             ? (StorageView.confirming ? "Delete permanently" : "Delete permanently…")
-                            : (StorageView.confirming ? "Move to Trash" : "Move to Trash…");
+                            : "Move to Trash";
                         enabled: !StorageView.busy && StorageView.message == "";
                         clicked => {
-                            if StorageView.confirming { StorageView.delete-file(); }
+                            if !StorageView.selected-trashed || StorageView.confirming { StorageView.delete-file(); }
                             else { StorageView.confirming = true; close-button.focus(); }
                         }
                     }

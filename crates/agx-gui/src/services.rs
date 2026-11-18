@@ -33,11 +33,12 @@ fn run(action: &str) -> Result<String, String> {
 }
 
 pub(super) fn install(ui: &AppWindow) -> Timer {
-    let (send, requests) = mpsc::sync_channel::<&'static str>(1);
+    // (action, row key): "check", "gui" for the desktop, "app" for an installed app's update, or "inventory".
+    let (send, requests) = mpsc::sync_channel::<(&'static str, String)>(1);
     let (results, receive) = mpsc::channel();
     let (progress_send, progress_receive) = mpsc::channel();
     std::thread::spawn(move || {
-        for action in requests {
+        for (action, key) in requests {
             // Recheck availability in the worker; the confirmation may have been open
             // while a different deployment changed the installed release.
             let result = if action == "gui" {
@@ -53,11 +54,13 @@ pub(super) fn install(ui: &AppWindow) -> Timer {
                     }
                     progress::run(&progress_send)
                 })()
+            } else if action == "app" {
+                progress::run_app(&progress_send, &key)
             } else {
                 Ok(String::new())
             };
             if let Err(error) = &result {
-                if action == "gui" {
+                if action == "gui" || action == "app" {
                     let _ =
                         progress_send.send(serde_json::json!({"state":"failed", "message":error}));
                 }
@@ -73,12 +76,16 @@ pub(super) fn install(ui: &AppWindow) -> Timer {
             }
         }
     });
-    for (action, update) in [("check", false), ("gui", true)] {
+    for (kind, update) in [("check", false), ("gui", true)] {
         let (weak, sender) = (ui.as_weak(), send.clone());
         let callback = move |key: &str| {
-            if update && key != "desktop" {
-                return;
-            }
+            // "gui" is the update callback: the desktop builds from source, an app downloads a release.
+            let action = match (update, key) {
+                (false, _) => kind,
+                (true, "desktop") => "gui",
+                (true, key) if key.starts_with("app:") => "app",
+                (true, _) => return,
+            };
             let Some(ui) = weak.upgrade() else {
                 return;
             };
@@ -86,19 +93,26 @@ pub(super) fn install(ui: &AppWindow) -> Timer {
             if global.get_busy() || global.get_operation_state() == "running" {
                 return;
             }
-            if sender.try_send(action).is_ok() {
+            if sender.try_send((action, key.to_string())).is_ok() {
                 global.set_busy(true);
                 if update {
                     global.set_operation_state("running".into());
-                    global.set_operation_message("Starting desktop update…".into());
+                    global.set_operation_component(
+                        if action == "gui" { "ANGI desktop" } else { key.trim_start_matches("app:") }.into(),
+                    );
+                    global.set_operation_message(
+                        if action == "gui" { "Starting desktop update…" } else { "Starting update…" }.into(),
+                    );
                     global.set_operation_log("".into());
                     global.set_operation_step(0);
                     global.set_operation_indeterminate(true);
                     global.set_progress_open(true);
                 }
                 global.set_notice(
-                    if update {
+                    if action == "gui" {
                         "Building and installing desktop… This may take several minutes."
+                    } else if update {
+                        "Downloading and installing the update…"
                     } else {
                         "Checking upstream releases…"
                     }
@@ -114,7 +128,7 @@ pub(super) fn install(ui: &AppWindow) -> Timer {
         }
     }
     ui.global::<Services>().set_busy(true);
-    let _ = send.try_send("inventory");
+    let _ = send.try_send(("inventory", String::new()));
     let weak = ui.as_weak();
     let timer = Timer::default();
     let mut last_inventory = Instant::now();
@@ -222,7 +236,7 @@ pub(super) fn install(ui: &AppWindow) -> Timer {
                     .get_wins()
                     .iter()
                     .any(|window| window.kind == 5 && !window.collapsed))
-            && send.try_send("inventory").is_ok()
+            && send.try_send(("inventory", String::new())).is_ok()
         {
             global.set_busy(true);
             last_inventory = Instant::now();

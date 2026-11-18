@@ -4,6 +4,10 @@ import releases
 
 
 def impact(key, owner):
+    if key.startswith('app:'):
+        return ('application', 'Next launch',
+                'The updated program is used the next time it starts. Copies that are already running keep the old '
+                'version until they exit. Nothing restarts and no reboot is needed.')
     if key == 'display-access':
         return ('computer', 'Reboot after update',
                 'The device-access service starts with the system. A reboot reloads it and restores access to input and display devices.')
@@ -64,7 +68,10 @@ def decorate(rows, owners):
                    restart_pending=row['key'] == 'desktop' and desktop_pending)
         if row['restart_pending']:
             row['restart_label'] = 'Restart pending'
-        row['install_note'] = ("Build and install from the guarded local source. Your session stays open during installation; "
+        row['install_note'] = ("Download the new release from GitHub, check it against the checksum GitHub published, then replace the "
+                               "program. Your session stays open and nothing restarts."
+                               if row.get('action') and row['key'].startswith('app:') else
+                               "Build and install from the guarded local source. Your session stays open during installation; "
                                "activation is a separate step. The previous release is retained for rollback."
                                if row.get('action') else
                                "Installation from this panel is not available for this component yet. "

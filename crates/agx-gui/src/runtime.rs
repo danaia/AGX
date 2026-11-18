@@ -71,6 +71,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     hook!(on_menu_query, |a, ui, query| a.set_menu_rows(&ui, &query));
     hook!(on_menu_accept, |a, ui, index| a.menu_accept(&ui, index));
+    hook!(on_menu_remove, |a, ui, index| a.menu_remove(&ui, index));
     hook!(on_confirm, |a, ui, yes| a.confirm(&ui, yes));
     hook!(on_session_action, |a, ui, index| {
         if let Some(cmd) = session_action(index) {
@@ -139,6 +140,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);
     let _bluetooth_watch = crate::bluetooth::install(&ui, &app);
+    let _library_watch = crate::library::install(&ui, &app);
     crate::agent_swarm::install(&ui, &app);
     let _open_watch = crate::open_request::install(&ui, &app);
     app.borrow().refresh(&ui);

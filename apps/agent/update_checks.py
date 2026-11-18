@@ -135,11 +135,9 @@ def relative_checked(timestamp, relative):
     return text.replace('Updated ', 'Last checked ', 1) if text.startswith('Updated ') else 'Check time unavailable'
 
 
-def enrich(rows, base, relative, refresh_now=False, path=None, get=upstream.fetch):
+def cached_checks(configs, refresh_now=False, path=None, get=upstream.fetch):
+    """Cached upstream results for `configs`, refreshing what is stale or due under a cross-process lock."""
     path = Path(path or CACHE)
-    configs = upstream.sources(platform.release(), base)
-    owners = {OWNERS.get(row['key'], row['key']) for row in rows}
-    configs = {key: config for key, config in configs.items() if key in owners}
     cache = load(path)
     now = time.time()
     def wanted_checks(cached):
@@ -160,6 +158,15 @@ def enrich(rows, base, relative, refresh_now=False, path=None, get=upstream.fetc
             if updated != cache:
                 save(path, updated)
             cache = updated
+    return cache
+
+
+def enrich(rows, base, relative, refresh_now=False, path=None, get=upstream.fetch):
+    path = Path(path or CACHE)
+    configs = upstream.sources(platform.release(), base)
+    owners = {OWNERS.get(row['key'], row['key']) for row in rows}
+    configs = {key: config for key, config in configs.items() if key in owners}
+    cache = cached_checks(configs, refresh_now, path, get)
     versions = {}
     for owner in owners:
         try:
