@@ -6,8 +6,8 @@ import { ServicesPanel, Services, ServiceRow } from "services.slint";
 export { Services, ServiceRow }
 import { ServiceUpdateDialog } from "services-dialog.slint";
 import { ServiceUpdateProgress } from "services-progress.slint";
-import { Web, WebOption, BrowserPanel, BrowserTabs } from "browser.slint";
-export { Web, WebOption }
+import { Web, WebOption, BookmarkItem, BookmarkRow, BrowserPanel, BrowserTabs, BookmarkChrome, BookmarkMenus } from "browser.slint";
+export { Web, WebOption, BookmarkItem, BookmarkRow }
 import { Terminal, TerminalRow, TerminalRun, TerminalPanel, TerminalView } from "terminal.slint";
 export { Terminal, TerminalRow, TerminalRun, TerminalView }
 import { BrowserPopup } from "browser-popup.slint";
@@ -19,8 +19,10 @@ import { CacheDialog } from "cache-dialog.slint";
 import { MemoryProcesses, ProcessRow, MemoryProcessDialog } from "memory-processes.slint";
 export { MemoryProcesses, ProcessRow }
 export { StorageView, StorageCell, StorageTrashRow }
-import { AgentPanel, AgentAngi, AgentChat, AgentProviders, AgentScope, CardModels, ChatMessage } from "agent.slint";
-export { AgentAngi, AgentChat, AgentProviders, AgentScope, CardModels, ChatMessage }
+import { AgentPanel, AgentAngi, AgentChat, AgentHistory, AgentProviders, AgentScope, CardModels, ChatMessage, HistoryEntry } from "agent.slint";
+export { AgentAngi, AgentChat, AgentHistory, AgentProviders, AgentScope, CardModels, ChatMessage, HistoryEntry }
+import { AgentWork, WorkRecord, WorkResource } from "agent-work-summary.slint";
+export { AgentWork, WorkRecord, WorkResource }
 import { FilesPanel, Files, FileRow, Crumb, PlaceRow, PaneState } from "files.slint";
 import { FolderPicker } from "files-picker.slint";
 export { Files, FileRow, Crumb, PlaceRow, PaneState }
@@ -101,6 +103,14 @@ component WindowFrame inherits Rectangle {
         x: 2px; y: 28px;
         width: max(0px, parent.width - 4px); height: 36px;
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 7 && !win.collapsed: BookmarkChrome {
+        x: 2px; y: 64px;
+        width: max(0px, parent.width - 4px); height: 78px;
+    }
+    if win.kind == 7 && !win.collapsed && Web.menus.length > 0: BookmarkMenus {
+        x: 2px; y: 142px;
+        width: max(0px, parent.width - 4px); height: max(0px, parent.height - 144px);
     }
     if win.kind == 2 && !win.collapsed: MemoryPanel {
         x: 2px; y: 28px;
@@ -263,6 +273,7 @@ export component AppWindow inherits Window {
     in property <string> mod-name: "Super";
     in property <bool> windowed-mode: true;
     property <bool> mode-tip: false;
+    property <bool> top-bar-black: false;
     in property <string> clock: "";
     in property <string> toast: "";
     in property <bool> screen-full: false;
@@ -392,7 +403,11 @@ export component AppWindow inherits Window {
         if !root.screen-full: top-bar := Rectangle {
             y: 0;
             height: 34px;
-            background: Theme.bg-dark;
+            background: root.top-bar-black ? #000000 : Theme.bg-dark;
+            TouchArea {
+                moved => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                double-clicked => { root.top-bar-black = !root.top-bar-black; }
+            }
             HorizontalLayout {
                 padding-left: Theme.gap-out;
                 padding-right: Theme.gap-out;

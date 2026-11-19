@@ -267,9 +267,9 @@ class ChatTests(unittest.TestCase):
 
     def test_replies_are_the_text_parts_or_the_error(self):
         text = lambda value: json.dumps({"type": "text", "part": {"text": value}})
-        self.assertEqual(chat.parse_reply("\n".join([json.dumps({"type": "step_start"}), text("Hey "), "noise", text("there!")])), ("Hey there!", None))
-        failure = json.dumps({"type": "error", "error": {"name": "APIError", "data": {"message": "No credits"}}})
-        self.assertEqual(chat.parse_reply(failure), ("", "No credits"))
+        self.assertEqual(chat.parse_reply("\n".join([json.dumps({"type": "step_start"}), text("Hey "), "noise", text("there!")])), ("Hey there!", None, None))
+        failure = json.dumps({"type": "error", "sessionID": "ses_declined", "error": {"name": "APIError", "data": {"message": "No credits"}}})
+        self.assertEqual(chat.parse_reply(failure), ("", "No credits", "ses_declined"))
 
     def test_a_turn_continues_the_chat_unless_it_is_new_and_reports_failures(self):
         reply = lambda out, err="": subprocess.CompletedProcess([], 0, out, err)

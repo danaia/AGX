@@ -43,11 +43,15 @@ def launch(state, brief):
     marker = state / f"os-current.{os.getpid()}.new"
     marker.write_text(run.name)
     marker.replace(state / "os-current")
+    os.environ.update(AGX_SWARM_RUN=str(run), AGX_SWARM_ROLE="os")
     os.execvp("opencode", ["opencode", "--agent", AGENT, "--prompt", brief])
 
 
 def resume(state):
     prepare(state)
+    name = (state / "os-current").read_text().strip()
+    if Path(name).name == name and name.startswith("angi-os-") and (state / name / "run.json").is_file():
+        os.environ.update(AGX_SWARM_RUN=str(state / name), AGX_SWARM_ROLE="os")
     os.execvp("opencode", ["opencode", "--agent", AGENT, "--continue"])
 
 

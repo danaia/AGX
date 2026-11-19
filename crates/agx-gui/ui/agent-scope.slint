@@ -1,6 +1,6 @@
 import { Theme } from "data.slint";
-import { Button } from "std-widgets.slint";
 import { HoverDwell, HoverTip } from "hover-tip.slint";
+import { AgentText } from "agent-controls.slint";
 
 // What Agent Angi does: build the operating system ("os"), build in one project folder ("project"),
 // or talk and optionally work with local files ("chat").
@@ -11,6 +11,8 @@ import { HoverDwell, HoverTip } from "hover-tip.slint";
 export global AgentScope {
     in-out property <string> mode: "os";
     in-out property <string> project;
+    in-out property <string> os-draft;
+    in-out property <string> project-draft;
     in-out property <string> chat-folder;
     in-out property <bool> picker-for-chat;
     in-out property <string> error;
@@ -24,16 +26,36 @@ export global AgentScope {
 // which the panel turns into a tooltip beside it.
 export component ModeSwitch inherits Rectangle {
     out property <int> hint: -1;
+    callback selected();
     property <[string]> modes: ["os", "project", "chat"];
     width: 240px; height: 32px;
-    border-radius: 8px; border-width: 1px; border-color: Theme.muted; background: Theme.bg-dark;
-    for label[index] in ["OS", "Project", "Chat"] : Rectangle {
+    border-radius: 8px; border-width: 1px;
+    border-color: Theme.muted;
+    background: Theme.bg-dark;
+    for label[index] in ["OS", "Project", "Chat"] : segment := Rectangle {
         x: index * parent.width / 3; width: parent.width / 3; height: parent.height;
         property <bool> selected: AgentScope.mode == root.modes[index];
-        border-radius: 7px; background: selected ? Theme.accent : transparent;
-        Text { text: label; color: selected ? Theme.bg-dark : Theme.fg; font-size: 12px; font-weight: selected ? 700 : 400; }
-        pointer := TouchArea {
-            clicked => { AgentScope.mode = root.modes[index]; dwell.dismiss(); }
+        function select-mode() { AgentScope.mode = root.modes[index]; dwell.dismiss(); root.selected(); }
+        border-radius: 7px;
+        background: selected ? Theme.accent : transparent;
+        border-width: focus.has-focus ? 1px : 0px;
+        border-color: Theme.accent;
+        accessible-role: button;
+        accessible-label: label;
+        accessible-action-default => { self.select-mode(); }
+        AgentText {
+            text: label; font-size: 12px; font-weight: selected ? 700 : 400;
+            color: selected ? Theme.bg-dark : Theme.fg;
+        }
+        focus := FocusScope {
+            key-pressed(event) => {
+                if (event.text == Key.Return || event.text == " ") { segment.select-mode(); return accept; }
+                reject
+            }
+            pointer := TouchArea {
+                mouse-cursor: MouseCursor.pointer;
+                clicked => { focus.focus(); segment.select-mode(); }
+            }
         }
         dwell := HoverDwell {
             hovered: pointer.has-hover;
@@ -53,27 +75,5 @@ export component ScopeTip inherits HoverTip {
         ? "Chat: talk with Angi, browse folders, and save text files. Chat starts in your home folder."
         : root.hint == 1
         ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
-        : "OS: you are extending the operating system. Herdr's agents focus strictly on ANGI itself: its source, services and desktop on this device.";
-}
-
-export component ProjectRow inherits VerticalLayout {
-    in property <bool> chat;
-    in property <bool> folder-enabled: true;
-    property <string> folder: root.chat ? AgentScope.chat-folder : AgentScope.project;
-    spacing: 8px;
-    HorizontalLayout {
-        spacing: 10px;
-        Rectangle {
-            horizontal-stretch: 1; height: 32px; border-radius: 6px; background: Theme.bg-dark;
-            border-width: 1px; border-color: AgentScope.error != "" ? Theme.red : Theme.muted;
-            Text {
-                x: 10px; width: parent.width - 20px; vertical-alignment: center; overflow: elide; font-size: 12px;
-                text: root.folder != "" ? root.folder : root.chat ? "Home folder" : "No project folder selected";
-                color: root.folder != "" ? Theme.fg-bright : Theme.fg-dim;
-            }
-        }
-        Button { height: 32px; vertical-stretch: 0; text: root.chat || root.folder != "" ? "Change folder…" : "Select folder…"; enabled: root.folder-enabled && !AgentScope.checking; clicked => { AgentScope.choose-project(); } }
-        if root.chat && root.folder != "": Button { height: 32px; vertical-stretch: 0; text: "Use Home"; enabled: root.folder-enabled && !AgentScope.checking; clicked => { AgentScope.chat-folder = ""; } }
-    }
-    if AgentScope.error != "": Text { text: AgentScope.error; color: Theme.red; font-size: 12px; wrap: word-wrap; }
+        : "OS: Angi works on ANGI’s desktop, services, and system files.";
 }

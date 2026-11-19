@@ -1,0 +1,56 @@
+import { Theme } from "data.slint";
+import { ScrollView } from "std-widgets.slint";
+import { AgentButton, AgentText } from "agent-controls.slint";
+
+export struct WorkResource { label: string, path: string }
+export struct WorkRecord {
+    mode: string, title: string, brief: string, summary: string, summary-label: string,
+    resources: [WorkResource],
+}
+
+export global AgentWork {
+    in-out property <bool> open;
+    in-out property <WorkRecord> record;
+    callback open-folder(string);
+}
+
+export component WorkSummary inherits ScrollView {
+    content-width: self.visible-width;
+    VerticalLayout {
+        padding-top: 24px; padding-bottom: 24px; padding-right: 8px;
+        spacing: 16px; alignment: start;
+        HorizontalLayout {
+            alignment: space-between;
+            spacing: 8px;
+            AgentText {
+                text: AgentWork.record.mode == "os" ? "OS update" : "Project";
+                font-size: 13px; font-weight: 700; color: Theme.accent; vertical-alignment: center;
+            }
+            AgentButton {
+                width: 150px;
+                label: "Back to workspace";
+                activated => { AgentWork.open = false; }
+            }
+        }
+        AgentText { text: AgentWork.record.title; font-size: 26px; font-weight: 700; wrap: word-wrap; }
+        AgentText { text: "Original request"; font-size: 14px; font-weight: 700; }
+        AgentText { text: AgentWork.record.brief; font-size: 14px; color: Theme.fg; wrap: word-wrap; }
+        AgentText {
+            text: AgentWork.record.summary-label == "" ? "Outcome" : AgentWork.record.summary-label;
+            font-size: 14px; font-weight: 700;
+        }
+        AgentText {
+            text: AgentWork.record.summary == "" ? "No outcome was recorded for this run." : AgentWork.record.summary;
+            font-size: 14px; color: Theme.fg; wrap: word-wrap;
+        }
+        if AgentWork.record.resources.length > 0: VerticalLayout {
+            spacing: 8px; alignment: start;
+            AgentText { text: "Resources"; font-size: 14px; font-weight: 700; }
+            for resource in AgentWork.record.resources: AgentButton {
+                label: resource.label; detail: resource.path; symbol: "↗"; minimum: 53px;
+                action-label: "Open " + resource.label + " in Files: " + resource.path;
+                activated => { AgentWork.open-folder(resource.path); }
+            }
+        }
+    }
+}

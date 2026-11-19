@@ -1,5 +1,8 @@
 //! Browser lifecycle and desktop integration. WPE stays out of the GUI process.
+mod bookmarks;
+mod bookmarks_ui;
 mod engine;
+mod favicons;
 mod gpu;
 mod input;
 mod protocol;
@@ -30,7 +33,8 @@ pub(crate) fn web_address(text: &str) -> Option<String> {
 }
 pub(super) use storage::{prepare_accounts, prepare_user_storage};
 const TAB_BAR: f32 = 36.0;
-const TOOLBAR: f32 = 44.0;
+const TOOLBAR: f32 = 44.0 + BOOKMARK_BAR;
+const BOOKMARK_BAR: f32 = 34.0;
 #[derive(Default)]
 pub(super) struct Browser {
     engine: Option<Engine>,
@@ -49,6 +53,12 @@ pub(super) struct Browser {
     cursor: i32,
     uri: String,
     tabs: tabs::Tabs,
+    bookmarks: bookmarks::Bar,
+    icons: favicons::Icons,
+    bookmark_display: Vec<bookmarks::Entry>,
+    bookmark_path: Vec<usize>,
+    bookmark_width: i32,
+    import: Option<std::sync::mpsc::Receiver<Option<(std::path::PathBuf, bookmarks::Bar)>>>,
     frame_floor: u64,
     frame_sequence: Cell<u64>,
 }
@@ -136,6 +146,7 @@ impl Browser {
 }
 impl App {
     pub(super) fn browser_tick(&mut self, ui: &AppWindow) {
+        self.bookmarks_poll(ui);
         if !self.desk.is_open(Kind::Web) {
             if self.browser.attempted {
                 self.browser.reset(ui);
@@ -264,6 +275,7 @@ impl App {
                     web.set_address(uri.clone().into());
                 }
                 browser.uri = uri;
+                web.set_starred(browser.bookmarks.contains(&browser.uri));
             }
             if let Some((flags, progress)) = updates.status {
                 web.set_loading(flags & 1 != 0);
@@ -442,7 +454,7 @@ mod tests {
     #[test]
     fn viewport_matches_frame_and_toolbar_and_bounds_memory() {
         let r = viewport(Rect::new(50., 60., 800., 600.));
-        assert_eq!(r, Rect::new(52., 168., 796., 490.));
+        assert_eq!(r, Rect::new(52., 202., 796., 456.));
         let r = viewport(Rect::new(0., 0., 9000., 9000.));
         assert_eq!((r.w, r.h), (4096., 2160.));
     }
@@ -467,7 +479,13 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> slint::Timer {
     web_hook!(on_dialog_response, |state, ui, accepted, value| state
         .browser_dialog(&ui, accepted, &value));
     web_hook!(on_tab_command, |state, ui, action, index| state.browser_tab_command(&ui, action, index));
+    web_hook!(on_bookmark_open, |state, ui, address| state.bookmark_open(&ui, &address));
+    web_hook!(on_bookmark_folder, |state, ui, level, index| state.bookmark_folder(&ui, level, index));
+    web_hook!(on_bookmark_menu_close, |state, ui| state.bookmark_close(&ui));
+    web_hook!(on_bookmark_import, |state, ui| state.bookmarks_import(&ui));
+    web_hook!(on_bookmark_toggle, |state, ui| state.bookmarks_toggle(&ui));
     web_hook!(on_engine_update, |state, ui| state.browser_tick(&ui));
+    app.borrow_mut().bookmarks_load(ui);
     gpu::install(ui, app);
     let (weak, state) = (ui.as_weak(), Rc::downgrade(app));
     slint::Timer::single_shot(Duration::from_millis(1200), move || {

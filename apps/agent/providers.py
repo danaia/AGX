@@ -1,5 +1,6 @@
 """Private OpenCode provider bridge; credentials never leave OpenCode's store."""
 import base64
+import http.client
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,7 @@ class Providers:
         self.pending = False
         self.message = ""
         self.tailscale_waiting = False
+        self.apple_health = ("", False)
 
     def headers(self):
         return {"Authorization": "Basic " + base64.b64encode(("opencode:" + self.password).encode()).decode()}
@@ -89,7 +91,13 @@ class Providers:
             return {"connected": bool(config), "active": active() == "lmstudio" and bool(config), "models": ["lmstudio/" + key for key in config.get("models", {})], "status": text, "choices": selections("lmstudio"), "tailscale": network}
         if provider == "apple":
             config = apple_config()
-            return {"connected": bool(config), "active": active() == "apple", "models": ["apple/" + key for key in config.get("models", {})], "status": "Server configured. A role with no model chosen uses Apple's too. Test the connection again if the device address changes." if config else "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running.", "choices": apple_models(), "address": apple_address(config)}
+            endpoint = apple_endpoint(config)
+            try:
+                connected = bool(endpoint and apple_model_ids(endpoint, timeout=2))
+            except (OSError, ValueError, http.client.HTTPException):
+                connected = False
+            self.apple_health = (endpoint, connected)
+            return self.apple_status(config)
         connected = signed_in(provider)
         models = []
         if connected:
@@ -102,10 +110,25 @@ class Providers:
         notice = "In use. " + chosen if in_use else "Connected. Use it to make it the one service Agent Angi builds with."
         return {"connected": connected, "active": in_use, "models": models, "choices": selections(provider), "status": notice if connected else (self.message or ("Complete sign-in in the browser, then return here." if self.pending else "Sign in with your ChatGPT subscription to connect OpenAI to OpenCode."))}
 
+    def apple_status(self, config):
+        connected = self.apple_health == (apple_endpoint(config), True)
+        if connected:
+            message = "Connected to Local LLM Server. Test the connection again if the device address changes."
+        elif config:
+            message = "Disconnected. Start Local LLM Server on your Apple device and keep both devices on the same network."
+        else:
+            message = "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running."
+        return {"connected": connected, "active": active() == "apple" and bool(config),
+                "models": ["apple/" + key for key in config.get("models", {})],
+                "status": message, "choices": apple_models(), "address": apple_address(config)}
+
     def use(self, provider):
-        if not self.status(provider)["connected"]:
+        status = self.status(provider)
+        if not status["connected"]:
             raise ValueError("Connect this service before using it.")
         activate(provider)
+        if provider == "apple":
+            return {**status, "active": True}
         return self.status(provider)
 
     def connect(self):
@@ -145,11 +168,17 @@ def signed_in(provider):
     return provider in (json.loads(credentials.read_text()) if credentials.exists() else {})
 
 
-def overview():
-    """Connection and use of every card, from local files only so it never starts OpenCode."""
+def overview(apple_health=("", False)):
+    """Summarize the cards without making network requests or starting OpenCode."""
     current = active()
-    ready = {"apple": bool(apple_config()), "openai": signed_in("openai"), "lmstudio": bool(lmstudio_config())}
-    return {name: {"connected": connected, "active": connected and name == current, "models": ((apple_models() if name == "apple" else selections(name)) if connected else {})} for name, connected in ready.items()}
+    config = apple_config()
+    ready = {"openai": signed_in("openai"), "lmstudio": bool(lmstudio_config())}
+    cards = {name: {"connected": connected, "active": connected and name == current,
+                    "models": selections(name) if connected else {}} for name, connected in ready.items()}
+    cards["apple"] = {"connected": apple_health == (apple_endpoint(config), True),
+                      "configured": bool(config), "active": bool(config) and current == "apple",
+                      "models": apple_models() if config else {}}
+    return cards
 
 
 def local_config(service):
@@ -159,6 +188,10 @@ def local_config(service):
 
 def apple_config():
     return local_config("apple")
+
+
+def apple_endpoint(config):
+    return config.get("options", {}).get("baseURL", "")
 
 
 def apple_address_path():
@@ -172,7 +205,7 @@ def apple_address(config):
             return saved
     except (FileNotFoundError, ValueError):
         pass
-    return config.get("options", {}).get("baseURL", "")
+    return apple_endpoint(config)
 
 
 def apple_models():
@@ -228,6 +261,15 @@ def connect_lmstudio(address):
     return config
 
 
+def apple_model_ids(endpoint, timeout):
+    with urllib.request.urlopen(endpoint + "/models", timeout=timeout) as response:
+        data = json.load(response)
+    items = data.get("data") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return []
+    return [item["id"] for item in items if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]]
+
+
 def connect_apple(address):
     address = address.strip()
     parsed = urlsplit(address)
@@ -243,9 +285,7 @@ def connect_apple(address):
     address = address.rstrip("/")
     if not address.endswith("/v1"):
         address += "/v1"
-    with urllib.request.urlopen(address + "/models", timeout=10) as response:
-        data = json.load(response)
-    identifiers = [item["id"] for item in data["data"] if isinstance(item.get("id"), str) and item["id"]]
+    identifiers = apple_model_ids(address, timeout=10)
     if not identifiers:
         raise ValueError("The server returned no models.")
     config = {"npm": "@ai-sdk/openai-compatible", "name": "Apple Intelligence", "options": {"baseURL": address}, "models": {key: {"name": key} for key in identifiers}}
@@ -268,8 +308,9 @@ def bridge():
                 if action == "connect":
                     result = providers.connect()
                 elif action == "apple":
-                    connect_apple(request["address"])
-                    result = providers.status("apple")
+                    config = connect_apple(request["address"])
+                    providers.apple_health = (apple_endpoint(config), True)
+                    result = providers.apple_status(config)
                 elif action == "lmstudio":
                     connect_lmstudio(request["address"])
                     result = providers.status("lmstudio")
@@ -294,7 +335,7 @@ def bridge():
             except Exception as error:
                 result = {"error": str(error)[:240] if isinstance(error, (ValueError, RuntimeError)) else "Connection failed. Check the server address and network, then try again."}
             try:
-                result["overview"] = overview()
+                result["overview"] = overview(providers.apple_health)
             except Exception:
                 pass
             print(json.dumps(result), flush=True)

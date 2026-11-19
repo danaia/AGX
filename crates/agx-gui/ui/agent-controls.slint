@@ -1,0 +1,109 @@
+import { Theme } from "data.slint";
+import "fonts/NotoSans-Regular.ttf";
+import "fonts/NotoSans-Bold.ttf";
+
+export component AgentText inherits Text {
+    font-family: "Noto Sans";
+    color: Theme.fg-bright;
+}
+
+export component AngiMark inherits Rectangle {
+    border-radius: self.width * 0.29;
+    border-width: 1px;
+    border-color: Theme.muted;
+    background: Theme.bg-light;
+    Image {
+        width: parent.width * 0.56; height: parent.height * 0.56;
+        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+        source: @image-url("../../../brand/brand-bug.svg");
+        image-fit: contain;
+        colorize: Theme.accent;
+    }
+}
+
+export component AgentButton inherits Rectangle {
+    in property <string> label;
+    in property <string> action-label;
+    in property <string> detail;
+    in property <string> symbol;
+    in property <string> badge;
+    in property <color> badge-color: Theme.accent;
+    in property <bool> brand-mark;
+    in property <bool> enabled: true;
+    in property <bool> primary;
+    in property <bool> icon-only;
+    out property <bool> hovered: mouse.has-hover;
+    in property <bool> highlighted;
+    in property <length> minimum: 36px;
+    callback activated();
+    callback secondary-click(length, length);
+    forward-focus: focus;
+    min-height: root.minimum;
+    border-radius: 9px; border-width: 1px;
+    border-color: focus.has-focus ? Theme.accent : root.highlighted ? Theme.accent : Theme.muted;
+    background: !root.enabled ? Theme.bg : root.primary ? (mouse.has-hover ? Theme.accent.brighter(0.14) : Theme.accent)
+        : mouse.has-hover || focus.has-focus ? Theme.muted : root.highlighted ? Theme.accent.with-alpha(0.12) : Theme.bg-light;
+    accessible-role: button;
+    accessible-label: root.action-label == "" ? root.label : root.action-label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.activated(); } }
+    if root.icon-only && root.brand-mark: AngiMark {
+        width: parent.width - 6px; height: self.width;
+    }
+    if root.icon-only && !root.brand-mark: Text {
+        text: root.symbol; font-family: "Noto Sans"; font-size: 19px; color: Theme.accent;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    if !root.icon-only: HorizontalLayout {
+        padding-left: 11px; padding-right: 11px; spacing: 8px;
+        if root.symbol != "": Text {
+            text: root.symbol; font-size: 15px; font-family: "Noto Sans";
+            horizontal-stretch: 0; min-width: 13px;
+            color: root.primary && root.enabled ? Theme.bg-dark : Theme.accent;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            min-width: 0px; horizontal-stretch: 1;
+            alignment: center; spacing: 3px;
+            Text {
+                text: root.label; overflow: elide;
+                color: !root.enabled ? Theme.fg-dim : root.primary ? Theme.bg-dark : Theme.fg-bright;
+                font-family: "Noto Sans"; font-size: 13px; font-weight: 700; horizontal-alignment: left;
+            }
+            if root.detail != "": Text {
+                text: root.detail; overflow: elide;
+                color: Theme.fg; font-family: "Noto Sans"; font-size: 12px;
+            }
+        }
+        if root.badge != "": Rectangle {
+            width: 72px;
+            Rectangle {
+                width: parent.width; height: 21px; y: (parent.height - self.height) / 2;
+                border-radius: 5px; border-width: 1px;
+                border-color: root.badge-color.with-alpha(0.48);
+                background: root.badge-color.with-alpha(0.14);
+                AgentText {
+                    text: root.badge; font-size: 10px; font-weight: 700;
+                    horizontal-alignment: center; vertical-alignment: center;
+                }
+            }
+        }
+    }
+    focus := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") { root.activated(); return accept; }
+            reject
+        }
+        mouse := TouchArea {
+            enabled: root.enabled; mouse-cursor: pointer;
+            clicked => { focus.focus(); root.activated(); }
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                    root.secondary-click(self.mouse-x, self.mouse-y);
+                }
+            }
+        }
+    }
+}
+

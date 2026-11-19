@@ -45,6 +45,13 @@ fn publish_visible(ui: &AppWindow, hub: &Hub) {
     }
 }
 
+pub(super) fn open_folder(ui: &AppWindow, app: &Rc<RefCell<App>>, path: &str) {
+    if let Ok(mut app) = app.try_borrow_mut() {
+        app.run(ui, crate::keymap::Cmd::Open(Kind::Files));
+    }
+    ui.global::<Files>().invoke_command(WINDOW as i32, "navigate".into(), path.into());
+}
+
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
     let (replies, inbox) = mpsc::channel();
     let hub = Rc::new(RefCell::new(Hub::new(replies)));

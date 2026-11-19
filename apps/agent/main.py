@@ -59,6 +59,11 @@ def main():
         except ValueError as error:
             print(json.dumps({"error": str(error)}))
         return
+    if args[:1] == ["history"]:
+        from history import request
+        state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
+        print(json.dumps(request(state, args[1:])))
+        return
     if args[:1] == ["chat-turn"] and len(args) >= 2:
         # One exchange for the desktop's chat bubbles: a single JSON line, text or error.
         if os.getuid() == 0:
@@ -67,11 +72,16 @@ def main():
         new = options[:1] == ["--new"]
         if new:
             options = options[1:]
+        session_id = None
+        if not new and len(options) >= 2 and options[0] == "--session":
+            session_id = options[1]
+            options = options[2:]
         if (options and not (len(options) == 2 and options[0] == "--folder")) or not args[-1].strip():
-            raise ValueError("Usage: agent chat-turn [--new] [--folder PATH] MESSAGE")
+            raise ValueError("Usage: agent chat-turn [--new | --session ID] [--folder PATH] MESSAGE")
         state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
         state.mkdir(parents=True, exist_ok=True, mode=0o700)
-        print(json.dumps(chat.turn(state, args[-1].strip(), new=new, folder=options[1] if options else None)))
+        print(json.dumps(chat.turn(state, args[-1].strip(), new=new, folder=options[1] if options else None,
+                                   session_id=session_id)))
         return
     if args and args[0] == "_dispatch":
         dispatch(Path(args[1]))
@@ -81,6 +91,11 @@ def main():
         return
     if args == ["inbox"]:
         inbox()
+        return
+    if args[:1] == ["report"] and len(args) >= 2:
+        from work_history import save
+        save(args[1], args[2:])
+        print("Saved ANGI work summary.")
         return
     if args == ["status"]:
         status()
@@ -92,7 +107,7 @@ def main():
         return
     request = angi_request(args)
     if request is False:
-        print("Usage: agent angi [--prompt BRIEF [--project DIR | --chat]] | agent attach | agent status | agent tell ROLE MESSAGE | agent inbox")
+        print("Usage: agent angi [--prompt BRIEF [--project DIR | --chat]] | agent attach | agent status | agent tell ROLE MESSAGE | agent inbox | agent report SUMMARY [PATH ...]")
         return
     brief, project, talk = request
     if os.getuid() == 0:

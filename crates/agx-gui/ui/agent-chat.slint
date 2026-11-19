@@ -1,75 +1,98 @@
 import { Theme } from "data.slint";
+import { AngiMark } from "agent-controls.slint";
 
-// Agent Angi's Chat mode: a conversation shown as bubbles. agent_chat.rs owns the messages and talks to
-// the agent runtime (`agent chat-turn`); this file only draws them.
+// The desktop owns these messages and sends turns to the agent runtime.
 export struct ChatMessage {
-    // True for the person's own messages (right, accent), false for Angi's (left).
     mine: bool,
     text: string,
-    // A reply that failed: shown in red so it is never mistaken for something Angi said.
     failed: bool,
 }
 
 export global AgentChat {
     in-out property <[ChatMessage]> messages;
-    // True from sending until Angi's reply (or failure) arrives.
     in-out property <bool> busy;
+    in-out property <string> draft;
+    in-out property <string> session-id;
     callback send(string);
     callback new-chat();
 }
 
-component Bubble inherits Rectangle {
+component MessageText inherits TextInput {
+    single-line: false;
+    read-only: true;
+    wrap: word-wrap;
+    font-family: "Noto Sans";
+    font-size: 15px;
+    color: Theme.fg-bright;
+    selection-background-color: Theme.accent;
+    selection-foreground-color: Theme.bg-dark;
+    vertical-stretch: 0;
+}
+
+component ChatTurn inherits VerticalLayout {
     in property <ChatMessage> message;
-    in property <length> limit;
-    max-width: root.limit;
-    border-radius: 14px; border-width: 1px;
-    background: root.message.failed ? Theme.bg-dark : root.message.mine ? Theme.accent : Theme.bg-light;
-    border-color: root.message.failed ? Theme.red : root.message.mine ? Theme.accent : Theme.muted;
-    VerticalLayout {
-        padding-left: 14px; padding-right: 14px; padding-top: 9px; padding-bottom: 9px;
-        Text {
-            text: root.message.text; wrap: word-wrap; font-size: 14px;
-            color: root.message.failed ? Theme.red : root.message.mine ? Theme.bg-dark : Theme.fg-bright;
+    spacing: 8px;
+
+    if root.message.mine: HorizontalLayout {
+        alignment: end;
+        Rectangle {
+            max-width: root.width * 0.8;
+            border-radius: 16px;
+            background: Theme.bg-light;
+            border-width: 1px; border-color: Theme.muted;
+            VerticalLayout {
+                padding-left: 16px; padding-right: 16px;
+                padding-top: 11px; padding-bottom: 11px;
+                MessageText { text: root.message.text; }
+            }
+        }
+    }
+    if !root.message.mine: VerticalLayout {
+        spacing: 9px;
+        HorizontalLayout {
+            spacing: 9px; alignment: start;
+            AngiMark { width: 25px; height: 25px; }
+            Text {
+                text: root.message.failed ? "Couldn’t complete the reply" : "Angi";
+                font-family: "Noto Sans"; font-size: 13px; font-weight: 700;
+                color: root.message.failed ? Theme.red : Theme.fg-bright;
+                vertical-alignment: center;
+            }
+        }
+        MessageText {
+            text: root.message.text;
+            color: root.message.failed ? Theme.red : Theme.fg-bright;
         }
     }
 }
 
-component TypingBubble inherits Rectangle {
-    height: 36px; width: 64px;
-    border-radius: 14px; border-width: 1px; border-color: Theme.muted; background: Theme.bg-light;
-    // Three dots that pulse in turn.
+component Thinking inherits HorizontalLayout {
+    spacing: 9px; alignment: start;
     property <int> tick: mod(floor(animation-tick() / 1s * 3), 3);
-    HorizontalLayout {
-        alignment: center; spacing: 6px;
-        for dot in 3: Rectangle {
-            y: (root.height - self.height) / 2; width: 8px; height: 8px; border-radius: 4px;
-            background: Theme.fg-dim; opacity: root.tick == dot ? 1.0 : 0.35;
-        }
+    AngiMark { width: 25px; height: 25px; }
+    Text {
+        text: "Working…"; font-family: "Noto Sans"; font-size: 13px;
+        color: Theme.fg; vertical-alignment: center;
+    }
+    for dot in 3: Rectangle {
+        width: 4px; height: 4px; border-radius: 2px;
+        background: Theme.accent; opacity: root.tick == dot ? 1.0 : 0.3;
     }
 }
 
-// The scrolling conversation. It stays pinned to the newest message.
 export component ChatMessages inherits Rectangle {
-    background: Theme.bg-dark; border-radius: 10px; border-width: 1px; border-color: Theme.muted;
     clip: true;
     flick := Flickable {
-        x: 0; y: 0; width: root.width; height: root.height;
+        width: root.width; height: root.height;
         content-width: self.width;
+        content-height: turns.preferred-height;
         changed content-height => { self.content-y = min(0px, self.height - self.content-height); }
-        VerticalLayout {
-            padding: 14px; spacing: 10px; alignment: start;
-            if AgentChat.messages.length == 0 && !AgentChat.busy: Text {
-                text: "Say hi. Angi is listening."; color: Theme.fg-dim; font-size: 13px; horizontal-alignment: center;
-            }
-            for message in AgentChat.messages: HorizontalLayout {
-                if message.mine: Rectangle { horizontal-stretch: 1; }
-                Bubble { message: message; limit: root.width * 0.8; }
-                if !message.mine: Rectangle { horizontal-stretch: 1; }
-            }
-            if AgentChat.busy: HorizontalLayout {
-                TypingBubble { }
-                Rectangle { horizontal-stretch: 1; }
-            }
+        turns := VerticalLayout {
+            width: parent.width;
+            padding-top: 24px; padding-bottom: 25px; padding-right: 8px;
+            spacing: 26px; alignment: start;
+            for message in AgentChat.messages: ChatTurn { message: message; }
+            if AgentChat.busy: Thinking { }
         }
     }
 }

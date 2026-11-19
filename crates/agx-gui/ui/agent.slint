@@ -1,10 +1,12 @@
 import { Theme } from "data.slint";
-import { LineEdit, Button } from "std-widgets.slint";
+import { Button } from "std-widgets.slint";
 
-import { AgentProviders, CardModels, ProviderCards, ProviderPanel } from "agent-providers.slint";
-import { AgentScope, ModeSwitch, ProjectRow, ScopeTip } from "agent-scope.slint";
-import { AgentChat, ChatMessage, ChatMessages } from "agent-chat.slint";
-export { AgentProviders, CardModels, AgentScope, AgentChat, ChatMessage }
+import { AgentProviders, CardModels, ProviderPanel } from "agent-providers.slint";
+import { AgentScope } from "agent-scope.slint";
+import { AgentChat, ChatMessage } from "agent-chat.slint";
+import { AgentHistory, HistoryEntry, HistoryPanel } from "agent-history.slint";
+import { AgentWorkspace } from "agent-conversation.slint";
+export { AgentProviders, CardModels, AgentScope, AgentChat, ChatMessage, AgentHistory, HistoryEntry }
 
 export global AgentAngi {
     // Agents and swarms still running for this account, kept current by agent_swarm.rs. A swarm
@@ -59,84 +61,40 @@ export component AgentPanel inherits Rectangle {
     in property <bool> active;
     callback pointer-moved(length, length);
     background: Theme.bg-dark;
-    changed active => { if (root.active && !AgentProviders.open) { prompt.focus(); } }
-    init => { if (root.active && !AgentProviders.open) { prompt.focus(); } }
+    property <length> drawer-width: min(420px, root.width - 12px);
+    property <bool> docked-drawer: root.width >= 840px;
+    property <bool> drawer-open: AgentProviders.open || AgentHistory.open;
+    property <length> body-width: root.drawer-open && root.docked-drawer ? root.width - root.drawer-width : root.width;
+    property <length> body-offset: AgentHistory.open && root.docked-drawer ? root.drawer-width : 0px;
+
     TouchArea {
         changed mouse-x => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         changed mouse-y => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         pointer-event(e) => { if (e.kind == PointerEventKind.down) { AgentAngi.activate(); } }
     }
-    content := Rectangle {
-    x: 0px; y: 0px;
-    width: AgentProviders.open ? max(0px, parent.width - min(440px, parent.width * 0.48)) : parent.width;
-    height: parent.height;
-    property <bool> herdr-visible: AgentAngi.running-agents > 0;
-    property <bool> chatting: AgentScope.mode == "chat";
-    VerticalLayout {
-        x: max(20px, (content.width - 660px) / 2);
-        // A short window moves the prompt down rather than under the Herdr banner.
-        y: content.chatting ? 24px + (content.herdr-visible ? 68px : 0px)
-            : max(24px + (content.herdr-visible ? 68px : 0px), (content.height - 390px) / 2);
-        width: min(660px, content.width - 40px);
-        height: content.chatting ? max(240px, content.height - 48px - (content.herdr-visible ? 68px : 0px))
-            : 220px + (AgentScope.mode == "project" ? 48px + (AgentScope.error != "" ? 22px : 0px) : 0px);
-        spacing: 16px;
-        // Rows below the prompt appear and disappear; keep everything above them where it is. A chat
-        // instead stretches its conversation to fill the panel.
-        alignment: content.chatting ? stretch : start;
-        HorizontalLayout {
-            spacing: 12px;
-            Text { text: content.chatting ? "AGENT ANGI · CHAT" : "AGENT ANGI"; color: Theme.accent; font-size: 13px; font-weight: 700; vertical-alignment: center; }
-            Rectangle { horizontal-stretch: 1; }
-            if content.chatting: Button { text: "New chat"; enabled: AgentChat.messages.length > 0 && !AgentChat.busy; clicked => { AgentChat.new-chat(); } }
-        }
-        if !content.chatting: Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
-        if !content.chatting: Text { text: "Describe your idea and Agent Angi will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
-        if content.chatting: ProjectRow { chat: true; folder-enabled: !AgentChat.busy; }
-        if content.chatting: ChatMessages { vertical-stretch: 1; }
-        prompt := LineEdit {
-            placeholder-text: content.chatting ? "Say hi to Angi…" : "Describe what you want to build…";
-            accepted => {
-                if (self.text == "" || !AgentScope.ready) { return; }
-                if (content.chatting) {
-                    if (!AgentChat.busy) { AgentChat.send(self.text); self.text = ""; }
-                } else { AgentAngi.submit(self.text); }
-            }
-        }
-        HorizontalLayout {
-            spacing: 12px;
-            scope-switch := ModeSwitch { y: 2px; }
-            Rectangle { horizontal-stretch: 1; }
-            Button {
-                text: content.chatting ? "Send" : "Start building";
-                enabled: prompt.text != "" && AgentScope.ready && !(content.chatting && AgentChat.busy);
-                clicked => {
-                    if (content.chatting) { AgentChat.send(prompt.text); prompt.text = ""; }
-                    else { AgentAngi.submit(prompt.text); }
-                }
-            }
-        }
-        if AgentScope.mode == "project": ProjectRow { }
+    workspace := AgentWorkspace {
+        width: root.width; height: root.height;
+        body-width: root.body-width;
+        body-offset: root.body-offset;
+        notice-height: AgentAngi.running-agents > 0 ? 66px : 0px;
+        active: root.active && !root.drawer-open;
+        build(prompt) => { AgentAngi.submit(prompt); }
     }
-    // Top right, beside the drawer: it is only here while agents run, and never over the drawer's close button.
-    if content.herdr-visible: HerdrCta {
-        width: min(450px, max(0px, content.width - 24px));
-        x: content.width - self.width - 16px; y: 16px;
+    if AgentAngi.running-agents > 0: HerdrCta {
+        width: min(450px, max(0px, root.body-width - 24px));
+        x: root.body-offset + root.body-width - self.width - 12px; y: workspace.header-height + 8px;
     }
-    if !content.chatting: ProviderCards {
-        x: 24px; y: max(270px, content.height - 176px);
-        width: max(0px, content.width - 48px); height: 150px;
+    if root.drawer-open && !root.docked-drawer: Rectangle {
+        y: workspace.header-height; height: root.height - self.y;
+        width: root.width; background: Theme.bg-dark.with-alpha(0.68);
+        TouchArea { clicked => { AgentProviders.open = false; AgentHistory.open = false; } }
     }
-    // Last, so it draws over the rows below the switch.
-    ScopeTip {
-        hint: scope-switch.hint;
-        x: scope-switch.absolute-position.x - content.absolute-position.x;
-        // In a chat the switch sits at the panel's bottom edge, so the tip opens above it.
-        y: content.chatting ? scope-switch.absolute-position.y - content.absolute-position.y - self.height - 8px
-            : scope-switch.absolute-position.y - content.absolute-position.y + scope-switch.height + 8px;
-    }
+    if AgentHistory.open: HistoryPanel {
+        x: 0px; width: root.drawer-width;
+        y: workspace.header-height; height: max(0px, root.height - self.y);
     }
     if AgentProviders.open: ProviderPanel {
-        x: content.width; width: parent.width - content.width; height: parent.height;
+        x: root.width - root.drawer-width; width: root.drawer-width;
+        y: workspace.header-height; height: max(0px, root.height - self.y);
     }
 }

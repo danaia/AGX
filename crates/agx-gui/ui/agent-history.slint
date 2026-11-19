@@ -1,0 +1,145 @@
+import { Theme } from "data.slint";
+import { LineEdit, ListView } from "std-widgets.slint";
+import { AgentButton, AgentText } from "agent-controls.slint";
+import { AgentChat } from "agent-chat.slint";
+
+export struct HistoryEntry { id: string, mode: string, title: string }
+
+export global AgentHistory {
+    in-out property <bool> open;
+    in-out property <bool> loading;
+    in-out property <string> error;
+    in-out property <[HistoryEntry]> entries;
+    callback reload();
+    callback choose(string);
+    callback rename(string, string);
+    callback remove(string);
+    public function toggle() {
+        self.open = !self.open;
+        if (self.open) { self.reload(); }
+    }
+}
+
+export component HistoryPanel inherits FocusScope {
+    property <string> action;
+    property <HistoryEntry> selected;
+    property <length> menu-x;
+    property <length> menu-y;
+    property <string> title-draft;
+    forward-focus: close-button;
+    init => { close-button.focus(); }
+    function dismiss-action() {
+        root.action = "";
+        close-button.focus();
+    }
+    function rename-entry() {
+        if (root.title-draft == "" || root.title-draft == root.selected.title) { return; }
+        AgentHistory.rename(root.selected.id, root.title-draft);
+        root.dismiss-action();
+    }
+    key-pressed(event) => {
+        if (event.text == Key.Escape) {
+            if (root.action != "") { root.dismiss-action(); }
+            else { AgentHistory.open = false; }
+            return accept;
+        }
+        reject
+    }
+    Rectangle {
+        background: Theme.bg;
+        clip: true;
+        TouchArea { }
+        Rectangle { x: parent.width - 1px; width: 1px; height: parent.height; background: Theme.muted; }
+        VerticalLayout {
+            padding: 18px; spacing: 14px;
+            HorizontalLayout {
+                spacing: 10px;
+                AgentText { text: "History"; font-size: 19px; font-weight: 700; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                close-button := AgentButton {
+                    width: 36px; icon-only: true; symbol: "×"; label: "Close history";
+                    activated => { AgentHistory.open = false; }
+                }
+            }
+            if AgentHistory.error != "": AgentText {
+                text: AgentHistory.error; color: Theme.red; font-size: 13px; wrap: word-wrap;
+            }
+            if AgentHistory.entries.length == 0 && AgentHistory.error == "": AgentText {
+                text: AgentHistory.loading ? "Loading history…" : "Your chats and builds will appear here.";
+                color: Theme.fg; font-size: 13px; wrap: word-wrap;
+            }
+            ListView {
+                vertical-stretch: 1;
+                for entry in AgentHistory.entries: Rectangle {
+                    height: 55px;
+                    tile := AgentButton {
+                        width: parent.width; height: 48px;
+                        label: entry.title;
+                        badge: entry.mode == "os" ? "OS update" : entry.mode == "project" ? "Project" : "Chat";
+                        action-label: entry.title + " · " + self.badge;
+                        badge-color: entry.mode == "os" ? Theme.accent : entry.mode == "project" ? Theme.cyan : Theme.green;
+                        highlighted: entry.id == AgentChat.session-id;
+                        enabled: !AgentHistory.loading && !AgentChat.busy;
+                        activated => { AgentHistory.choose(entry.id); }
+                        secondary-click(x, y) => {
+                            root.selected = entry;
+                            root.title-draft = entry.title;
+                            root.menu-x = tile.absolute-position.x - root.absolute-position.x + x;
+                            root.menu-y = tile.absolute-position.y - root.absolute-position.y + y;
+                            root.action = "menu";
+                        }
+                    }
+                }
+            }
+        }
+        if root.action != "": TouchArea { clicked => { root.dismiss-action(); } }
+        if root.action == "menu": Rectangle {
+            width: min(176px, root.width - 16px); height: 90px;
+            x: clamp(root.menu-x, 8px, root.width - self.width - 8px);
+            y: clamp(root.menu-y, 8px, root.height - self.height - 8px);
+            background: Theme.bg; border-width: 1px; border-color: Theme.muted; border-radius: 10px;
+            TouchArea { }
+            VerticalLayout {
+                padding: 6px; spacing: 6px;
+                rename-button := AgentButton {
+                    init => { self.focus(); }
+                    label: "Rename";
+                    activated => { root.action = "rename"; }
+                }
+                AgentButton {
+                    label: "Remove";
+                    action-label: "Remove from history";
+                    activated => {
+                        AgentHistory.remove(root.selected.id);
+                        root.dismiss-action();
+                    }
+                }
+            }
+        }
+        if root.action == "rename": Rectangle {
+            width: min(340px, root.width - 24px); height: 142px;
+            x: (root.width - self.width) / 2; y: max(8px, (root.height - self.height) / 2);
+            background: Theme.bg; border-width: 1px; border-color: Theme.muted; border-radius: 10px;
+            TouchArea { }
+            VerticalLayout {
+                padding: 12px; spacing: 8px;
+                AgentText { text: "Rename history entry"; font-size: 16px; font-weight: 700; }
+                LineEdit {
+                    init => { self.focus(); }
+                    text <=> root.title-draft;
+                    accessible-label: "History title";
+                    accepted => { root.rename-entry(); }
+                }
+                HorizontalLayout {
+                    alignment: end; spacing: 8px;
+                    AgentButton { width: 78px; label: "Cancel"; activated => { root.dismiss-action(); } }
+                    AgentButton {
+                        width: 78px; label: "Save"; primary: true;
+                        enabled: root.title-draft != "" && root.title-draft != root.selected.title;
+                        activated => { root.rename-entry(); }
+                    }
+                }
+            }
+        }
+    }
+}

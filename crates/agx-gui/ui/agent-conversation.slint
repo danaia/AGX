@@ -1,0 +1,284 @@
+import { Theme } from "data.slint";
+import { AgentButton, AgentText } from "agent-controls.slint";
+import { AgentChat, ChatMessages } from "agent-chat.slint";
+import { AgentHistory } from "agent-history.slint";
+import { AgentProviders } from "agent-providers.slint";
+import { AgentScope, ModeSwitch, ScopeTip } from "agent-scope.slint";
+import { HoverDwell, HoverTip } from "hover-tip.slint";
+import { AgentWork, WorkSummary } from "agent-work-summary.slint";
+
+struct AgentSuggestion { label: string, detail: string, prompt: string }
+component AgentWelcome inherits Flickable {
+    callback suggest(string);
+    property <bool> wide: self.width >= 570px;
+    property <[AgentSuggestion]> suggestions: AgentScope.mode == "os" ? [
+        { label: "Improve the desktop", detail: "Plan a focused change", prompt: "Help me plan a focused improvement to the ANGI desktop. Ask me what should change." },
+        { label: "Check a service", detail: "Review a system service", prompt: "Help me check an ANGI system service. Ask me which service to inspect." },
+        { label: "Update documentation", detail: "Start with the system docs", prompt: "Help me update the ANGI documentation. Ask me what needs to change." },
+    ] : AgentScope.mode == "project" ? [
+        { label: "Review the project", detail: "Understand the selected folder", prompt: "Review this project and summarize how it is organized." },
+        { label: "Build a starter page", detail: "Start with an index.html", prompt: "Make a simple, accessible starter index.html for this project." },
+        { label: "Write a README", detail: "Document setup and usage", prompt: "Write a README that explains this project, how to set it up, and how to use it." },
+    ] : [
+        { label: "Explore files", detail: "See what’s in this folder", prompt: "List the files and folders here and summarize what you find." },
+        { label: "Make a web page", detail: "Create a starter index.html", prompt: "Create a folder called starter-site and save a simple, accessible index.html inside it." },
+        { label: "Draft a note", detail: "Get a first draft going", prompt: "Help me draft a short note. Ask me who it’s for and what I want to say." },
+    ];
+    content-width: root.width;
+    content-height: max(root.height, welcome.preferred-height + 24px);
+    welcome := VerticalLayout {
+        width: root.width;
+        height: self.preferred-height;
+        y: max(12px, (root.content-height - self.height) / 2 - 18px);
+        spacing: root.wide ? 21px : 12px;
+        Rectangle {
+            height: root.wide ? 128px : 72px;
+            Image {
+                width: self.height; height: parent.height;
+                x: (parent.width - self.width) / 2;
+                source: @image-url("../../../brand/brand-bug.svg");
+                image-fit: contain;
+            }
+        }
+        Text {
+            text: AgentScope.mode == "os" ? "Use agent swarms to extend Angi."
+                : AgentScope.mode == "project" ? "Build custom projects" : "Talk to me about your projects";
+            font-family: "Noto Sans"; font-weight: 400;
+            font-size: root.wide ? 32px : root.width >= 350px ? 22px : 18px;
+            color: Theme.fg-bright; horizontal-alignment: center; wrap: word-wrap;
+        }
+        Rectangle { height: root.wide ? 11px : 3px; }
+        if root.wide: HorizontalLayout {
+            spacing: 12px;
+            for item in root.suggestions: AgentButton {
+                width: (root.width - 24px) / 3; minimum: 72px;
+                label: item.label; detail: item.detail;
+                activated => { root.suggest(item.prompt); }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            spacing: 7px;
+            for item in root.suggestions: AgentButton {
+                minimum: 35px; label: item.label;
+                activated => { root.suggest(item.prompt); }
+            }
+        }
+    }
+}
+
+component AgentComposer inherits Rectangle {
+    in-out property <string> draft;
+    in property <bool> active;
+    in property <int> focus-request;
+    property <bool> chatting: AgentScope.mode == "chat";
+    property <bool> can-send: root.draft != "" && AgentScope.ready && !AgentHistory.loading && (!root.chatting || !AgentChat.busy);
+    callback build(string);
+    forward-focus: input;
+    changed active => { if (root.active) { input.focus(); } }
+    changed focus-request => { if (root.active) { input.focus(); } }
+    init => { if (root.active) { input.focus(); } }
+    border-radius: 15px; border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.muted;
+    background: Theme.bg-light;
+    function send() {
+        if (!root.can-send) { return; }
+        if (root.chatting) {
+            AgentChat.send(root.draft);
+            root.draft = "";
+            input.focus();
+        } else {
+            root.build(root.draft);
+        }
+    }
+    VerticalLayout {
+        padding: 10px; padding-left: 13px; padding-right: 13px; spacing: 10px;
+        field := Flickable {
+            height: min(124px, max(48px, input.preferred-height + 6px));
+            content-width: self.width;
+            content-height: max(self.height, input.preferred-height + 6px);
+            if root.draft == "": Text {
+                x: 1px; y: 5px; width: parent.width - 2px;
+                text: root.chatting ? "Message Angi…" : "Describe what you want to build…"; overflow: elide;
+                font-size: 16px; font-family: "Noto Sans"; color: Theme.fg;
+            }
+            input := TextInput {
+                x: 1px; y: 4px; width: parent.width - 2px; height: max(field.height - 6px, self.preferred-height);
+                text <=> root.draft;
+                single-line: false; wrap: word-wrap;
+                font-family: "Noto Sans"; font-size: 16px; color: Theme.fg-bright;
+                selection-background-color: Theme.accent; selection-foreground-color: Theme.bg-dark;
+                accessible-label: root.chatting ? "Message Angi" : "Build prompt";
+                key-pressed(event) => {
+                    if (event.text == Key.Return && !event.modifiers.shift) { root.send(); return accept; }
+                    reject
+                }
+                cursor-position-changed(position) => {
+                    if (position.y + field.content-y < 0px) {
+                        field.content-y = max(field.height - field.content-height, -position.y);
+                    } else if (position.y + field.content-y > field.height - 25px) {
+                        field.content-y = min(0px, max(field.height - field.content-height, field.height - position.y - 25px));
+                    }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            if AgentScope.mode == "os": AgentText {
+                text: "ANGI system"; color: Theme.fg; font-size: 12px;
+                vertical-alignment: center;
+            }
+            if AgentScope.mode != "os": AgentButton {
+                property <string> folder: root.chatting ? AgentScope.chat-folder : AgentScope.project;
+                width: folder == "" ? 130px : min(max(92px, root.width * 0.38), 285px);
+                label: folder != "" ? folder : root.chatting ? "Home folder" : "Select folder…";
+                action-label: root.chatting ? "Change Chat folder" : "Choose project folder";
+                symbol: "▱"; minimum: 33px;
+                enabled: (!root.chatting || !AgentChat.busy) && !AgentScope.checking;
+                activated => { AgentScope.choose-project(); }
+            }
+            if root.chatting && AgentScope.chat-folder != "": AgentButton {
+                label: "Use Home"; width: 82px; minimum: 33px;
+                enabled: !AgentChat.busy && !AgentScope.checking;
+                activated => { AgentScope.chat-folder = ""; }
+            }
+            Rectangle { horizontal-stretch: 1; min-width: 0px; }
+            if root.width >= 560px: Text {
+                text: "Shift+Enter for a new line"; color: Theme.fg;
+                font-size: 11px; font-family: "Noto Sans"; vertical-alignment: center;
+            }
+            AgentButton {
+                label: root.chatting ? "Send" : "Build";
+                symbol: "↑"; width: 78px;
+                minimum: 33px; primary: true; enabled: root.can-send;
+                activated => { root.send(); }
+            }
+        }
+        if AgentScope.mode == "project" && AgentScope.error != "": AgentText {
+            text: AgentScope.error; color: Theme.red; font-size: 12px; wrap: word-wrap;
+        }
+    }
+}
+
+export component AgentWorkspace inherits Rectangle {
+    in property <bool> active;
+    in property <length> body-offset;
+    in property <length> body-width;
+    in property <length> notice-height;
+    out property <length> header-height: 62px;
+    callback build(string);
+    property <bool> chatting: AgentScope.mode == "chat";
+    property <bool> has-transcript: root.chatting && (AgentChat.messages.length > 0 || AgentChat.busy);
+    property <int> composer-focus;
+    background: Theme.bg-dark;
+    clip: true;
+
+    function suggest(prompt: string) {
+        if (root.chatting) { AgentChat.draft = prompt; }
+        else if (AgentScope.mode == "project") { AgentScope.project-draft = prompt; }
+        else { AgentScope.os-draft = prompt; }
+        root.composer-focus += 1;
+    }
+
+    header := Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: root.header-height;
+        background: Theme.bg;
+        Rectangle { width: parent.width; height: 1px; y: parent.height - self.height; background: Theme.muted; }
+        history-toggle := AgentButton {
+            x: parent.width < 500px ? 8px : 20px; y: 13px; width: 35px; height: 36px;
+            label: AgentHistory.open ? "Close history" : "Conversation history";
+            icon-only: true; brand-mark: true; highlighted: AgentHistory.open;
+            activated => {
+                history-dwell.dismiss();
+                AgentProviders.open = false;
+                AgentHistory.toggle();
+            }
+        }
+        history-dwell := HoverDwell { hovered: history-toggle.hovered; }
+        scope := ModeSwitch {
+            x: parent.width < 500px ? 52px : parent.width < 600px ? 64px : (parent.width - self.width) / 2;
+            y: 14px; height: 34px;
+            selected => { AgentWork.open = false; }
+            width: parent.width < 370px ? clamp(parent.width - 192px, 96px, 126px) : parent.width < 600px ? 165px : 236px;
+        }
+        HorizontalLayout {
+            x: parent.width - self.width - (parent.width < 500px ? 8px : 20px);
+            y: 13px; width: root.chatting ? (parent.width < 370px ? 123px : 135px) : 35px; height: 36px;
+            spacing: 8px;
+            if root.chatting: AgentButton {
+                width: root.width < 370px ? 80px : 92px;
+                label: "New chat";
+                enabled: !AgentChat.busy && !AgentHistory.loading;
+                activated => {
+                    AgentChat.new-chat();
+                    AgentChat.draft = "";
+                    root.composer-focus += 1;
+                }
+            }
+            providers := AgentButton {
+                width: 35px;
+                label: AgentProviders.open ? "Close AI providers" : "AI providers";
+                symbol: "✦"; icon-only: true; highlighted: AgentProviders.open;
+                activated => {
+                    provider-dwell.dismiss();
+                    AgentHistory.open = false;
+                    AgentProviders.toggle();
+                }
+            }
+        }
+        provider-dwell := HoverDwell { hovered: providers.hovered; }
+    }
+
+    body := Rectangle {
+        x: root.body-offset; y: root.header-height + root.notice-height;
+        width: root.body-width; height: max(0px, root.height - self.y);
+        clip: true;
+        property <length> inset: self.width >= 600px ? 28px : 12px;
+        VerticalLayout {
+            width: max(0px, min(752px, parent.width - parent.inset * 2));
+            x: (parent.width - self.width) / 2;
+            height: parent.height; padding-bottom: parent.height < 520px ? 11px : 25px;
+            spacing: 8px;
+            Rectangle {
+                vertical-stretch: 1; min-height: 0px;
+                if AgentWork.open: WorkSummary { width: parent.width; height: parent.height; }
+                if !AgentWork.open && !root.has-transcript: AgentWelcome {
+                    width: parent.width; height: parent.height;
+                    suggest(prompt) => { root.suggest(prompt); }
+                }
+                if !AgentWork.open && root.has-transcript: ChatMessages { width: parent.width; height: parent.height; }
+            }
+            if !AgentWork.open && root.chatting: AgentComposer {
+                draft <=> AgentChat.draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
+            }
+            if !AgentWork.open && AgentScope.mode == "os": AgentComposer {
+                draft <=> AgentScope.os-draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
+                build(prompt) => { root.build(prompt); }
+            }
+            if !AgentWork.open && AgentScope.mode == "project": AgentComposer {
+                draft <=> AgentScope.project-draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
+                build(prompt) => { root.build(prompt); }
+            }
+        }
+    }
+
+    ScopeTip {
+        hint: scope.hint;
+        width: min(330px, root.width - 18px);
+        x: clamp(scope.x, 9px, root.width - self.width - 9px);
+        y: scope.y + scope.height + 8px;
+    }
+    HoverTip {
+        shown: provider-dwell.ready;
+        width: 157px;
+        x: max(8px, providers.absolute-position.x - root.absolute-position.x + providers.width - self.width);
+        y: providers.absolute-position.y - root.absolute-position.y + providers.height + 8px;
+        text: providers.label;
+    }
+    HoverTip {
+        shown: history-dwell.ready;
+        width: min(174px, root.width - 18px);
+        x: clamp(history-toggle.x, 9px, root.width - self.width - 9px);
+        y: history-toggle.y + history-toggle.height + 8px;
+        text: history-toggle.label;
+    }
+}

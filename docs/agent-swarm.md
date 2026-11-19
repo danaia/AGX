@@ -119,27 +119,37 @@ A three-way switch under the prompt chooses the scope of a run; hovering a side 
   `/var/lib/agx-data/angi-dev`; it may use `angi-build`, and `angi-root` for installations that need
   root, but desktop releases go in only through `angi-update`.
 * **Project** builds the user's own software with Herdr's orchestrator, builder and tester. A
-  **Select folder…** button appears for the project folder; Start stays disabled until one is
+  **Select folder…** button appears for the project folder. **Build** stays disabled until one is
   chosen. All three Herdr panes start in that folder, and the agents are told to work only inside
   it, to leave the operating system and its source alone, and not to use `angi-root`.
 
-* **Chat** is conversation with Angi, shown as chat bubbles in the panel itself
-  (no terminal): your messages on the right, Angi's on the left, a typing indicator while she
-  answers and a red bubble if a turn fails. **New chat** clears the conversation. Like OS it is
-  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new] [--folder PATH] MESSAGE`
+* **Chat** is a conversation with Angi in the panel. Your messages sit on the right, with
+  selectable replies on the left and a status while Angi works. Starter prompts fill the
+  composer for review. Press **Enter** to send or **Shift+Enter** for a new line.
+  **New chat** clears the conversation. Like OS it is
+  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new | --session ID] [--folder PATH] MESSAGE`
   (`apps/agent/chat.py`), which calls `opencode run --agent angi-chat --format json` and prints one
-  JSON line, `{"text": ...}` or `{"error": ...}`. Chat can list directories, read UTF-8
+  JSON line with `text` or `error`, plus `session_id` when available. Chat can list directories, read UTF-8
   text, create folders, and save text in the user's home folder. For example, ask Angi
   to create `Test` under home, then ask her to save `index.html` inside it.
   **Change folder…** chooses a different workspace, and **Use Home** returns to the default.
   The file tools skip hidden files and symbolic links. Replacing an existing file
   requires an explicit overwrite request. The conversation works in a private `chat` folder
   in the swarm state directory; the first message of a conversation passes `--new`, later ones
-  continue that session. `agent angi --prompt BRIEF --chat` still runs the same agent in a terminal.
+  continue that session by ID. `agent angi --prompt BRIEF --chat` still runs the same agent in a terminal.
   Chat shares the OS updates model. In OpenAI setup, it is labeled **OS updates / Chat**. With Apple Intelligence
   active, Chat starts the local request guard and uses the server's first model if no model
   was chosen. For other providers, OpenCode supplies its default when no model was chosen.
-  The provider cards are hidden while chatting to give the conversation the room.
+  The AI button in the upper-right corner opens provider setup from any mode.
+
+The Angi logo opens a history drawer on the left. It lists past conversations and build briefs
+by subject, with **OS update**, **Project**, and **Chat** badges. For sessions without a subject,
+the drawer uses a short title based on the first prompt. Selecting a Chat entry reopens its
+transcript and file workspace. Selecting an OS or Project entry opens the original request, the recorded outcome, and
+links to relevant folders in ANGI Files. Right-click an entry to rename it or remove it from the drawer.
+These changes stay in Agent Angi history and preserve the original chat, run and project files.
+The OS agent and project orchestrator save results with `agent report SUMMARY [PATH ...]`.
+Older entries show the last recorded reply when the run can be matched to its OpenCode session.
 
 Provider setup lists the shared model next to the project roles. It is saved like the others
 (per service, applied to new runs) and, until one is chosen, OpenCode's default model is used.
@@ -211,7 +221,7 @@ refuses, and never to reset, stash or clean the checkout.
 
 ## Provider setup on workspace 2
 
-The three cards below the build prompt open provider setup panels. OpenAI uses
+Open the **AI providers** drawer from the upper-right corner and select a provider. OpenAI uses
 OpenCode’s browser OAuth flow for a ChatGPT subscription. Finish sign-in in the
 browser, then return to Agent Angi; the panel checks stored authentication and
 shows the provider’s coding models. Closing the browser does not itself finish
@@ -240,18 +250,15 @@ budget. The saved address is read on every request. OpenAI and LM Studio runs do
 A tool that returns a very long result therefore reaches the model shortened, with a note saying
 how much was left out. Check it with `python3 scripts/test-agent-applefit.py`.
 
-The third card is LM Studio, a model served from your own computer and reached privately over
+The drawer also lists LM Studio, a model served from your own computer and reached privately over
 Tailscale. See [Tailscale for LM Studio](tailscale.md) for the setup, the userspace-networking
 design and the safety settings. Claude subscription sign-in works only in the unmodified Claude Code
-application, so ANGI no longer offers a Claude card; see [Anthropic’s authentication guidance](https://code.claude.com/docs/en/legal-and-compliance).
+application, so ANGI no longer offers a Claude option. See [Anthropic’s authentication guidance](https://code.claude.com/docs/en/legal-and-compliance).
 
-Agent Angi builds with **one service at a time**. A card whose service is connected shows **Use**;
-the card in use shows an **ACTIVE** label and a green outline, and **Use** on another card switches
-new builds to it. Each card's bottom-right footer lists the models chosen for the orchestrator,
-builder and tester roles (dimmed while that service is not in use). Model choices are kept per
-service, so switching away and back restores them, but only the active service's models and
-server configuration reach new builds; models can be chosen only for the active service. The
-choice is stored with the model preferences and, until one is made, follows the saved models.
+Agent Angi uses **one provider at a time**. The drawer identifies the active provider and its
+shared OS and Chat model. Select a connected provider, then choose **Use** to switch new
+requests to it. The active provider's settings list the project role models. Model choices
+are saved per provider and restored when you switch back.
 
 Provider setup can be checked without real accounts using
 `python3 scripts/test-agent-providers.py` and

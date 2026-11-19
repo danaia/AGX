@@ -64,30 +64,39 @@ def resume(state):
 
 
 def parse_reply(output):
-    """(text, error) from `opencode run --format json` output: the agent's text parts, or its error message."""
-    text, error = [], None
+    """Extract text, an error, and the session ID from OpenCode's JSON events."""
+    text, error, session_id = [], None, None
     for line in output.splitlines():
         try:
             event = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(event, dict):
+            continue
+        session_id = event.get("sessionID", session_id)
         if event.get("type") == "text":
             text.append(event.get("part", {}).get("text", ""))
         elif event.get("type") == "error":
             detail = event.get("error", {})
             error = (detail.get("data") or {}).get("message") or detail.get("message") or detail.get("name") or "Angi hit a problem."
-    return "".join(text).strip(), error
+    return "".join(text).strip(), error, session_id
 
 
-def turn(state, message, new=False, timeout=300, folder=None):
+def turn(state, message, new=False, timeout=300, folder=None, session_id=None):
     """One chat exchange for the desktop's chat view: {"text": reply} or {"error": reason}.
 
-    A new chat starts a fresh OpenCode session; otherwise the folder's last session continues.
+    The desktop continues a particular conversation by ID. The CLI also accepts the legacy continuation flag.
     """
-    command = ["opencode", "run", "--agent", AGENT, "--format", "json", *([] if new else ["--continue"]), "--", message]
+    import history
+    import sqlite3
+
+    continuation = ["--session", session_id] if session_id else [] if new else ["--continue"]
+    command = ["opencode", "run", "--agent", AGENT, "--format", "json", *continuation, "--", message]
     try:
+        if session_id and not history.can_continue(state, session_id):
+            return {"error": "This chat is no longer available."}
         prepare(state, folder)
-    except (OSError, RuntimeError, ValueError) as error:
+    except (OSError, RuntimeError, ValueError, sqlite3.Error) as error:
         return {"error": str(error)}
     try:
         result = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=timeout)
@@ -95,11 +104,15 @@ def turn(state, message, new=False, timeout=300, folder=None):
         return {"error": "Angi took too long to answer. Try again."}
     except OSError:
         return {"error": "OpenCode is not available."}
-    reply, error = parse_reply(result.stdout)
+    reply, error, returned_id = parse_reply(result.stdout)
+    answer = {}
+    if isinstance(returned_id, str) and history.CHAT_ID.fullmatch(returned_id):
+        answer["session_id"] = returned_id
+        history.remember_folder(state, returned_id, folder)
     if reply:
-        return {"text": reply}
+        return {**answer, "text": reply}
     lines = result.stderr.strip().splitlines()
-    return {"error": error or (lines[-1] if lines else "Angi did not answer. Check the model in Agent Angi's provider setup.")}
+    return {**answer, "error": error or (lines[-1] if lines else "Angi did not answer. Check the model in Agent Angi's provider setup.")}
 
 
 def newest(state):

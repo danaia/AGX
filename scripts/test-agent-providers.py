@@ -23,10 +23,12 @@ class ProviderTests(unittest.TestCase):
                 self.server.requested = self.path
                 self.send_response(200)
                 self.end_headers()
-                self.wfile.write(b'{"data":[{"id":"base"}]}')
+                models = b'{"data":[{"id":"base"}]}' if self.server.model_available else b'{"data":[]}'
+                self.wfile.write(models)
             def log_message(self, *_):
                 pass
         server = HTTPServer(("127.0.0.1", 0), Handler)
+        server.model_available = True
         thread = threading.Thread(target=server.serve_forever)
         thread.start()
         try:
@@ -46,6 +48,16 @@ class ProviderTests(unittest.TestCase):
                     config = json.loads(session.role_config())
                 self.assertEqual(config["agent"]["angi-tester"]["model"], "apple/base")
                 self.assertEqual(config["provider"]["apple"]["models"], {"base": {"name": "base"}})
+                service = providers.Providers()
+                self.assertTrue(service.status("apple")["connected"])
+                server.model_available = False
+                self.assertFalse(service.status("apple")["connected"])
+                apple_card = providers.overview(service.apple_health)["apple"]
+                self.assertFalse(apple_card["connected"])
+                self.assertTrue(apple_card["active"])
+                self.assertEqual(apple_card["models"]["tester"], "apple/base")
+                server.model_available = True
+                self.assertTrue(service.status("apple")["connected"])
         finally:
             server.shutdown()
             thread.join()
@@ -73,13 +85,15 @@ class ProviderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_CONFIG_HOME": temporary, "XDG_STATE_HOME": temporary}):
             config = {"options": {"baseURL": "http://previous-device:1234/v1"}, "models": {"base": {}}}
             models.atomic_write(Path(temporary) / "opencode/angi-apple.json", config)
-            self.assertEqual(providers.Providers().status("apple")["address"], config["options"]["baseURL"])
             address = "http://new-device:1234"
-            with patch.object(providers.urllib.request, "urlopen", side_effect=OSError("offline")):
+            with patch.object(providers.urllib.request, "urlopen", side_effect=OSError("offline")) as request:
+                self.assertEqual(providers.Providers().status("apple")["address"], config["options"]["baseURL"])
                 with self.assertRaises(OSError):
                     providers.connect_apple(f" {address} ")
                 status = providers.Providers().status("apple")
+                request.assert_called_with(config["options"]["baseURL"] + "/models", timeout=2)
             self.assertEqual(status["address"], address)
+            self.assertFalse(status["connected"])
             self.assertEqual(providers.apple_config(), config)
 
     def test_oauth_is_started_using_runtime_method_and_callback(self):
@@ -160,8 +174,8 @@ class ProviderTests(unittest.TestCase):
             auth = Path(temporary) / "data/opencode/auth.json"
             auth.parent.mkdir(parents=True)
             auth.write_text('{"openai":{"type":"oauth","access":"private"}}')
-            apple = {"npm": "x", "models": {"base": {}}}
-            with patch.object(service, "api", return_value={"all": []}), patch.object(providers, "apple_config", return_value=apple):
+            apple = {"npm": "x", "options": {"baseURL": "http://device:1234/v1"}, "models": {"base": {}}}
+            with patch.object(service, "api", return_value={"all": []}), patch.object(providers, "apple_config", return_value=apple), patch.object(providers, "apple_model_ids", return_value=["base"]):
                 first = service.use("openai")
                 self.assertTrue(first["active"])
                 self.assertIn("default model", first["status"])  # no models chosen yet
@@ -169,10 +183,11 @@ class ProviderTests(unittest.TestCase):
                 models.atomic_write(models.settings_path(), chosen)
                 # Apple has no saved choice, so its card shows the model every role would fall back to, not nothing.
                 everything = {role: "apple/base" for role in ("orchestrator", "builder", "tester", "os")}
-                self.assertEqual(providers.overview(), {"apple": {"connected": True, "active": False, "models": everything}, "openai": {"connected": True, "active": True, "models": chosen}, "lmstudio": {"connected": False, "active": False, "models": {}}})
+                self.assertTrue(service.status("apple")["connected"])
+                self.assertEqual(providers.overview(service.apple_health), {"apple": {"configured": True, "connected": True, "active": False, "models": everything}, "openai": {"connected": True, "active": True, "models": chosen}, "lmstudio": {"connected": False, "active": False, "models": {}}})
                 self.assertTrue(service.use("apple")["active"])
                 self.assertFalse(service.status("openai")["active"])
-                overview = providers.overview()
+                overview = providers.overview(service.apple_health)
             self.assertEqual([name for name, card in overview.items() if card["active"]], ["apple"])
             self.assertNotIn("private", json.dumps(overview))
 

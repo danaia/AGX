@@ -20,6 +20,7 @@ mod terminal;
 mod wm;
 
 mod agent_chat;
+mod agent_history;
 mod agent_project;
 mod agent_providers;
 mod agent_swarm;

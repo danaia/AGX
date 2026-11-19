@@ -52,6 +52,7 @@ dependencies = [
  "input",
  "libc",
  "libloading",
+ "png",
  "serde_json",
  "sha2",
  "signal-hook 0.3.18",

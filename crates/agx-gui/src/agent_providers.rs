@@ -43,10 +43,6 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
         global.set_busy(true);
         let _ = sender.send(request);
     });
-    let sender = send.clone();
-    ui.global::<AgentProviders>().on_use_service(move |provider| {
-        let _ = sender.send(json!({"action":"activate","provider":provider.as_str()}));
-    });
     let _ = send.send(json!({"action":"overview"}));
     let (weak, sender) = (ui.as_weak(), send.clone());
     ui.global::<AgentProviders>().on_save(move |role, model| {
@@ -67,16 +63,29 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     let timer = Timer::default();
     let (weak, state) = (ui.as_weak(), app.clone());
     let mut last_poll = Instant::now();
+    let mut last_apple_check = None;
+    let mut checking_apple = false;
     timer.start(TimerMode::Repeated, Duration::from_millis(150), move || {
         let Some(ui) = weak.upgrade() else { return; };
         let global = ui.global::<AgentProviders>();
         while let Ok((request, response)) = updates.try_recv() {
             if let Some(cards) = response["overview"].as_object() { show_cards(&global, cards); }
-            if request["action"] == "overview" { continue; }
-            // A failed Use from a card has no panel to report in, so open the panel for that service.
-            if request["action"] == "activate" && response["error"].is_string() {
-                if let Some(provider) = request["provider"].as_str() { global.set_provider(provider.into()); global.set_open(true); }
+            if request["provider"] == "apple" {
+                last_apple_check = Some(Instant::now());
+                if request["background"] == true {
+                    checking_apple = false;
+                    if global.get_open() && global.get_provider() == "apple" && !global.get_busy() {
+                        if let Some(connected) = response["connected"].as_bool() {
+                            global.set_connected(connected);
+                        }
+                        if let Some(status) = response["status"].as_str() {
+                            global.set_status(status.into());
+                        }
+                    }
+                    continue;
+                }
             }
+            if request["action"] == "overview" { continue; }
             if request["provider"].as_str() != Some(global.get_provider().as_str()) { continue; }
             global.set_busy(false);
             if let Some(error) = response["error"].as_str() { global.set_status(error.into()); continue; }
@@ -128,6 +137,13 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
             global.set_busy(true);
             let _ = send.send(json!({"action":"status","provider":global.get_provider().as_str()}));
         }
+        if !global.get_open() {
+            last_apple_check = None;
+        } else if !global.get_busy() && !checking_apple
+            && last_apple_check.is_none_or(|checked| checked.elapsed() >= Duration::from_secs(5))
+        {
+            checking_apple = send.send(json!({"action":"status","provider":"apple","background":true})).is_ok();
+        }
     });
     timer
 }
@@ -136,6 +152,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
 fn show_cards(global: &AgentProviders<'_>, cards: &serde_json::Map<String, Value>) {
     let order = ["apple", "openai", "lmstudio"];
     let flag = |name: &str, key: &str| cards.get(name).and_then(|card| card[key].as_bool()).unwrap_or(false);
+    global.set_apple_configured(flag("apple", "configured"));
     global.set_ready(ModelRc::new(VecModel::from(order.map(|name| flag(name, "connected")).to_vec())));
     global.set_active_index(order.iter().position(|name| flag(name, "active")).map_or(-1, |index| index as i32));
     // Footer text omits the provider prefix: "openai/gpt-6.1-sol" reads as "gpt-6.1-sol".

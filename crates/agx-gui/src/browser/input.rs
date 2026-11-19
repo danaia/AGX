@@ -120,7 +120,7 @@ impl App {
                 let local = x - rect.x - BORDER;
                 if (8.0..136.0).contains(&local) {
                     self.browser_action(ui, ((local - 8.0) / 32.0) as i32);
-                } else if local >= 144.0 {
+                } else if local >= 144.0 && y < toolbar_y + 44.0 {
                     self.browser.focus_address(ui, true);
                 }
             }
