@@ -46,6 +46,14 @@
   <symbol id="i-hammer" viewBox="0 0 24 24"><path d="m14 7 3 3M3 21l9-9M12.5 5.5l6 6-3 3-6-6zM16 2l6 6-2 2-6-6z"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
   <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.5C14.5 8.6 13.4 8 12 8c-1.7 0-3 .8-3 2s1.2 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.6-3-1.5M12 6v2M12 16v2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.600 2.700 3.900 5.700 3.900 9s-1.300 6.300-3.900 9c-2.600-2.700-3.900-5.700-3.900-9S9.400 5.700 12 3z"/></symbol>
+  <symbol id="i-term2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.600 7.100L4 20l1-4.600A8 8 0 1 1 21 12z"/><path d="M8.500 11h7M8.500 14h4"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="m7 7 10 10-5 4V3l5 4L7 17"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5.500 12.500a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19.500" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><path d="M17.500 14v7M14 17.500h7"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.600 4.600 0 0 0-1.300-3.200 4.200 4.200 0 0 0-.1-3.200s-1.100-.3-3.500 1.300a12.300 12.300 0 0 0-6.200 0C6.500 2.800 5.400 3.100 5.400 3.100a4.200 4.200 0 0 0-.1 3.200A4.600 4.600 0 0 0 4 9.500c0 4.600 2.700 5.700 5.500 6-.6.600-.6 1.200-.5 2V21"/></symbol>
 </svg>
@@ -55,6 +63,7 @@
     <a href="#top" aria-label="ANGI home"><svg class="mark"><use href="#mark"/></svg></a>
     <div class="links">
       <a href="#why">Why ANGI</a>
+      <a href="#apps">Apps</a>
       <a href="#pi5">The Pi 5</a>
       <a href="#swarm">Swarm</a>
       <a href="#prompt">Get started</a>
@@ -113,6 +122,44 @@
   </div>
 </section>
 
+<section id="apps">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">Just the essentials</div>
+      <h2><span class="grad">The bare minimum, built in.<br>Everything else on demand.</span></h2>
+      <p class="lead">ANGI ships the few things a builder reaches for every day, in about 93 MB. The rest is a click away and stays out of the image.</p>
+    </div>
+
+    <div class="grid apps">
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-globe"/></svg></div><h3>A real web browser</h3><p>Built on WebKit (WPE). Tabs, downloads, bookmark import from Chrome, JavaScript, Canvas and WebGL. Preview what you build without leaving the machine.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-chat"/></svg></div><h3>Agent Angi, in conversation</h3><p>Chat with Angi, or hand it a project or the OS itself. Three modes, one prompt, with history you can reopen and review.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-code"/></svg></div><h3>A serious code editor</h3><p>Review every agent change in Monaco, the editor engine behind VS Code, with before-and-after tiles. Neovim, Helix and micro install in one click.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-term2"/></svg></div><h3>Native terminal</h3><p>Real tabs and windows on the desktop, tuned for agent output. Your tools in your <span class="mono">PATH</span>, installed per account.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-folder"/></svg></div><h3>Files that can undo</h3><p>A fast file manager with real undo and a proper Trash. Right-click a folder to serve it and open it in the browser at once.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-bt"/></svg></div><h3>Bluetooth <span class="tagc">Preview</span></h3><p>Find, pair and connect devices from Settings, the CLI or an agent, through one policy-checked service. Hardware testing is still under way.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-wifi"/></svg></div><h3>Wi-Fi and private networking</h3><p>Join Wi-Fi from the dashboard, and reach LM Studio on your own computer over Tailscale without opening the Pi to the internet.</p></div>
+      <div class="card wide reveal"><div class="ico"><svg class="i"><use href="#i-layout"/></svg></div><h3>A tiling desktop and a terminal dashboard</h3><p>Omarchy-style tiling on the Pi's display, plus a full dashboard over SSH. Services, logs, storage heat maps and updates are one keypress away.</p></div>
+    </div>
+
+    <div class="cloudwrap reveal">
+      <div class="cloud" id="cloud" role="list" aria-label="Applications ANGI supports"></div>
+      <p class="cloud-cap"><span class="dotb"></span> Built in <span class="dotg"></span> One-click installs · hover any icon</p>
+    </div>
+
+    <div class="lib reveal">
+      <div class="lib-head">
+        <div class="lib-n gradO">51</div>
+        <div><h3>One-click apps, kept out of the image.</h3><p>The Apps tab installs verified tools from their GitHub releases straight to the NVMe, per account. Nothing is bundled, and removing one leaves no trace in the system.</p></div>
+      </div>
+      <div class="lib-cols">
+        <div><span class="tag">Develop</span><div class="pills"><span>GitHub CLI</span><span>Neovim</span><span>Helix</span><span>lazygit</span><span>ripgrep</span><span>fzf</span><span>jq</span><span>Deno</span><span>uv</span><span>just</span></div></div>
+        <div><span class="tag">Host</span><div class="pills"><span>Gitea</span><span>Caddy</span><span>PocketBase</span><span>Syncthing</span><span>AdGuard Home</span><span>Navidrome</span><span>MediaMTX</span></div></div>
+        <div><span class="tag">Operate</span><div class="pills"><span>btop</span><span>Zellij</span><span>restic</span><span>rclone</span><span>croc</span><span>ntfy</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <hr class="sep">
 
 <!-- THE PI STORY -->
@@ -148,7 +195,7 @@
           <g class="part" data-p="ram">
             <rect class="body" x="220" y="160" width="120" height="86" rx="10" fill="url(#chip)" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
             <rect x="236" y="176" width="88" height="54" rx="5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
-            <text x="280" y="209" text-anchor="middle" font-family="ui-monospace,monospace" font-size="15" fill="rgba(255,255,255,.55)">16 GB</text>
+            <text x="280" y="209" text-anchor="middle" font-family="ui-monospace,monospace" font-size="15" fill="rgba(255,255,255,.55)">4 GB+</text>
             <rect class="hot" x="212" y="152" width="136" height="102" rx="14" fill="url(#hotg)" stroke="#FF6A1A" stroke-width="2.5"/>
           </g>
 
@@ -220,9 +267,9 @@
         </article>
         <article class="chap" data-focus="soc,ram">
           <div class="no mono">02 / THE SYSTEM</div>
-          <h3 class="grad">The entire OS barely registers.</h3>
-          <p>ANGI is about 93 MB of files, boots to SSH in about 2.5 seconds, and idles at roughly 120 MB of the Pi's 16 GB. Almost everything is left over for the work.</p>
-          <div class="fig"><b class="gradO">~120 MB</b>idle RAM on a 16 GB board</div>
+          <h3 class="grad">A whole swarm, on a 4 GB board.</h3>
+          <p>ANGI is about 93 MB of files, boots to SSH in about 2.5 seconds, and idles at roughly 120 MB of RAM. On a 4 GB Pi that leaves about 97% of memory for the agents. The system is built so an entire swarm fits.</p>
+          <div class="fig"><b class="gradO">~120 MB</b>idle RAM, measured on a 16 GB Pi. The swarm-on-4 GB fit is our design target, not yet benchmarked, and depends on <a href="#models" class="or">model connectivity</a>: OpenAI, Claude or LM Studio.</div>
         </article>
         <article class="chap" data-focus="pcie,soc">
           <div class="no mono">03 / THE SWARM</div>
@@ -278,6 +325,54 @@
         <div class="agent"><div class="ico"><svg class="i"><use href="#i-shield"/></svg></div><h4>Tester</h4><p>Verifies every result before it counts as done.</p></div>
       </div>
       <div class="loop"><span class="or">describe</span><span>plan</span><span>build</span><span>test</span><span>flash</span><span class="or">verify on hardware</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="models" style="padding-top:20px;padding-bottom:70px">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">What the swarm depends on</div>
+      <h2><span class="grad">The agents live on the Pi.<br>The thinking happens elsewhere.</span></h2>
+      <p class="lead">That is why a swarm can be light enough for a small board. It also means the swarm needs a connection to a model: OpenAI, Claude, or LM Studio running on your own computer. Without one, there is nothing to think with.</p>
+    </div>
+    <div class="reveal" style="max-width:940px;margin:0 auto">
+      <svg class="info mm" viewBox="0 0 900 420" role="img" aria-label="Diagram: three agents on a Raspberry Pi connect over Wi-Fi to OpenAI, Claude, or LM Studio on another computer">
+        <g font-family="ui-monospace,monospace" letter-spacing="1">
+          <!-- Pi -->
+          <rect x="30" y="110" width="270" height="200" rx="22" fill="url(#pcb)" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
+          <use href="#bug" x="52" y="130" width="40" height="38" opacity=".9"/>
+          <text x="104" y="154" font-size="13" fill="#fff">RASPBERRY PI 5</text>
+          <text x="104" y="172" font-size="11" fill="rgba(255,255,255,.45)">4 GB+ · runs the agents</text>
+          <g font-size="12" fill="rgba(255,255,255,.75)">
+            <rect x="52" y="194" width="226" height="30" rx="9" fill="rgba(255,255,255,.06)"/><text x="68" y="214">orchestrator</text>
+            <rect x="52" y="230" width="226" height="30" rx="9" fill="rgba(255,106,26,.14)" stroke="rgba(255,106,26,.4)"/><text x="68" y="250">builder</text>
+            <rect x="52" y="266" width="226" height="30" rx="9" fill="rgba(255,255,255,.06)"/><text x="68" y="286">tester</text>
+          </g>
+          <!-- links -->
+          <g fill="none" stroke-linecap="round">
+            <path d="M300 210C400 210 430 90 560 90" stroke="rgba(255,255,255,.14)" stroke-width="7"/>
+            <path d="M300 210H560" stroke="rgba(255,255,255,.14)" stroke-width="7"/>
+            <path d="M300 210C400 210 430 330 560 330" stroke="rgba(255,255,255,.14)" stroke-width="7"/>
+            <path class="flow f1" d="M300 210C400 210 430 90 560 90" stroke="url(#og)" stroke-width="3" stroke-dasharray="2 16"/>
+            <path class="flow f2" d="M300 210H560" stroke="#FF8A3D" stroke-width="3" stroke-dasharray="2 16"/>
+            <path class="flow f1" d="M300 210C400 210 430 330 560 330" stroke="rgba(255,255,255,.8)" stroke-width="3" stroke-dasharray="2 16"/>
+          </g>
+          <text x="420" y="64" font-size="11" fill="#FF8A3D" text-anchor="middle">WI-FI · INTERNET</text>
+          <text x="432" y="234" font-size="11" fill="#FF8A3D" text-anchor="middle">WI-FI · INTERNET</text>
+          <text x="430" y="372" font-size="11" fill="rgba(255,255,255,.65)" text-anchor="middle">WI-FI · TAILSCALE, PRIVATE</text>
+          <!-- providers -->
+          <g>
+            <rect x="560" y="55" width="310" height="70" rx="16" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+            <text x="584" y="86" font-size="16" fill="#fff" letter-spacing="0">OpenAI</text><text x="584" y="107" font-size="11" fill="rgba(255,255,255,.5)">Cloud · sign in with ChatGPT</text>
+            <rect x="560" y="175" width="310" height="70" rx="16" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+            <text x="584" y="206" font-size="16" fill="#fff" letter-spacing="0">Claude</text><text x="584" y="227" font-size="11" fill="rgba(255,255,255,.5)">Cloud · connected through OpenCode</text>
+            <rect x="560" y="295" width="310" height="70" rx="16" fill="rgba(255,106,26,.1)" stroke="rgba(255,106,26,.5)" stroke-width="1.5"/>
+            <text x="584" y="326" font-size="16" fill="#fff" letter-spacing="0">LM Studio</text><text x="584" y="347" font-size="11" fill="#FF8A3D">Local · on your own computer</text>
+          </g>
+        </g>
+      </svg>
+      <div class="mm-note"><span class="or">No connection, no swarm.</span> Cloud models need the Pi's Wi-Fi to reach the internet. LM Studio needs the Pi and your computer on the same private Tailscale network. Pick whichever fits your privacy and cost.</div>
     </div>
   </div>
 </section>
@@ -514,6 +609,40 @@ Report what you verified and anything still unresolved.</pre>
   }));
   const more=document.getElementById('more'),pc=document.getElementById('pcard');
   more&&more.addEventListener('click',()=>{const o=pc.classList.toggle('open');more.textContent=o?'Collapse':'Show the full prompt';});
+
+
+  // icon cloud
+  (function(){
+    const P={branch:'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9',
+    search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
+    braces:'M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1',
+    activity:'M22 12h-4l-3 9L9 3l-3 9H2',code:'m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
+    shield:'M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6zM9 12l2 2 4-4',
+    sync:'M21 12a9 9 0 0 0-15-6.7L3 8M3 3v5h5M3 12a9 9 0 0 0 15 6.7l3-2.7M21 21v-5h-5',
+    music:'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    video:'M2 6h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2zM17 10l5-3v10l-5-3',
+    db:'M12 8c4.400 0 8-1.300 8-3s-3.600-3-8-3-8 1.300-8 3 3.600 3 8 3zM4 5v14c0 1.700 3.600 3 8 3s8-1.300 8-3V5M4 12c0 1.700 3.600 3 8 3s8-1.300 8-3',
+    globe:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.600 2.700 3.900 5.700 3.900 9s-1.300 6.300-3.900 9c-2.600-2.700-3.900-5.700-3.900-9S9.400 5.700 12 3z',
+    archive:'M21 8v13H3V8M1 3h22v5H1zM10 12h4',cloud:'M18 10h-1.300A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z',
+    send:'M22 2 11 13M22 2l-7 20-4-9-9-4z',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.700 21a2 2 0 0 1-3.400 0',
+    term:'M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM6 10l3 2-3 2M12 15h5',
+    folder:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    disk:'M22 12H2M5.500 5.100 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.500-6.900A2 2 0 0 0 16.700 4H7.300a2 2 0 0 0-1.800 1.100zM6 16h.01M10 16h.01',
+    zap:'M13 2 4 14h7l-1 8 9-12h-7z',layers:'m12 2 10 5-10 5L2 7zM2 12l10 5 10-5M2 17l10 5 10-5',
+    file:'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5',
+    server:'M2 3h20v7H2zM2 14h20v7H2zM6 6.500h.01M6 17.500h.01',diff:'M12 4v8M8 8h8M8 18h8',
+    play:'M6 4l14 8-14 8z',compass:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM16 8l-2 6-6 2 2-6z',
+    eye:'M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+    spark:'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z',info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16v-4M12 8h.01',
+    box:'M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',check:'M20 6 9 17l-5-5',list:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+    chat:'M21 12a8 8 0 0 1-11.600 7.100L4 20l1-4.600A8 8 0 1 1 21 12z',bt:'m7 7 10 10-5 4V3l5 4L7 17',
+    wifi:'M2 9a15 15 0 0 1 20 0M5.500 12.500a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.500h.01'};
+    const D=[["starship","starship","spark",0],["gitea","Gitea","branch",0],["lazygit","lazygit","branch",0],["syncthing","Syncthing","sync",0],["node-exporter","Node Exporter","activity",0],["files","Files","folder",1],["glow","Glow","file",0],["zellij","Zellij","layers",0],["github-cli","GitHub CLI","branch",0],["deno","Deno","box",0],["just","just","play",0],["zoxide","zoxide","compass",0],["helix","Helix","code",0],["shellcheck","ShellCheck","check",0],["storage","Storage","disk",1],["web","Web","globe",1],["delta","delta","diff",0],["ntfy","ntfy","bell",0],["difftastic","Difftastic","diff",0],["mediamtx","MediaMTX","video",0],["uv","uv","box",0],["gum","gum","spark",0],["shfmt","shfmt","term",0],["caddy","Caddy","server",0],["pocketbase","PocketBase","db",0],["tailscale","Tailscale","shield",1],["bluetooth","Bluetooth","bt",1],["dufs","dufs","server",0],["fastfetch","fastfetch","info",0],["ripgrep","ripgrep","search",0],["croc","croc","send",0],["dust","dust","disk",0],["wifi","Wi-Fi","wifi",1],["restic","restic","archive",0],["yazi","Yazi","folder",0],["neovim","Neovim","code",0],["miniserve","miniserve","server",0],["navidrome","Navidrome","music",0],["bottom","bottom","activity",0],["file-browser","File Browser","folder",0],["lf","lf","folder",0],["angi","Agent Angi","chat",1],["watchexec","watchexec","zap",0],["hyperfine","hyperfine","zap",0],["jq","jq","braces",0],["fd","fd","search",0],["eza","eza","list",0],["gdu","gdu","disk",0],["editor","Code review editor","code",1],["rclone","rclone","cloud",0],["jujutsu","Jujutsu","branch",0],["btop","btop","activity",0],["duf","duf","disk",0],["terminal","Terminal","term",1],["fzf","fzf","search",0],["bat","bat","file",0],["adguard-home","AdGuard Home","shield",0],["direnv","direnv","eye",0],["micro","micro","code",0],["yq","yq","braces",0]];
+    const el=document.getElementById('cloud'); if(!el) return;
+    const sizes=[56,64,72,60,68];
+    el.innerHTML=D.map((a,i)=>{const s=a[3]?78:sizes[i%sizes.length];
+      return `<div class="ic${a[3]?' b':''}" role="listitem" data-n="${a[1]}" style="--s:${s}px;--d:${(i*0.37)%5}s;--y:${((i*7)%5)*5-10}px"><svg viewBox="0 0 24 24" fill="none" stroke="${a[3]?'#fff':'url(#og)'}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[a[2]]||P.box}"/></svg></div>`}).join('');
+  })();
 
   // Scroll stories: the chapter nearest the viewport centre drives its illustration
   const stories=[...document.querySelectorAll('.story')].map(s=>({s,chaps:[...s.querySelectorAll('.chap')],board:s.querySelector('#board'),info:s.querySelector('#info')}));

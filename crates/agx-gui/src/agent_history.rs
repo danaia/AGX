@@ -1,7 +1,7 @@
 //! Load conversation history from the agent runtime and restore the selected workspace.
 use crate::{
     AgentChat, AgentHistory, AgentScope, AgentWork, App, AppWindow, HistoryEntry, WorkRecord,
-    WorkResource, agent_chat, files, work_editor::WorkEditor,
+    WorkResource, agent_chat, work_editor::WorkEditor,
 };
 use serde_json::Value;
 use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
@@ -22,12 +22,6 @@ fn request(args: &[String]) -> Result<Value, String> {
 }
 
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
-    let (weak, folder_app) = (ui.as_weak(), app.clone());
-    ui.global::<AgentWork>().on_open_folder(move |path| {
-        if let Some(ui) = weak.upgrade() {
-            files::open_folder(&ui, &folder_app, &path);
-        }
-    });
     let (requests, worker) = mpsc::channel::<Vec<String>>();
     let (results, updates) = mpsc::channel();
     std::thread::spawn(move || {

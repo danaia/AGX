@@ -64,6 +64,12 @@ impl WorkEditor {
     pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<RefCell<Self>> {
         let editor = Rc::new(RefCell::new(Self::default()));
         let work = ui.global::<AgentWork>();
+        let (weak, app_state) = (ui.as_weak(), app.clone());
+        work.on_open_folder(move |path| {
+            if let Some(ui) = weak.upgrade() {
+                open_resource(&ui, &app_state, &path);
+            }
+        });
         let (weak, state) = (ui.as_weak(), editor.clone());
         work.on_back(move || {
             let (Some(ui), Ok(mut state)) = (weak.upgrade(), state.try_borrow_mut()) else {
@@ -176,7 +182,7 @@ impl WorkEditor {
                     }
                 }
             } else if let Some(folder) = event["folder"].as_str() {
-                files::open_folder(ui, app, folder);
+                open_resource(ui, app, folder);
             } else if event["refresh"].as_bool() == Some(true) {
                 app.borrow_mut().run(ui, Cmd::RefreshDesktop);
             }
@@ -236,4 +242,15 @@ impl WorkEditor {
             "Could not load the ANGI work editor. Go back and reopen this record to retry.".into(),
         );
     }
+}
+
+fn open_resource(ui: &AppWindow, app: &Rc<RefCell<App>>, path: &str) {
+    {
+        let mut app = app.borrow_mut();
+        if let Some((Kind::AgentAngi, presentation)) = app.desk.fullscreen_of() {
+            app.desk.focus(Kind::AgentAngi);
+            app.desk.toggle_fullscreen(presentation);
+        }
+    }
+    files::open_folder(ui, app, path);
 }
