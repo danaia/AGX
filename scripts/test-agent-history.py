@@ -13,7 +13,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent"))
 import chat
 import history
+import work_changes
 import work_history
+from work_editor import Editor
 
 
 class HistoryTests(unittest.TestCase):
@@ -152,6 +154,68 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(saved["summary"], "Published the starter page.")
         self.assertEqual(saved["summary_label"], "Work summary")
         self.assertEqual(saved["resources"][-1], {"label": "Related folder", "path": str(output)})
+
+    def test_legacy_work_editor_retrieves_builder_patches_for_the_selected_swarm(self):
+        name = "angi-project-run"
+        brief = "Build a recipe browser"
+        self.manifest(name, "project", brief, str(self.folder))
+        started = (self.state / name / "run.json").stat().st_mtime_ns // 1_000_000
+        for ident, offset, agent, prompt in [
+            ("ses_leader", 1000, "angi-orchestrator", brief),
+            ("ses_builder", 2000, "angi-builder", "Ready for work"),
+            ("ses_next", 3000, "angi-orchestrator", "Another run"),
+            ("ses_other", 4000, "angi-builder", "Ready for work"),
+        ]:
+            self.session(ident, agent, str(self.folder), started=started + offset, prompt=prompt)
+        self.db.execute("ALTER TABLE session ADD COLUMN agent TEXT")
+        self.db.execute("UPDATE session SET agent=title")
+        self.db.execute("ALTER TABLE part ADD COLUMN time_created INTEGER")
+        for session, file in [("ses_builder", "recipes.txt"), ("ses_other", "later.txt")]:
+            patch = "@@ -1 +1 @@\n-Tea\n+Soup\n"
+            metadata = {"filediff": {"file": str(self.folder / file), "patch": patch}}
+            tool = {"type": "tool", "tool": "edit", "state": {"status": "completed", "metadata": metadata}}
+            self.db.execute("INSERT INTO part VALUES (?,?,?,?,?)", (file, "m2", session, json.dumps(tool), 20))
+        self.db.commit()
+        editor = Editor(self.state, self.home, lambda _: None)
+        record = editor.api("record", {"id": name})
+        self.assertEqual(record["files"], [{"path": "recipes.txt", "kind": "Modified"}])
+        self.assertIn("+Soup", editor.api("file", {"id": name, "path": "recipes.txt"})["patch"])
+
+    def test_work_editor_keeps_the_recorded_diff_and_rejects_a_stale_save(self):
+        name = "angi-project-run"
+        self.manifest(name, "project", "Update the recipe browser", str(self.folder))
+        code = self.folder / "recipes.py"
+        code.write_text("version = 1\n")
+        work_changes.begin(self.state / name, self.folder)
+        code.write_text("version = 2\n")
+        (self.folder / "recipes.txt").write_text("Soup\n")
+        work_changes.finish(self.state / name)
+        emitted = []
+        editor = Editor(self.state, self.home, emitted.append)
+        record = editor.api("record", {"id": name})
+        self.assertEqual(record["root"], str(self.folder))
+        self.assertEqual(record["files"], [{"path": "recipes.py", "kind": "Modified"},
+                                           {"path": "recipes.txt", "kind": "Added"}])
+        selection = {"id": name, "path": "recipes.py"}
+        file = editor.api("file", selection)
+        self.assertEqual((file["original"], file["recorded"], file["text"]),
+                         ("version = 1\n", "version = 2\n", "version = 2\n"))
+        save = {**selection, "revision": file["revision"], "text": "version = 3\n"}
+        editor.api("save", save)
+        self.assertEqual(code.read_text(), "version = 3\n")
+        self.assertEqual(editor.api("file", selection)["recorded"], "version = 2\n")
+        with self.assertRaisesRegex(ValueError, "changed on disk"):
+            editor.api("save", save)
+        editor.api("folder", selection)
+        self.assertEqual(emitted, [{"folder": str(self.folder)}])
+        outsider = self.home / "outside.py"
+        outsider.write_text("outside\n")
+        code.unlink()
+        code.symlink_to(outsider)
+        self.assertIsNone(editor.api("file", selection)["revision"])
+        with self.assertRaises(OSError):
+            editor.api("save", save)
+        self.assertEqual(outsider.read_text(), "outside\n")
 
 
 if __name__ == "__main__":

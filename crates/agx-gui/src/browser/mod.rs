@@ -1,11 +1,11 @@
 //! Browser lifecycle and desktop integration. WPE stays out of the GUI process.
 mod bookmarks;
 mod bookmarks_ui;
-mod engine;
+pub(crate) mod engine;
 mod favicons;
 mod gpu;
 mod input;
-mod protocol;
+pub(crate) mod protocol;
 mod storage;
 mod tabs;
 use crate::{

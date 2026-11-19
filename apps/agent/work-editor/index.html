@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ANGI Work Review</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="editor.css">
+    <script defer src="vs/loader.js"></script>
+    <script defer src="editor.js"></script>
+</head>
+<body>
+    <main class="tiles">
+        <section class="tile information" aria-labelledby="work-title">
+            <header class="toolbar">
+                <span id="mode">Work record</span>
+            </header>
+            <div class="details">
+                <h1 id="work-title">Opening work record…</h1>
+                <h2>Original request</h2>
+                <p id="brief"></p>
+                <h2 id="summary-label">Outcome</h2>
+                <p id="summary"></p>
+                <div id="resources"></div>
+            </div>
+        </section>
+        <section class="tile code" aria-labelledby="editor-title">
+            <header class="toolbar">
+                <h2 id="editor-title">Code diff</h2>
+                <div class="actions">
+                    <button id="compare" type="button" disabled>Recorded diff</button>
+                    <button id="save" class="primary" type="button" disabled>Save</button>
+                    <button id="refresh" type="button" disabled>Refresh desktop…</button>
+                </div>
+            </header>
+            <div class="editor-space">
+                <div id="editor" class="monaco-host" hidden></div>
+                <div id="plain-editor" class="monaco-host" hidden></div>
+                <p id="placeholder">Loading Monaco Editor…</p>
+            </div>
+            <p id="status" class="status" role="status"></p>
+        </section>
+        <section class="tile changes" aria-labelledby="changes-title">
+            <header class="toolbar">
+                <h2 id="changes-title">Folder &amp; changed files</h2>
+                <button id="folder" type="button" disabled>Open in Files</button>
+            </header>
+            <p id="location" class="location"></p>
+            <p id="record-note" class="record-note" hidden></p>
+            <ul id="files" aria-label="Changed files"></ul>
+        </section>
+    </main>
+</body>
+</html>

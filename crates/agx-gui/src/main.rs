@@ -18,6 +18,7 @@ mod remote;
 mod scene_model;
 mod terminal;
 mod wm;
+mod work_editor;
 
 mod agent_chat;
 mod agent_history;

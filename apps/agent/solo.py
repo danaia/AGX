@@ -40,6 +40,8 @@ def launch(state, brief):
     run = state / ("angi-os-" + time.strftime("%Y%m%d-%H%M%S") + f"-{os.getpid()}")
     run.mkdir(mode=0o700)
     (run / "run.json").write_text(json.dumps({"mode": "os", "solo": True, "brief": brief}, indent=2))
+    from work_changes import begin
+    begin(run, OS_SOURCE)
     marker = state / f"os-current.{os.getpid()}.new"
     marker.write_text(run.name)
     marker.replace(state / "os-current")

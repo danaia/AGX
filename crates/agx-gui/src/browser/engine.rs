@@ -50,6 +50,14 @@ pub struct Engine {
 }
 impl Engine {
     pub fn start(ui: &crate::AppWindow) -> io::Result<Self> {
+        Self::start_host(ui, false)
+    }
+
+    pub(crate) fn start_embedded(ui: &crate::AppWindow) -> io::Result<Self> {
+        Self::start_host(ui, true)
+    }
+
+    fn start_host(ui: &crate::AppWindow, embedded: bool) -> io::Result<Self> {
         if unsafe { libc::geteuid() } == 0 {
             return Err(io::Error::other("Open Web from a signed-in user session."));
         }
@@ -76,7 +84,7 @@ impl Engine {
         {
             return Err(io::Error::last_os_error());
         }
-        let gpu_pair = if gpu::available() {
+        let gpu_pair = if !embedded && gpu::available() {
             Some(gpu::transport::pair()?)
         } else {
             None
@@ -93,7 +101,8 @@ impl Engine {
                 "--frame-fd",
                 &fd.to_string(),
             ])
-            .env("AGX_WEB_TABS", "1")
+            .env("AGX_WEB_TABS", if embedded { "0" } else { "1" })
+            .env("AGX_WEB_EMBEDDED", if embedded { "1" } else { "0" })
             .env_remove("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS")
             .env_remove("WEBKIT_INSPECTOR_SERVER")
             .env_remove("WEBKIT_INSPECTOR_HTTP_SERVER")
@@ -132,7 +141,11 @@ impl Engine {
         let weak = ui.as_weak();
         thread::spawn(move || {
             let notify = || {
-                let _ = weak.upgrade_in_event_loop(|ui| ui.global::<crate::Web>().invoke_engine_update());
+                if !embedded {
+                    let _ = weak.upgrade_in_event_loop(|ui| {
+                        ui.global::<crate::Web>().invoke_engine_update()
+                    });
+                }
             };
             if let Err(error) = receive(reader, frame, &shared, &notify) {
                 let mut state = shared.lock().unwrap();
@@ -329,7 +342,11 @@ mod tests {
     }
     #[test]
     fn download_notices_are_bounded_utf8() {
-        for (message, accepted) in [(&b"Saved a.zip to Downloads"[..], true), (&[0xff, 0xfe][..], false), (&[][..], false)] {
+        for (message, accepted) in [
+            (&b"Saved a.zip to Downloads"[..], true),
+            (&[0xff, 0xfe][..], false),
+            (&[][..], false),
+        ] {
             let (reader, mut writer) = UnixStream::pair().unwrap();
             protocol::write(&mut writer, 13, message).unwrap();
             drop(writer);
@@ -350,7 +367,9 @@ mod tests {
             }
             let state = Mutex::new(Updates::default());
             assert_eq!(
-                receive(reader, storage(), &state, &|| {}).unwrap_err().kind(),
+                receive(reader, storage(), &state, &|| {})
+                    .unwrap_err()
+                    .kind(),
                 io::ErrorKind::Other
             );
         }

@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANGI — The operating system agents build</title>
+<meta name="description" content="ANGI is a thin, from-source operating system made for AI coding agents. Swarm-built, distribution-free, and small enough to run on a single Raspberry Pi 5.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9a9a9a"/></linearGradient>
+    <linearGradient id="bugg" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#d9d9d9"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient>
+    <linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#D9500B"/></linearGradient>
+    <linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2a"/><stop offset=".5" stop-color="#171717"/><stop offset="1" stop-color="#0e0e0e"/></linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8e8e8"/><stop offset=".5" stop-color="#8c8c8c"/><stop offset="1" stop-color="#3a3a3a"/></linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#141414"/></linearGradient>
+    <radialGradient id="hotg"><stop offset="0" stop-color="#FF6A1A" stop-opacity=".55"/><stop offset="1" stop-color="#FF6A1A" stop-opacity="0"/></radialGradient>
+  </defs>
+
+  <!-- brand-bug.svg -->
+  <symbol id="bug" viewBox="0 0 231 218"><path fill="url(#bugg)" d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/></symbol>
+
+  <!-- brand-mark-text.svg -->
+  <symbol id="mark" viewBox="0 0 711 239" fill="url(#wg)">
+    <path d="M685.107 184V56.032H706.779V184H685.107ZM695.943 30.49C691.643 30.49 688.031 29.028 685.107 26.104C682.183 23.18 680.721 19.568 680.721 15.268C680.721 11.14 682.183 7.61401 685.107 4.69001C688.031 1.76602 691.643 0.304016 695.943 0.304016C700.071 0.304016 703.597 1.76602 706.521 4.69001C709.445 7.61401 710.907 11.226 710.907 15.526C710.907 19.654 709.445 23.18 706.521 26.104C703.597 29.028 700.071 30.49 695.943 30.49Z"/>
+    <path d="M599.255 238.696C587.731 238.696 577.497 237.148 568.553 234.052C559.609 231.128 552.643 226.742 547.655 220.894C542.667 215.218 540.173 208.252 540.173 199.996C540.173 196.212 540.947 192.342 542.495 188.386C544.215 184.43 547.053 180.56 551.009 176.776C555.137 172.82 560.899 169.122 568.295 165.682L582.743 174.454C573.971 178.238 568.209 182.194 565.457 186.322C562.705 190.45 561.329 195.008 561.329 199.996C561.329 204.468 562.705 208.338 565.457 211.606C568.381 215.046 572.681 217.626 578.357 219.346C584.033 221.066 590.999 221.926 599.255 221.926C607.683 221.926 614.477 220.894 619.637 218.83C624.797 216.766 628.581 213.928 630.989 210.316C633.397 206.704 634.601 202.576 634.601 197.932C634.601 192.428 632.365 188.042 627.893 184.774C623.593 181.678 615.337 179.786 603.125 179.098C592.977 178.41 584.463 177.464 577.583 176.26C570.875 175.056 565.285 173.68 560.813 172.132C556.341 170.412 552.557 168.52 549.461 166.456C546.537 164.392 543.871 162.242 541.463 160.006V154.072L566.489 129.046L578.873 135.238L559.523 159.232L561.329 150.46C562.877 151.492 564.511 152.524 566.231 153.556C568.123 154.588 570.703 155.62 573.971 156.652C577.239 157.512 581.539 158.372 586.871 159.232C592.375 160.092 599.427 160.866 608.027 161.554C619.551 162.414 628.839 164.306 635.891 167.23C642.943 169.982 648.017 173.852 651.113 178.84C654.381 183.828 656.015 189.934 656.015 197.158C656.015 203.694 653.951 210.144 649.823 216.508C645.867 222.872 639.675 228.118 631.247 232.246C622.991 236.546 612.327 238.696 599.255 238.696ZM598.997 143.752C588.161 143.752 578.959 141.774 571.391 137.818C563.823 133.69 558.061 128.186 554.105 121.306C550.149 114.426 548.171 106.772 548.171 98.344C548.171 89.916 550.149 82.348 554.105 75.64C558.061 68.76 563.823 63.256 571.391 59.128C578.959 55 588.161 52.936 598.997 52.936C609.833 52.936 619.035 55 626.603 59.128C634.171 63.256 639.933 68.76 643.889 75.64C647.845 82.348 649.823 89.916 649.823 98.344C649.823 106.772 647.845 114.426 643.889 121.306C639.933 128.186 634.171 133.69 626.603 137.818C619.035 141.774 609.833 143.752 598.997 143.752ZM598.997 127.24C608.113 127.24 615.337 124.832 620.669 120.016C626.173 115.028 628.925 107.804 628.925 98.344C628.925 88.712 626.173 81.488 620.669 76.672C615.337 71.856 608.113 69.448 598.997 69.448C589.881 69.448 582.571 71.856 577.067 76.672C571.563 81.488 568.811 88.712 568.811 98.344C568.811 107.804 571.563 115.028 577.067 120.016C582.571 124.832 589.881 127.24 598.997 127.24ZM619.637 71.77L613.187 56.032H666.335V67.9L619.637 71.77Z"/>
+    <path d="M409.488 184V56.032H428.58L430.644 76.156H431.676C436.148 69.104 441.996 63.514 449.22 59.386C456.444 55.086 465.13 52.936 475.278 52.936C485.082 52.936 493.682 55 501.078 59.128C508.474 63.084 514.15 69.276 518.106 77.704C522.234 85.96 524.298 96.452 524.298 109.18V184H502.626V111.502C502.626 98.258 499.788 88.282 494.112 81.574C488.436 74.866 480.266 71.512 469.602 71.512C462.206 71.512 455.584 73.318 449.736 76.93C444.06 80.542 439.502 85.788 436.062 92.668C432.794 99.376 431.16 107.718 431.16 117.694V184H409.488Z"/>
+    <path d="M326.664 187.096C316.516 187.096 308.002 185.29 301.122 181.678C294.242 178.066 289.082 173.25 285.642 167.23C282.374 161.21 280.74 154.674 280.74 147.622C280.74 138.85 282.976 131.454 287.448 125.434C292.092 119.414 298.542 114.856 306.798 111.76C315.226 108.492 325.116 106.858 336.468 106.858H371.04C371.04 98.43 369.75 91.464 367.17 85.96C364.59 80.456 360.892 76.414 356.076 73.834C351.26 71.082 345.498 69.706 338.79 69.706C330.362 69.706 323.052 71.856 316.86 76.156C310.668 80.456 306.884 87.078 305.508 96.022H283.32C284.352 86.734 287.362 78.908 292.35 72.544C297.51 66.18 304.046 61.364 311.958 58.096C320.042 54.656 328.986 52.936 338.79 52.936C351.002 52.936 361.064 55.172 368.976 59.644C377.06 63.944 382.994 70.05 386.778 77.962C390.734 85.702 392.712 94.818 392.712 105.31V184H374.652L372.588 162.07H371.556C369.148 166.198 366.31 169.81 363.042 172.906C359.946 176.002 356.506 178.582 352.722 180.646C348.938 182.71 344.81 184.258 340.338 185.29C336.038 186.494 331.48 187.096 326.664 187.096ZM330.534 168.778C337.07 168.778 342.832 167.574 347.82 165.166C352.808 162.586 357.022 159.146 360.462 154.846C363.902 150.546 366.482 145.73 368.202 140.398C370.094 134.894 371.04 129.304 371.04 123.628H338.274C329.846 123.628 323.052 124.66 317.892 126.724C312.732 128.616 309.034 131.282 306.798 134.722C304.562 138.162 303.444 142.118 303.444 146.59C303.444 151.062 304.476 155.018 306.54 158.458C308.776 161.726 311.872 164.306 315.828 166.198C319.956 167.918 324.858 168.778 330.534 168.778Z"/>
+    <path d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/>
+  </symbol>
+
+  <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.7l13.5-4c1.1-.3 2.2.3 2.6 1.3z"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-unlink" viewBox="0 0 24 24"><path d="m18.8 13.2 2.1-2.1a4.2 4.2 0 0 0-6-6l-2.1 2.1M5.2 10.8 3.1 12.9a4.2 4.2 0 0 0 6 6l2.1-2.1M8 2v3M2 8h3M16 22v-3M22 16h-3"/></symbol>
+  <symbol id="i-swarm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M10.7 7.2 6.3 15.8M13.3 7.2l4.4 8.6M7.5 18h9"/></symbol>
+  <symbol id="i-rust" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-json" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M12 12h9"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-hammer" viewBox="0 0 24 24"><path d="m14 7 3 3M3 21l9-9M12.5 5.5l6 6-3 3-6-6zM16 2l6 6-2 2-6-6z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.5C14.5 8.6 13.4 8 12 8c-1.7 0-3 .8-3 2s1.2 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.6-3-1.5M12 6v2M12 16v2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.600 4.600 0 0 0-1.300-3.200 4.200 4.200 0 0 0-.1-3.200s-1.100-.3-3.500 1.300a12.300 12.300 0 0 0-6.200 0C6.500 2.800 5.400 3.100 5.400 3.100a4.200 4.200 0 0 0-.1 3.200A4.600 4.600 0 0 0 4 9.500c0 4.600 2.700 5.700 5.500 6-.6.600-.6 1.200-.5 2V21"/></symbol>
+</svg>
+
+<nav id="nav">
+  <div class="wrap">
+    <a href="#top" aria-label="ANGI home"><svg class="mark"><use href="#mark"/></svg></a>
+    <div class="links">
+      <a href="#why">Why ANGI</a>
+      <a href="#pi5">The Pi 5</a>
+      <a href="#swarm">Swarm</a>
+      <a href="#prompt">Get started</a>
+      <a class="btn ghost sm" href="https://github.com/danaia/ANGI">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <svg class="bug" role="img" aria-label="ANGI"><use href="#bug"/></svg>
+    <div class="eyebrow">A thin operating system for AI coding agents</div>
+    <h1><span class="grad">Software that builds</span><br><span class="gradO">the system it runs on.</span></h1>
+    <p class="sub">Small enough for a single Raspberry Pi 5. Independent of every distribution. Written and rewritten by a swarm of agents, then verified on real hardware.</p>
+    <div class="cta">
+      <a class="btn primary" href="#start">Get started <svg class="i"><use href="#i-arrow"/></svg></a>
+      <a class="btn ghost" href="https://github.com/danaia/ANGI"><svg class="i"><use href="#i-gh"/></svg> View on GitHub</a>
+    </div>
+    <div class="term" aria-hidden="true">
+      <div class="term-bar"><i></i><i></i><i></i></div>
+<pre class="mono"><b>$</b> agent angi
+<span class="or">▸</span> orchestrator   planning the build
+<span class="or">▸</span> builder        compiling on the Pi, native aarch64
+<span class="or">▸</span> tester         verifying the result
+<span class="or">✓</span> <b>shipped</b> — no cloud workstation required</pre>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat reveal"><div class="n grad">~93<small>MB</small></div><p>Entire fresh image, in files</p></div>
+    <div class="stat reveal"><div class="n grad">~2.5<small>s</small></div><p>To a reachable SSH login after Linux starts</p></div>
+    <div class="stat reveal"><div class="n grad">~120<small>MB</small></div><p>RAM used while idle</p></div>
+    <div class="stat reveal"><div class="n gradO">0<small>distros</small></div><p>Debian, Arch, Fedora — none underneath</p></div>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap">
+    <div class="head reveal">
+      <div class="eyebrow">Differentiators</div>
+      <h2><span class="grad">Everything a person needs. Nothing an agent has to fight.</span></h2>
+      <p class="lead">Most operating systems are made for people and adapted for agents later. ANGI starts from the other end.</p>
+    </div>
+    <div class="grid">
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-feather"/></svg></div><h3>Tiny by design</h3><p>About 93 MB of files. A 0.5 MB init. Boots to SSH in roughly 2.5 seconds, and idles at about 120 MB of RAM.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-unlink"/></svg></div><h3>Not a distribution</h3><p>No package manager, no release cycle, no legacy to stay compatible with. Assembled from source with Buildroot, so the image holds only what ANGI asks for.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-swarm"/></svg></div><h3>Swarm generated</h3><p>Coding agents wrote the system and keep rewriting it. Three cooperating agents plan, build and test, and the OS itself is in scope.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-rust"/></svg></div><h3>Rust, top to bottom</h3><p>PID 1, the service supervisor, network and account services, the CLI, the terminal dashboard and the desktop. About 11,000 lines in one workspace.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-json"/></svg></div><h3>Everything is scriptable</h3><p>Status, services, logs, Wi-Fi, accounts and power each have an <span class="mono or">agx</span> command with <span class="mono">--json</span> output. What an agent can do, you can do.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-eye"/></svg></div><h3>Fully inspectable</h3><p>One repository holds boot to dashboard. An agent can read it, change it, rebuild it, flash it and verify the result.</p></div>
+      <div class="card wide reveal"><div class="ico"><svg class="i"><use href="#i-layout"/></svg></div><h3>A desktop that respects your hands</h3><p>Hyprland-style tiling and Omarchy's keyboard-first chords: Super + arrows to move focus, Super + Q to close, Super + 1–5 for workspaces. Borrowed experience, not a borrowed base system.</p></div>
+      <div class="card reveal"><div class="ico"><svg class="i"><use href="#i-coin"/></svg></div><h3>A fraction of the cost</h3><p>Lightweight, low-cost models, each given only the intelligence a task needs. Small hardware, small bills.</p></div>
+    </div>
+  </div>
+</section>
+
+<hr class="sep">
+
+<!-- THE PI STORY -->
+<section id="pi5">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">One board</div>
+      <h2><span class="grad">The whole studio fits in your hand.</span></h2>
+      <p class="lead">An affordable Raspberry Pi 5 is the only machine ANGI needs. Follow the board from boot to shipped software.</p>
+    </div>
+
+    <div class="story">
+      <div class="board-wrap">
+        <div class="board-glow"></div>
+        <!-- Original monochrome illustration of a Raspberry Pi 5 board -->
+        <svg class="board" id="board" viewBox="0 0 850 560" role="img" aria-label="Illustration of a Raspberry Pi 5 board">
+          <rect x="4" y="4" width="842" height="552" rx="34" fill="url(#pcb)" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+          <!-- mounting holes -->
+          <g fill="#050505" stroke="rgba(255,255,255,.25)" stroke-width="2"><circle cx="40" cy="40" r="13"/><circle cx="40" cy="520" r="13"/><circle cx="640" cy="40" r="13"/><circle cx="640" cy="520" r="13"/></g>
+          <!-- traces -->
+          <g fill="none" stroke="rgba(255,255,255,.07)" stroke-width="2">
+            <path d="M300 280H220V420H110M300 250H190V120H110M420 330V470H560M470 200H600V120M340 170V90H260"/>
+          </g>
+
+          <!-- GPIO header (top) -->
+          <g class="part" data-p="gpio">
+            <rect class="body" x="60" y="22" width="420" height="42" rx="6" fill="#0a0a0a" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+            <g id="pins"></g>
+            <rect class="hot" x="52" y="14" width="436" height="58" rx="10" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- RAM -->
+          <g class="part" data-p="ram">
+            <rect class="body" x="220" y="160" width="120" height="86" rx="10" fill="url(#chip)" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
+            <rect x="236" y="176" width="88" height="54" rx="5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+            <text x="280" y="209" text-anchor="middle" font-family="ui-monospace,monospace" font-size="15" fill="rgba(255,255,255,.55)">16 GB</text>
+            <rect class="hot" x="212" y="152" width="136" height="102" rx="14" fill="url(#hotg)" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- SoC -->
+          <g class="part" data-p="soc">
+            <rect class="body" x="360" y="150" width="190" height="190" rx="14" fill="url(#metal)" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+            <rect x="378" y="168" width="154" height="154" rx="8" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="2"/>
+            <circle cx="455" cy="245" r="26" fill="#0b0b0b" opacity=".55"/>
+            <path d="M455 227l9 5.200v10.400L455 248l-9-5.200v-10.400z" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2"/>
+            <rect class="hot" x="350" y="140" width="210" height="210" rx="22" fill="url(#hotg)" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- RP1 -->
+          <g class="part" data-p="rp1">
+            <rect class="body" x="240" y="300" width="100" height="100" rx="10" fill="url(#chip)" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
+            <rect x="254" y="314" width="72" height="72" rx="5" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+            <rect class="hot" x="232" y="292" width="116" height="116" rx="14" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- PCIe (NVMe) connector -->
+          <g class="part" data-p="pcie">
+            <rect class="body" x="500" y="440" width="150" height="40" rx="6" fill="#0a0a0a" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
+            <rect x="514" y="452" width="122" height="16" rx="3" fill="rgba(255,255,255,.12)"/>
+            <rect class="hot" x="492" y="432" width="166" height="56" rx="10" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- microSD (underside slot, left) -->
+          <g class="part" data-p="sd">
+            <rect class="body" x="22" y="230" width="70" height="104" rx="8" fill="url(#metal)" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+            <rect x="38" y="246" width="38" height="72" rx="4" fill="#0a0a0a" opacity=".5"/>
+            <rect class="hot" x="14" y="222" width="86" height="120" rx="14" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- Ethernet -->
+          <g class="part" data-p="eth">
+            <rect class="body" x="660" y="40" width="170" height="150" rx="10" fill="url(#metal)" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+            <rect x="684" y="68" width="122" height="94" rx="6" fill="#0a0a0a" opacity=".7"/>
+            <g fill="rgba(255,255,255,.4)"><rect x="696" y="80" width="6" height="14"/><rect x="710" y="80" width="6" height="14"/><rect x="724" y="80" width="6" height="14"/><rect x="738" y="80" width="6" height="14"/><rect x="752" y="80" width="6" height="14"/><rect x="766" y="80" width="6" height="14"/><rect x="780" y="80" width="6" height="14"/></g>
+            <rect class="hot" x="652" y="32" width="186" height="166" rx="16" fill="url(#hotg)" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- USB stacks -->
+          <g class="part" data-p="usb">
+            <rect class="body" x="660" y="220" width="170" height="130" rx="10" fill="url(#metal)" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+            <rect x="680" y="238" width="130" height="38" rx="4" fill="#0a0a0a" opacity=".7"/><rect x="680" y="294" width="130" height="38" rx="4" fill="#0a0a0a" opacity=".7"/>
+            <rect x="692" y="250" width="106" height="12" fill="rgba(255,255,255,.3)"/><rect x="692" y="306" width="106" height="12" fill="rgba(255,255,255,.3)"/>
+            <rect class="hot" x="652" y="212" width="186" height="146" rx="16" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+          <g class="part" data-p="usb">
+            <rect class="body" x="660" y="372" width="170" height="130" rx="10" fill="url(#metal)" stroke="rgba(255,255,255,.3)" stroke-width="2"/>
+            <rect x="680" y="390" width="130" height="38" rx="4" fill="#0a0a0a" opacity=".7"/><rect x="680" y="446" width="130" height="38" rx="4" fill="#0a0a0a" opacity=".7"/>
+            <rect x="692" y="402" width="106" height="12" fill="rgba(255,106,26,.55)"/><rect x="692" y="458" width="106" height="12" fill="rgba(255,106,26,.55)"/>
+            <rect class="hot" x="652" y="364" width="186" height="146" rx="16" fill="none" stroke="#FF6A1A" stroke-width="2.5"/>
+          </g>
+
+          <!-- power + HDMI (bottom edge) -->
+          <g fill="url(#metal)" stroke="rgba(255,255,255,.25)" stroke-width="2">
+            <rect x="130" y="490" width="70" height="60" rx="6"/><rect x="236" y="496" width="84" height="54" rx="6"/><rect x="346" y="496" width="84" height="54" rx="6"/>
+          </g>
+          <g fill="#0a0a0a" opacity=".7"><rect x="142" y="504" width="46" height="34" rx="3"/><rect x="248" y="508" width="60" height="30" rx="3"/><rect x="358" y="508" width="60" height="30" rx="3"/></g>
+        </svg>
+      </div>
+
+      <div class="chapters">
+        <article class="chap on" data-focus="soc,ram,rp1">
+          <div class="no mono">01 / THE BOARD</div>
+          <h3 class="grad">A credit-card-sized computer.</h3>
+          <p>A Raspberry Pi 5 is the machine ANGI is made for. No workstation, no rack, no cloud account. One affordable board, a power cable, and a network cable.</p>
+        </article>
+        <article class="chap" data-focus="soc,ram">
+          <div class="no mono">02 / THE SYSTEM</div>
+          <h3 class="grad">The entire OS barely registers.</h3>
+          <p>ANGI is about 93 MB of files, boots to SSH in about 2.5 seconds, and idles at roughly 120 MB of the Pi's 16 GB. Almost everything is left over for the work.</p>
+          <div class="fig"><b class="gradO">~120 MB</b>idle RAM on a 16 GB board</div>
+        </article>
+        <article class="chap" data-focus="pcie,soc">
+          <div class="no mono">03 / THE SWARM</div>
+          <h3 class="grad">The agents work on the board itself.</h3>
+          <p>An orchestrator, a builder and a tester compile natively on the Pi, with source, tools and caches on NVMe. The machine that runs the system is the machine that builds it.</p>
+        </article>
+        <article class="chap" data-focus="eth,usb,gpio">
+          <div class="no mono">04 / THE OUTPUT</div>
+          <h3 class="grad">Enterprise-grade software, shipped from one Pi.</h3>
+          <p>Everything the swarm produces leaves over the network, scriptable and verifiable. That is the claim ANGI exists to prove: serious software does not need serious hardware.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="sep">
+
+<section>
+  <div class="wrap split">
+    <div class="reveal">
+      <div class="eyebrow">Independent</div>
+      <h2><span class="grad">No distribution underneath.</span></h2>
+      <p class="lead">ANGI is assembled from source. It runs the Linux kernel and a few small, well-known components, then owns everything above them, which is where agents do their work.</p>
+      <ul class="checks">
+        <li><svg class="i"><use href="#i-check"/></svg><span><b>Linux kernel</b> trimmed for the Pi 5, with the Pi's own firmware bootloader.</span></li>
+        <li><svg class="i"><use href="#i-check"/></svg><span><b>Tiny, proven parts</b>: BusyBox, Dropbear, wpa_supplicant, Mesa.</span></li>
+        <li><svg class="i"><use href="#i-check"/></svg><span><b>Everything else is ANGI</b>, in Rust, readable by an agent.</span></li>
+      </ul>
+    </div>
+    <div class="versus reveal">
+      <div class="row"><div>&nbsp;</div><div>Typical distro</div><div>ANGI</div></div>
+      <div class="row"><div>Base</div><div>Inherited</div><div>Built from source</div></div>
+      <div class="row"><div>Packages</div><div>Thousands</div><div>Only what's needed</div></div>
+      <div class="row"><div>Release cycle</div><div>Someone else's</div><div>Yours</div></div>
+      <div class="row"><div>Control plane</div><div>Scripts &amp; daemons</div><div>One Rust workspace</div></div>
+      <div class="row"><div>Interface</div><div>Made for people</div><div>Plain text &amp; JSON</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="swarm" style="padding-top:40px">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">Swarm generated</div>
+      <h2><span class="grad">Written by agents, for agents.</span></h2>
+      <p class="lead">Run <span class="mono or">agent angi</span>, describe what to build, and three agents take it from there. They build ANGI itself, too.</p>
+    </div>
+    <div class="swarm reveal">
+      <div class="agents">
+        <div class="agent"><div class="ico"><svg class="i"><use href="#i-compass"/></svg></div><h4>Orchestrator</h4><p>Breaks the goal into tasks and directs the others.</p></div>
+        <div class="agent mid"><div class="ico"><svg class="i"><use href="#i-hammer"/></svg></div><h4>Builder</h4><p>Writes and compiles code natively on the Pi, with source and caches on NVMe.</p></div>
+        <div class="agent"><div class="ico"><svg class="i"><use href="#i-shield"/></svg></div><h4>Tester</h4><p>Verifies every result before it counts as done.</p></div>
+      </div>
+      <div class="loop"><span class="or">describe</span><span>plan</span><span>build</span><span>test</span><span>flash</span><span class="or">verify on hardware</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="prompt" style="padding-bottom:40px">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">The whole install</div>
+      <h2><span class="grad">Your coding agent<br>is the installer.</span></h2>
+      <p class="lead">Paste one prompt. It fetches ANGI from GitHub, builds the image with your SSH key, flashes the card and brings the Pi up over USB-C. You move one card.</p>
+    </div>
+
+    <div class="flowrow reveal" aria-hidden="true">
+      <div><svg class="i"><use href="#i-gh"/></svg><span>GitHub</span></div><i></i>
+      <div><svg class="i"><use href="#i-hammer"/></svg><span>Build</span></div><i></i>
+      <div><svg class="i"><use href="#i-layout"/></svg><span>Flash</span></div><i></i>
+      <div><svg class="i"><use href="#i-unlink"/></svg><span>USB-C</span></div><i></i>
+      <div class="hot"><svg class="i"><use href="#i-check"/></svg><span>Running</span></div>
+    </div>
+
+    <div class="pcard reveal" id="pcard">
+      <div class="pbar"><span><i></i><i></i><i></i></span><b class="mono">install-angi.prompt</b><button class="cp" data-target="p1">Copy prompt</button></div>
+      <pre class="mono" id="p1">Install ANGI OS on my Raspberry Pi 5 over USB-C. Do the whole install from this one prompt.
+
+Setup
+- The Pi is connected to this computer with a USB-A to USB-C data cable.
+- The microSD card to erase and flash is in this computer&#x27;s card reader.
+- Source: https://github.com/danaia/ANGI.git
+
+Rules
+- Do the terminal work yourself and keep explanations short.
+- Ask me only for what you cannot determine: passwords, approvals, or a physical action.
+- Never write to a system disk or any drive I have not approved. Show me the card you identified and recheck it right before writing.
+
+Steps
+1. Inspect this computer: OS, disk space, memory, network manager and attached storage. Use the tested Arch Linux + NetworkManager workflow. If mine differs, tell me what is needed before changing anything.
+2. Clone the repository from GitHub, or reuse an existing checkout without overwriting local changes. Read README.md and docs/phase1.md and follow them.
+3. Reuse or create an Ed25519 SSH key without overwriting any existing key. Pass its public key as SSH_PUBLIC_KEY to every build command.
+4. Install the build tools, then run make configure, make dependencies, make build and make check-image. Continue only when output/images/sdcard.img passes validation.
+5. Create or reuse the agx-direct NetworkManager profile for the USB-C Ethernet link: MAC 02:77:00:00:00:01, 10.77.0.1/24 on this computer, no gateway, IPv6 off. Leave my internet connection untouched. The Pi will be 10.77.0.2.
+6. Flash sdcard.img to the card I approved, verify the written bytes against the image, then eject it. I authorize erasing that card once you have shown it to me.
+7. Ask me to move the card into the Pi and reconnect the cable. Wait for my go-ahead.
+8. Connect as root@10.77.0.2, check the board identity and run agx status --json.
+9. Open agx tui and explain its keys. Then offer to set up the Pi&#x27;s Wi-Fi from the Network tab so the Pi can reach the web. The cable carries the install and live updates; Wi-Fi carries the internet.
+
+Report what you verified and anything still unresolved.</pre>
+      <div class="pfade"><button class="more" id="more">Show the full prompt</button></div>
+    </div>
+
+    <div class="vs reveal">
+      <div class="vs-a"><span class="tag">A typical board setup</span>
+        <ul><li>Find and download an OS image</li><li>Open an imaging tool and pick options</li><li>Set hostname, user, Wi-Fi and SSH before first boot</li><li>Find the board's IP address</li><li>SSH in and configure it by hand</li></ul></div>
+      <div class="vs-b"><span class="tag">ANGI</span>
+        <p class="grad">Paste one prompt.</p>
+        <small>No ISO. No installer. No wizard. The only physical step is moving the card.</small></div>
+    </div>
+  </div>
+</section>
+
+<section id="start" style="padding-top:60px">
+  <div class="wrap">
+    <div class="head reveal center">
+      <div class="eyebrow">Get started</div>
+      <h2><span class="grad">One cable between two computers.<br>Then everything is live.</span></h2>
+      <p class="lead">A direct Ethernet link between your computer and the Pi carries the install and every live update. The Pi reaches the web over Wi-Fi. Scroll to follow the whole path.</p>
+      <div class="chips"><span>One prompt</span><span>USB-C Ethernet</span><span>Wi-Fi for the web</span><span>No ISO</span><span class="o">Live reload</span></div>
+    </div>
+
+    <div class="story gs">
+      <div class="board-wrap">
+        <div class="board-glow"></div>
+        <svg class="info" id="info" viewBox="0 50 760 530" role="img" aria-label="Infographic: a computer linked to a Raspberry Pi by a direct Ethernet cable, with the Pi reaching the web over Wi-Fi" data-stage="0">
+          <!-- computer -->
+          <g>
+            <rect x="30" y="120" width="230" height="150" rx="12" fill="#0b0b0b" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
+            <rect x="10" y="276" width="270" height="12" rx="6" fill="url(#metal)" opacity=".8"/>
+            <text x="150" y="312" text-anchor="middle" font-size="12" letter-spacing="2.4" fill="rgba(255,255,255,.4)" font-family="ui-monospace,monospace">YOUR COMPUTER</text>
+            <g font-family="ui-monospace,monospace" font-size="12.5" fill="rgba(255,255,255,.6)">
+              <g class="st" data-s="0"><text x="48" y="156">$ ls</text><text x="48" y="180" fill="rgba(255,255,255,.35)">waiting for the cable…</text></g>
+              <g class="st" data-s="1"><text x="48" y="156" fill="#fff">$ claude</text><text x="48" y="180">Set up ANGI OS on my</text><text x="48" y="198">Raspberry Pi 5 for me.</text><text x="48" y="226" fill="#FF8A3D">▍</text></g>
+              <g class="st" data-s="2"><text x="48" y="156" fill="#fff">$ make build</text><text x="48" y="180">writing sdcard.img</text><text x="48" y="198">verifying bytes</text><text x="48" y="226" fill="#FF8A3D">✓ card ready</text></g>
+              <g class="st" data-s="3"><text x="48" y="156" fill="#fff">$ ssh root@10.77.0.2</text><text x="48" y="180">agx status --json</text><text x="48" y="226" fill="#FF8A3D">✓ connected</text></g>
+              <g class="st" data-s="4"><text x="48" y="156" fill="#fff">$ make deploy-gui</text><text x="48" y="180">installing release…</text><text x="48" y="198">refreshing desktop</text><text x="48" y="226" fill="#FF8A3D">✓ live</text></g>
+            </g>
+          </g>
+
+          <!-- cables -->
+          <g stroke-linecap="round" fill="none">
+            <path d="M262 175H488" stroke="rgba(255,255,255,.14)" stroke-width="8"/>
+            <path d="M262 235H488" stroke="rgba(255,255,255,.14)" stroke-width="8"/>
+            <path class="flow f1" d="M262 175H488" stroke="url(#og)" stroke-width="3" stroke-dasharray="2 16"/>
+            <path class="flow f2" d="M262 235H488" stroke="rgba(255,255,255,.75)" stroke-width="3" stroke-dasharray="2 16"/>
+          </g>
+          <g font-family="ui-monospace,monospace" font-size="11" letter-spacing="1">
+            <text x="375" y="158" text-anchor="middle" fill="#FF8A3D">USB-C ETHERNET · 10.77.0.2</text>
+            <text x="375" y="268" text-anchor="middle" fill="rgba(255,255,255,.6)">RJ45 ETHERNET · 10.78.0.2</text>
+          </g>
+
+          <!-- microSD travelling (stage 2) -->
+          <g class="st" data-s="2">
+            <g class="card">
+              <rect x="282" y="196" width="34" height="28" rx="4" fill="url(#metal)"/><path d="M312 196v8" stroke="#000" opacity=".35"/>
+              <rect x="289" y="203" width="20" height="3" fill="#FF6A1A"/>
+            </g>
+            <text x="375" y="322" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12.5" fill="#fff" letter-spacing="1.2">sdcard.img — a raw image</text>
+            <text x="375" y="344" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12.5" fill="#FF8A3D" letter-spacing="1.2">no ISO · no installer</text>
+          </g>
+
+          <!-- Pi -->
+          <g>
+            <rect x="490" y="120" width="250" height="160" rx="18" fill="url(#pcb)" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
+            <rect x="590" y="154" width="74" height="74" rx="10" fill="url(#metal)"/>
+            <use href="#bug" x="606" y="168" width="42" height="40" opacity=".85"/>
+            <rect x="494" y="166" width="22" height="52" rx="4" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.2)"/>
+            <rect x="700" y="140" width="36" height="42" rx="5" fill="url(#metal)" opacity=".8"/><rect x="700" y="196" width="36" height="42" rx="5" fill="url(#metal)" opacity=".8"/>
+            <text x="615" y="312" text-anchor="middle" font-size="12" letter-spacing="2.4" fill="rgba(255,255,255,.4)" font-family="ui-monospace,monospace">RASPBERRY PI 5</text>
+            <rect class="st" data-s="3,4" x="486" y="116" width="258" height="168" rx="22" fill="none" stroke="#FF6A1A" stroke-width="2" opacity=".8"/>
+          </g>
+
+          <!-- Wi-Fi to the web (stages 3,4) -->
+          <g class="st" data-s="3,4" fill="none" stroke="#FF8A3D" stroke-width="2.2" stroke-linecap="round">
+            <path d="M591 96a34 34 0 0 1 48 0"/><path d="M599 106a22 22 0 0 1 32 0"/><circle cx="615" cy="117" r="2.6" fill="#FF8A3D" stroke="none"/>
+            <text x="665" y="106" stroke="none" fill="#FF8A3D" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1">WI-FI · THE WEB</text>
+          </g>
+
+          <!-- ANGI screen (stage 3,4) -->
+          <g class="st" data-s="3,4">
+            <rect x="490" y="338" width="250" height="150" rx="14" fill="#0b0b0b" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
+            <rect x="504" y="352" width="104" height="122" rx="8" fill="rgba(255,255,255,.06)"/>
+            <rect x="618" y="352" width="108" height="56" rx="8" fill="rgba(255,255,255,.06)"/>
+            <rect class="live" x="618" y="418" width="108" height="56" rx="8" fill="rgba(255,255,255,.06)"/>
+            <g fill="rgba(255,255,255,.3)"><rect x="516" y="368" width="60" height="6" rx="3"/><rect x="516" y="384" width="80" height="6" rx="3"/><rect x="516" y="400" width="44" height="6" rx="3"/><rect x="630" y="368" width="64" height="6" rx="3"/><rect x="630" y="434" width="70" height="6" rx="3"/></g>
+          </g>
+          <g class="st" data-s="4">
+            <text x="615" y="512" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12.5" fill="#FF8A3D" letter-spacing="1.2">same process · no reboot</text>
+            <g font-family="ui-monospace,monospace" font-size="12.5" letter-spacing="1.2">
+              <text x="40" y="402" fill="#fff">edit</text><text x="86" y="402" fill="rgba(255,255,255,.4)">→</text><text x="108" y="402" fill="#fff">deploy</text><text x="176" y="402" fill="rgba(255,255,255,.4)">→</text><text x="198" y="402" fill="#FF8A3D">live</text>
+            </g>
+            <g transform="translate(40 428)"><path d="M12 0 0 5v10c0 8 5 13 12 15 7-2 12-7 12-15V5z" fill="none" stroke="#FF8A3D" stroke-width="1.8"/><path d="m7 15 4 4 7-8" fill="none" stroke="#FF8A3D" stroke-width="1.8"/></g>
+            <text x="76" y="441" font-family="ui-monospace,monospace" font-size="12" fill="rgba(255,255,255,.65)">auto-rollback if it fails</text>
+          </g>
+
+          <!-- stage bar -->
+          <g id="bar" transform="translate(40 556)"></g>
+        </svg>
+      </div>
+
+      <div class="chapters">
+        <article class="chap on" data-stage="0">
+          <div class="no mono">01 / PLUG IN</div>
+          <h3 class="grad">A cable is the whole install.</h3>
+          <p>A Raspberry Pi 5, a USB-C data cable, and a microSD card. The cable is a direct Ethernet link between two computers. It carries the install and every live update, with no router and no monitor.</p>
+        </article>
+        <article class="chap" data-stage="1">
+          <div class="no mono">02 / ONE PROMPT</div>
+          <h3 class="grad">Paste one prompt into your coding agent.</h3>
+          <p>It fetches ANGI from GitHub, installs the build tools, builds the image with your SSH key and asks only for what it cannot decide itself.</p>
+        </article>
+        <article class="chap" data-stage="2">
+          <div class="no mono">03 / ONE IMAGE</div>
+          <h3 class="grad">No ISO. No installer. No wizard.</h3>
+          <p>The agent writes a single raw image to the microSD card and verifies every byte. Move the card to the Pi. That is the only physical step in the whole process.</p>
+        </article>
+        <article class="chap" data-stage="3">
+          <div class="no mono">04 / CONNECT</div>
+          <h3 class="grad">The cable becomes the network.</h3>
+          <p>The Pi appears on your computer as an Ethernet device over USB-C. That link carries the install and live updates. The Pi reaches the web over Wi-Fi, which you set up from its dashboard.</p>
+          <div class="fig"><b class="gradO mono">ssh root@10.77.0.2</b>Ethernet over the USB-C cable</div>
+        </article>
+        <article class="chap" data-stage="4">
+          <div class="no mono">05 / EXTEND, LIVE</div>
+          <h3 class="grad">Change the OS while it runs.</h3>
+          <p>Build and install new software through the same Ethernet link. A deploy loads the new release into the running desktop. It keeps the same process and needs no reboot, and a watchdog restores the previous release if the new one does not stay up.</p>
+          <div class="fig"><b class="gradO mono">make deploy-gui</b>no reflash, no reboot</div>
+        </article>
+      </div>
+    </div>
+
+    <div class="cta-card reveal">
+      <div>
+        <h3 class="grad">Every step, from box to booted.</h3>
+        <p>The prompt, the Ethernet settings for USB-C and RJ45, the Wi-Fi step, and what to do when something fails.</p>
+      </div>
+      <a class="btn primary" href="get-started.html">See every step <svg class="i"><use href="#i-arrow"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap reveal">
+    <h2><span class="grad">Build the thing<br>that builds the thing.</span></h2>
+    <p class="lead">ANGI is open and in early development. Read the code, flash a card, join in.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/danaia/ANGI"><svg class="i"><use href="#i-gh"/></svg> View on GitHub</a>
+      <a class="btn ghost" href="get-started.html">Read the setup guide</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <svg class="mark"><use href="#mark"/></svg>
+    <span>Pronounced “AN-jee”. Early development; figures are development measurements, not release benchmarks.</span>
+  </div>
+</footer>
+
+<script>
+  // GPIO pins
+  (function(){
+    const g=document.getElementById('pins'); let s='';
+    for(let i=0;i<20;i++){ const x=78+i*20; s+=`<rect x="${x}" y="30" width="9" height="9" rx="1.5" fill="rgba(255,255,255,.5)"/><rect x="${x}" y="47" width="9" height="9" rx="1.5" fill="rgba(255,255,255,.5)"/>`; }
+    g.innerHTML=s;
+  })();
+
+  // nav background on scroll
+  const nav=document.getElementById('nav');
+  const onS=()=>nav.classList.toggle('s',scrollY>20); onS(); addEventListener('scroll',onS,{passive:true});
+
+  // reveals
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.12});
+  document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%3)*80+'ms';io.observe(el);});
+
+  // card glow
+  document.querySelectorAll('.card').forEach(c=>c.addEventListener('pointermove',e=>{
+    const r=c.getBoundingClientRect(); c.style.setProperty('--x',(e.clientX-r.left)+'px'); c.style.setProperty('--y',(e.clientY-r.top)+'px');
+  }));
+
+
+  // prompt card
+  document.querySelectorAll('.cp').forEach(b=>b.addEventListener('click',async()=>{
+    const t=document.getElementById(b.dataset.target).textContent; const o=b.textContent;
+    try{await navigator.clipboard.writeText(t);b.textContent='Copied';}catch(e){b.textContent='Select + copy';}
+    setTimeout(()=>b.textContent=o,1800);
+  }));
+  const more=document.getElementById('more'),pc=document.getElementById('pcard');
+  more&&more.addEventListener('click',()=>{const o=pc.classList.toggle('open');more.textContent=o?'Collapse':'Show the full prompt';});
+
+  // Scroll stories: the chapter nearest the viewport centre drives its illustration
+  const stories=[...document.querySelectorAll('.story')].map(s=>({s,chaps:[...s.querySelectorAll('.chap')],board:s.querySelector('#board'),info:s.querySelector('#info')}));
+  const bar=document.getElementById('bar');
+  if(bar){let t='';for(let i=0;i<5;i++)t+=`<rect class="bardot" data-i="${i}" x="${i*150}" y="0" width="140" height="4" rx="2" fill="rgba(255,255,255,.14)"/>`;bar.innerHTML=t;}
+  function focus(){
+    const mid=innerHeight*0.5;
+    stories.forEach(st=>{
+      let best=st.chaps[0],bd=1e9;
+      st.chaps.forEach(c=>{const r=c.getBoundingClientRect();const d=Math.abs((r.top+r.bottom)/2-mid);if(d<bd){bd=d;best=c;}});
+      st.chaps.forEach(c=>c.classList.toggle('on',c===best));
+      if(st.board){const want=best.dataset.focus.split(',');st.board.querySelectorAll('.part').forEach(p=>p.classList.toggle('on',want.includes(p.dataset.p)));}
+      if(st.info){const n=+best.dataset.stage;st.info.dataset.stage=n;
+        st.info.querySelectorAll('.st').forEach(g=>g.classList.toggle('on',g.dataset.s.split(',').includes(String(n))));
+        st.info.querySelectorAll('.bardot').forEach(d=>d.setAttribute('fill',+d.dataset.i<=n?'#FF6A1A':'rgba(255,255,255,.14)'));}
+    });
+  }
+  focus(); addEventListener('scroll',focus,{passive:true}); addEventListener('resize',focus);
+</script>
+</body>
+</html>

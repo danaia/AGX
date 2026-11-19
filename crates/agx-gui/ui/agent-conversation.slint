@@ -5,7 +5,6 @@ import { AgentHistory } from "agent-history.slint";
 import { AgentProviders } from "agent-providers.slint";
 import { AgentScope, ModeSwitch, ScopeTip } from "agent-scope.slint";
 import { HoverDwell, HoverTip } from "hover-tip.slint";
-import { AgentWork, WorkSummary } from "agent-work-summary.slint";
 
 struct AgentSuggestion { label: string, detail: string, prompt: string }
 component AgentWelcome inherits Flickable {
@@ -197,7 +196,6 @@ export component AgentWorkspace inherits Rectangle {
         scope := ModeSwitch {
             x: parent.width < 500px ? 52px : parent.width < 600px ? 64px : (parent.width - self.width) / 2;
             y: 14px; height: 34px;
-            selected => { AgentWork.open = false; }
             width: parent.width < 370px ? clamp(parent.width - 192px, 96px, 126px) : parent.width < 600px ? 165px : 236px;
         }
         HorizontalLayout {
@@ -240,21 +238,20 @@ export component AgentWorkspace inherits Rectangle {
             spacing: 8px;
             Rectangle {
                 vertical-stretch: 1; min-height: 0px;
-                if AgentWork.open: WorkSummary { width: parent.width; height: parent.height; }
-                if !AgentWork.open && !root.has-transcript: AgentWelcome {
+                if !root.has-transcript: AgentWelcome {
                     width: parent.width; height: parent.height;
                     suggest(prompt) => { root.suggest(prompt); }
                 }
-                if !AgentWork.open && root.has-transcript: ChatMessages { width: parent.width; height: parent.height; }
+                if root.has-transcript: ChatMessages { width: parent.width; height: parent.height; }
             }
-            if !AgentWork.open && root.chatting: AgentComposer {
+            if root.chatting: AgentComposer {
                 draft <=> AgentChat.draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
             }
-            if !AgentWork.open && AgentScope.mode == "os": AgentComposer {
+            if AgentScope.mode == "os": AgentComposer {
                 draft <=> AgentScope.os-draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
                 build(prompt) => { root.build(prompt); }
             }
-            if !AgentWork.open && AgentScope.mode == "project": AgentComposer {
+            if AgentScope.mode == "project": AgentComposer {
                 draft <=> AgentScope.project-draft; active: root.active; focus-request: root.composer-focus; vertical-stretch: 0;
                 build(prompt) => { root.build(prompt); }
             }

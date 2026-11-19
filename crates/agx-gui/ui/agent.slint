@@ -6,6 +6,8 @@ import { AgentScope } from "agent-scope.slint";
 import { AgentChat, ChatMessage } from "agent-chat.slint";
 import { AgentHistory, HistoryEntry, HistoryPanel } from "agent-history.slint";
 import { AgentWorkspace } from "agent-conversation.slint";
+import { AgentWork } from "agent-work-summary.slint";
+import { AgentWorkView } from "agent-work-view.slint";
 export { AgentProviders, CardModels, AgentScope, AgentChat, ChatMessage, AgentHistory, HistoryEntry }
 
 export global AgentAngi {
@@ -74,27 +76,35 @@ export component AgentPanel inherits Rectangle {
     }
     workspace := AgentWorkspace {
         width: root.width; height: root.height;
+        visible: !AgentWork.open;
         body-width: root.body-width;
         body-offset: root.body-offset;
         notice-height: AgentAngi.running-agents > 0 ? 66px : 0px;
-        active: root.active && !root.drawer-open;
+        active: root.active && !root.drawer-open && !AgentWork.open;
         build(prompt) => { AgentAngi.submit(prompt); }
     }
-    if AgentAngi.running-agents > 0: HerdrCta {
+    if !AgentWork.open && AgentAngi.running-agents > 0: HerdrCta {
         width: min(450px, max(0px, root.body-width - 24px));
         x: root.body-offset + root.body-width - self.width - 12px; y: workspace.header-height + 8px;
     }
-    if root.drawer-open && !root.docked-drawer: Rectangle {
+    if !AgentWork.open && root.drawer-open && !root.docked-drawer: Rectangle {
         y: workspace.header-height; height: root.height - self.y;
         width: root.width; background: Theme.bg-dark.with-alpha(0.68);
         TouchArea { clicked => { AgentProviders.open = false; AgentHistory.open = false; } }
     }
     if AgentHistory.open: HistoryPanel {
+        visible: !AgentWork.open;
         x: 0px; width: root.drawer-width;
         y: workspace.header-height; height: max(0px, root.height - self.y);
     }
-    if AgentProviders.open: ProviderPanel {
+    if !AgentWork.open && AgentProviders.open: ProviderPanel {
         x: root.width - root.drawer-width; width: root.drawer-width;
         y: workspace.header-height; height: max(0px, root.height - self.y);
+    }
+    if AgentWork.open: AgentWorkView {
+        width: root.width; height: root.height;
+        active: root.active;
+        activate => { AgentAngi.activate(); }
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
     }
 }

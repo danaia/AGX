@@ -136,6 +136,8 @@ def launch(state, brief, project=None):
     bottom = herdr(name, "pane", "split", right, "--direction", "down", "--cwd", str(workdir), "--env", f"AGX_SWARM_RUN={run}", "--env", "AGX_SWARM_ROLE=tester", "--no-focus")["pane"]["pane_id"]
     manifest = {"session": name, "panes": dict(zip(ROLES, (root, right, bottom))), "brief": brief, "mode": "os" if project is None else "project", "project": None if project is None else str(workdir)}
     (run / "run.json").write_text(json.dumps(manifest, indent=2))
+    from work_changes import begin
+    begin(run, workdir)
     temporary = state / f"current.{os.getpid()}.new"
     temporary.write_text(name)
     temporary.replace(state / "current")

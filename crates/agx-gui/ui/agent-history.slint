@@ -28,6 +28,7 @@ export component HistoryPanel inherits FocusScope {
     property <string> title-draft;
     forward-focus: close-button;
     init => { close-button.focus(); }
+    changed visible => { if (self.visible) { close-button.focus(); } }
     function dismiss-action() {
         root.action = "";
         close-button.focus();

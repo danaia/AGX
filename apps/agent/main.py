@@ -59,6 +59,10 @@ def main():
         except ValueError as error:
             print(json.dumps({"error": str(error)}))
         return
+    if args == ["work-editor"]:
+        from work_editor import serve
+        serve(Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm")
+        return
     if args[:1] == ["history"]:
         from history import request
         state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"

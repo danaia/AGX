@@ -1,5 +1,8 @@
 //! Load conversation history from the agent runtime and restore the selected workspace.
-use crate::{AgentChat, AgentHistory, AgentScope, AgentWork, App, AppWindow, HistoryEntry, WorkRecord, WorkResource, agent_chat, files};
+use crate::{
+    AgentChat, AgentHistory, AgentScope, AgentWork, App, AppWindow, HistoryEntry, WorkRecord,
+    WorkResource, agent_chat, files, work_editor::WorkEditor,
+};
 use serde_json::Value;
 use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
 use std::{cell::RefCell, process::Command, rc::Rc, sync::mpsc, time::Duration};
@@ -19,10 +22,10 @@ fn request(args: &[String]) -> Result<Value, String> {
 }
 
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
-    let (weak, app) = (ui.as_weak(), app.clone());
+    let (weak, folder_app) = (ui.as_weak(), app.clone());
     ui.global::<AgentWork>().on_open_folder(move |path| {
         if let Some(ui) = weak.upgrade() {
-            files::open_folder(&ui, &app, &path);
+            files::open_folder(&ui, &folder_app, &path);
         }
     });
     let (requests, worker) = mpsc::channel::<Vec<String>>();
@@ -55,9 +58,12 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     history.on_rename(move |id, title| rename(vec!["rename".into(), id.into(), title.into()]));
     history.on_remove(move |id| enqueue(vec!["remove".into(), id.into()]));
 
-    let (weak, timer) = (ui.as_weak(), Timer::default());
-    timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
-        let Some(ui) = weak.upgrade() else { return; };
+    let (weak, timer, app) = (ui.as_weak(), Timer::default(), app.clone());
+    let editor = WorkEditor::install(ui, &app);
+    timer.start(TimerMode::Repeated, Duration::from_millis(33), move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
         let history = ui.global::<AgentHistory>();
         while let Ok((opening, result)) = updates.try_recv() {
             history.set_loading(false);
@@ -67,22 +73,31 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                         .as_array()
                         .into_iter()
                         .flatten()
-                        .filter_map(|entry| Some(HistoryEntry {
-                            id: entry["id"].as_str()?.into(),
-                            mode: entry["mode"].as_str()?.into(),
-                            title: entry["title"].as_str()?.into(),
-                        }))
+                        .filter_map(|entry| {
+                            Some(HistoryEntry {
+                                id: entry["id"].as_str()?.into(),
+                                mode: entry["mode"].as_str()?.into(),
+                                title: entry["title"].as_str()?.into(),
+                            })
+                        })
                         .collect();
                     history.set_entries(ModelRc::new(VecModel::from(entries)));
                 }
                 Ok(answer) if history.get_open() => {
                     restore(&ui, &answer);
-                    history.set_open(false);
+                    if matches!(answer["mode"].as_str(), Some("os" | "project"))
+                        && let Some(id) = answer["id"].as_str()
+                    {
+                        editor.borrow_mut().select(&ui, id);
+                    } else {
+                        history.set_open(false);
+                    }
                 }
                 Err(error) => history.set_error(error.into()),
                 _ => {}
             }
         }
+        editor.borrow_mut().poll(&ui, &app);
     });
     timer
 }
@@ -98,7 +113,13 @@ fn restore(ui: &AppWindow, answer: &Value) {
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter_map(|row| Some(agent_chat::bubble(row["mine"].as_bool()?, false, row["text"].as_str()?)))
+                .filter_map(|row| {
+                    Some(agent_chat::bubble(
+                        row["mine"].as_bool()?,
+                        false,
+                        row["text"].as_str()?,
+                    ))
+                })
                 .collect();
             agent_chat::set_messages(&chat, messages);
             chat.set_session_id(field("id").into());
@@ -107,13 +128,16 @@ fn restore(ui: &AppWindow, answer: &Value) {
             scope.set_mode("chat".into());
         }
         "os" | "project" => {
-            let resources: Vec<WorkResource> = answer["resources"].as_array()
+            let resources: Vec<WorkResource> = answer["resources"]
+                .as_array()
                 .into_iter()
                 .flatten()
-                .filter_map(|row| Some(WorkResource {
-                    label: row["label"].as_str()?.into(),
-                    path: row["path"].as_str()?.into(),
-                }))
+                .filter_map(|row| {
+                    Some(WorkResource {
+                        label: row["label"].as_str()?.into(),
+                        path: row["path"].as_str()?.into(),
+                    })
+                })
                 .collect();
             let work = ui.global::<AgentWork>();
             work.set_record(WorkRecord {
@@ -124,7 +148,6 @@ fn restore(ui: &AppWindow, answer: &Value) {
                 summary_label: field("summary_label").into(),
                 resources: ModelRc::new(VecModel::from(resources)),
             });
-            scope.set_mode(field("mode").into());
             work.set_open(true);
         }
         _ => {}

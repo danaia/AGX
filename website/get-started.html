@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get started — ANGI</title>
+<meta name="description" content="Every step of the one-prompt ANGI install on a Raspberry Pi 5, over a USB-C Ethernet link, to a live, extensible system.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="site.css">
+<style>
+  .page-hero{position:relative;padding:150px 0 60px;text-align:center;overflow:hidden}
+  .page-hero::before{content:"";position:absolute;left:50%;top:-260px;width:1000px;height:760px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,106,26,.26),rgba(255,106,26,.06) 60%,transparent)}
+  .page-hero .wrap{position:relative}
+  .page-hero .bug{width:84px;margin-bottom:34px}
+  .page-hero h1{font-size:clamp(36px,5.4vw,64px)}
+  .time{display:inline-flex;gap:10px;margin-top:30px;flex-wrap:wrap;justify-content:center}
+  .time span{padding:8px 16px;border-radius:999px;font-size:13px;color:var(--w2);background:rgba(255,255,255,.05);box-shadow:0 0 0 1px rgba(255,255,255,.07) inset}
+
+  .tl{position:relative;max-width:860px;margin:0 auto;padding:30px 0 20px}
+  .tl::before{content:"";position:absolute;left:23px;top:40px;bottom:40px;width:2px;background:linear-gradient(180deg,rgba(255,106,26,.9),rgba(255,106,26,.25) 45%,rgba(255,255,255,.08))}
+  .gstep{position:relative;padding:0 0 64px 76px}
+  .gstep .num{position:absolute;left:0;top:0;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font:600 15px ui-monospace,monospace;color:#120700;background:linear-gradient(180deg,var(--o0),var(--o2));box-shadow:0 0 0 6px var(--k1),0 0 40px rgba(255,106,26,.4)}
+  .gstep h2{font-size:clamp(26px,3.4vw,36px);margin-bottom:12px}
+  .gstep>p{color:var(--w2);font-size:17px;max-width:640px;margin-bottom:20px}
+  .gstep ul.l{list-style:none;display:grid;gap:12px;margin:18px 0}
+  .gstep ul.l li{display:flex;gap:12px;color:var(--w2)}
+  .gstep ul.l li svg{color:var(--o1);margin-top:3px}
+  .gstep ul.l b{color:var(--w0);font-weight:600}
+  .box{padding:24px 26px;border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.012));box-shadow:0 0 0 1px rgba(255,255,255,.07) inset;margin:18px 0}
+  .box h4{font-size:15px;margin-bottom:6px}
+  .box p{color:var(--w2);font-size:15px}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.three .box{margin:0}
+  .tag{display:inline-block;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--o1);margin-bottom:10px;font-weight:600}
+  .code{position:relative;margin:16px 0;border-radius:16px;background:rgba(255,255,255,.035);box-shadow:0 0 0 1px rgba(255,255,255,.07) inset;overflow:hidden}
+  .code pre{padding:20px 22px;font-size:13px;line-height:1.75;color:var(--w1);overflow-x:auto;white-space:pre;font-family:ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace}
+  .code.long pre{max-height:420px;overflow:auto;white-space:pre-wrap}
+  .code .cp{position:absolute;top:12px;right:12px;padding:6px 14px;border-radius:999px;border:0;background:rgba(255,255,255,.08);color:var(--w1);font:600 12px Inter,system-ui,sans-serif;cursor:pointer;transition:.2s}
+  .code .cp:hover{background:rgba(255,106,26,.25);color:#fff}
+  .code .cap{display:block;padding:12px 22px 0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--w3)}
+  .keys{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  kbd{font:600 12.5px ui-monospace,monospace;padding:5px 11px;border-radius:8px;background:rgba(255,255,255,.07);box-shadow:0 0 0 1px rgba(255,255,255,.1) inset;color:var(--w0)}
+  .keys span{color:var(--w2);font-size:14px;align-self:center;margin-right:10px}
+  .after{display:flex;align-items:center;gap:6px;color:var(--w3);font-size:13px;margin-top:6px}
+  .stuck{max-width:860px;margin:0 auto}
+  .stuck .box{margin:12px 0}
+  .stuck b{color:var(--w0)}
+  @media (max-width:900px){.three{grid-template-columns:1fr}}
+  @media (max-width:700px){.gstep{padding-left:64px}.tl::before{left:19px}.gstep .num{width:40px;height:40px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9a9a9a"/></linearGradient>
+    <linearGradient id="bugg" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#d9d9d9"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient>
+    <linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#D9500B"/></linearGradient>
+    <linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2a"/><stop offset=".5" stop-color="#171717"/><stop offset="1" stop-color="#0e0e0e"/></linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8e8e8"/><stop offset=".5" stop-color="#8c8c8c"/><stop offset="1" stop-color="#3a3a3a"/></linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#141414"/></linearGradient>
+    <radialGradient id="hotg"><stop offset="0" stop-color="#FF6A1A" stop-opacity=".55"/><stop offset="1" stop-color="#FF6A1A" stop-opacity="0"/></radialGradient>
+  </defs>
+
+  <!-- brand-bug.svg -->
+  <symbol id="bug" viewBox="0 0 231 218"><path fill="url(#bugg)" d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/></symbol>
+
+  <!-- brand-mark-text.svg -->
+  <symbol id="mark" viewBox="0 0 711 239" fill="url(#wg)">
+    <path d="M685.107 184V56.032H706.779V184H685.107ZM695.943 30.49C691.643 30.49 688.031 29.028 685.107 26.104C682.183 23.18 680.721 19.568 680.721 15.268C680.721 11.14 682.183 7.61401 685.107 4.69001C688.031 1.76602 691.643 0.304016 695.943 0.304016C700.071 0.304016 703.597 1.76602 706.521 4.69001C709.445 7.61401 710.907 11.226 710.907 15.526C710.907 19.654 709.445 23.18 706.521 26.104C703.597 29.028 700.071 30.49 695.943 30.49Z"/>
+    <path d="M599.255 238.696C587.731 238.696 577.497 237.148 568.553 234.052C559.609 231.128 552.643 226.742 547.655 220.894C542.667 215.218 540.173 208.252 540.173 199.996C540.173 196.212 540.947 192.342 542.495 188.386C544.215 184.43 547.053 180.56 551.009 176.776C555.137 172.82 560.899 169.122 568.295 165.682L582.743 174.454C573.971 178.238 568.209 182.194 565.457 186.322C562.705 190.45 561.329 195.008 561.329 199.996C561.329 204.468 562.705 208.338 565.457 211.606C568.381 215.046 572.681 217.626 578.357 219.346C584.033 221.066 590.999 221.926 599.255 221.926C607.683 221.926 614.477 220.894 619.637 218.83C624.797 216.766 628.581 213.928 630.989 210.316C633.397 206.704 634.601 202.576 634.601 197.932C634.601 192.428 632.365 188.042 627.893 184.774C623.593 181.678 615.337 179.786 603.125 179.098C592.977 178.41 584.463 177.464 577.583 176.26C570.875 175.056 565.285 173.68 560.813 172.132C556.341 170.412 552.557 168.52 549.461 166.456C546.537 164.392 543.871 162.242 541.463 160.006V154.072L566.489 129.046L578.873 135.238L559.523 159.232L561.329 150.46C562.877 151.492 564.511 152.524 566.231 153.556C568.123 154.588 570.703 155.62 573.971 156.652C577.239 157.512 581.539 158.372 586.871 159.232C592.375 160.092 599.427 160.866 608.027 161.554C619.551 162.414 628.839 164.306 635.891 167.23C642.943 169.982 648.017 173.852 651.113 178.84C654.381 183.828 656.015 189.934 656.015 197.158C656.015 203.694 653.951 210.144 649.823 216.508C645.867 222.872 639.675 228.118 631.247 232.246C622.991 236.546 612.327 238.696 599.255 238.696ZM598.997 143.752C588.161 143.752 578.959 141.774 571.391 137.818C563.823 133.69 558.061 128.186 554.105 121.306C550.149 114.426 548.171 106.772 548.171 98.344C548.171 89.916 550.149 82.348 554.105 75.64C558.061 68.76 563.823 63.256 571.391 59.128C578.959 55 588.161 52.936 598.997 52.936C609.833 52.936 619.035 55 626.603 59.128C634.171 63.256 639.933 68.76 643.889 75.64C647.845 82.348 649.823 89.916 649.823 98.344C649.823 106.772 647.845 114.426 643.889 121.306C639.933 128.186 634.171 133.69 626.603 137.818C619.035 141.774 609.833 143.752 598.997 143.752ZM598.997 127.24C608.113 127.24 615.337 124.832 620.669 120.016C626.173 115.028 628.925 107.804 628.925 98.344C628.925 88.712 626.173 81.488 620.669 76.672C615.337 71.856 608.113 69.448 598.997 69.448C589.881 69.448 582.571 71.856 577.067 76.672C571.563 81.488 568.811 88.712 568.811 98.344C568.811 107.804 571.563 115.028 577.067 120.016C582.571 124.832 589.881 127.24 598.997 127.24ZM619.637 71.77L613.187 56.032H666.335V67.9L619.637 71.77Z"/>
+    <path d="M409.488 184V56.032H428.58L430.644 76.156H431.676C436.148 69.104 441.996 63.514 449.22 59.386C456.444 55.086 465.13 52.936 475.278 52.936C485.082 52.936 493.682 55 501.078 59.128C508.474 63.084 514.15 69.276 518.106 77.704C522.234 85.96 524.298 96.452 524.298 109.18V184H502.626V111.502C502.626 98.258 499.788 88.282 494.112 81.574C488.436 74.866 480.266 71.512 469.602 71.512C462.206 71.512 455.584 73.318 449.736 76.93C444.06 80.542 439.502 85.788 436.062 92.668C432.794 99.376 431.16 107.718 431.16 117.694V184H409.488Z"/>
+    <path d="M326.664 187.096C316.516 187.096 308.002 185.29 301.122 181.678C294.242 178.066 289.082 173.25 285.642 167.23C282.374 161.21 280.74 154.674 280.74 147.622C280.74 138.85 282.976 131.454 287.448 125.434C292.092 119.414 298.542 114.856 306.798 111.76C315.226 108.492 325.116 106.858 336.468 106.858H371.04C371.04 98.43 369.75 91.464 367.17 85.96C364.59 80.456 360.892 76.414 356.076 73.834C351.26 71.082 345.498 69.706 338.79 69.706C330.362 69.706 323.052 71.856 316.86 76.156C310.668 80.456 306.884 87.078 305.508 96.022H283.32C284.352 86.734 287.362 78.908 292.35 72.544C297.51 66.18 304.046 61.364 311.958 58.096C320.042 54.656 328.986 52.936 338.79 52.936C351.002 52.936 361.064 55.172 368.976 59.644C377.06 63.944 382.994 70.05 386.778 77.962C390.734 85.702 392.712 94.818 392.712 105.31V184H374.652L372.588 162.07H371.556C369.148 166.198 366.31 169.81 363.042 172.906C359.946 176.002 356.506 178.582 352.722 180.646C348.938 182.71 344.81 184.258 340.338 185.29C336.038 186.494 331.48 187.096 326.664 187.096ZM330.534 168.778C337.07 168.778 342.832 167.574 347.82 165.166C352.808 162.586 357.022 159.146 360.462 154.846C363.902 150.546 366.482 145.73 368.202 140.398C370.094 134.894 371.04 129.304 371.04 123.628H338.274C329.846 123.628 323.052 124.66 317.892 126.724C312.732 128.616 309.034 131.282 306.798 134.722C304.562 138.162 303.444 142.118 303.444 146.59C303.444 151.062 304.476 155.018 306.54 158.458C308.776 161.726 311.872 164.306 315.828 166.198C319.956 167.918 324.858 168.778 330.534 168.778Z"/>
+    <path d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/>
+  </symbol>
+
+  <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.7l13.5-4c1.1-.3 2.2.3 2.6 1.3z"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-unlink" viewBox="0 0 24 24"><path d="m18.8 13.2 2.1-2.1a4.2 4.2 0 0 0-6-6l-2.1 2.1M5.2 10.8 3.1 12.9a4.2 4.2 0 0 0 6 6l2.1-2.1M8 2v3M2 8h3M16 22v-3M22 16h-3"/></symbol>
+  <symbol id="i-swarm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M10.7 7.2 6.3 15.8M13.3 7.2l4.4 8.6M7.5 18h9"/></symbol>
+  <symbol id="i-rust" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-json" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M12 12h9"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-hammer" viewBox="0 0 24 24"><path d="m14 7 3 3M3 21l9-9M12.5 5.5l6 6-3 3-6-6zM16 2l6 6-2 2-6-6z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.5C14.5 8.6 13.4 8 12 8c-1.7 0-3 .8-3 2s1.2 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.6-3-1.5M12 6v2M12 16v2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.600 4.600 0 0 0-1.300-3.200 4.200 4.200 0 0 0-.1-3.200s-1.100-.3-3.500 1.300a12.300 12.300 0 0 0-6.200 0C6.500 2.800 5.400 3.100 5.400 3.100a4.200 4.200 0 0 0-.1 3.200A4.600 4.600 0 0 0 4 9.500c0 4.600 2.700 5.700 5.500 6-.6.600-.6 1.200-.5 2V21"/></symbol>
+</svg>
+
+
+<nav id="nav">
+  <div class="wrap">
+    <a href="index.html" aria-label="ANGI home"><svg class="mark"><use href="#mark"/></svg></a>
+    <div class="links">
+      <a href="index.html">Home</a>
+      <a href="#stuck">If you get stuck</a>
+      <a class="btn ghost sm" href="https://github.com/danaia/ANGI">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="wrap">
+    <a href="index.html" aria-label="ANGI home"><svg class="bug"><use href="#bug"/></svg></a>
+    <div class="eyebrow">Get started</div>
+    <h1><span class="grad">From a blank card to a</span><br><span class="gradO">live, extensible system.</span></h1>
+    <p class="sub" style="margin-bottom:0">Every step of the one-prompt install on a Raspberry Pi 5. A direct Ethernet link over USB-C carries the install and live updates, and Wi-Fi carries the web. No ISO, no installer.</p>
+    <div class="time"><span>One prompt</span><span>USB-C Ethernet</span><span>Wi-Fi for the web</span><span>Early development</span></div>
+  </div>
+</header>
+
+<section style="padding-top:60px">
+<div class="wrap">
+<div class="tl">
+
+  <div class="gstep reveal">
+    <div class="num">00</div>
+    <h2><span class="grad">What you need</span></h2>
+    <p>Gather these before you start. You do not need a monitor, a keyboard or a Wi-Fi connection for the Pi.</p>
+    <ul class="l">
+      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>Raspberry Pi 5</b>.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>USB-A to USB-C data cable</b>. A charge-only cable will not work.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>microSD card you can erase</b>. A 32 GB card has been tested.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>card reader</b> connected to your computer.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>An <b>Arch Linux computer using NetworkManager</b>, with internet access and a coding agent that can run terminal commands, such as Codex or Claude Code. This is the tested setup.</span></li>
+    </ul>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">01</div>
+    <h2><span class="grad">Plug everything in</span></h2>
+    <p>Connect the Pi to your computer with the data cable, and put the microSD card in your computer's card reader. Use one ANGI Pi at a time and leave its card slot empty for now.</p>
+    <div class="code"><pre>YOUR COMPUTER
+    │
+    ├── USB-A ── data cable ── USB-C on the Raspberry Pi 5
+    │
+    └── Card reader ── microSD card to install ANGI onto</pre></div>
+    <div class="box"><h4>Everything on the selected card will be erased.</h4><p>Disconnect other removable drives to make the card easier to identify.</p></div>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">02</div>
+    <h2><span class="grad">Give your agent the prompt</span></h2>
+    <p>Open your coding agent on your computer and paste the entire prompt. It fetches ANGI from GitHub, installs the build tools, builds the image with your SSH key, writes the card and sets up the USB-C Ethernet link.</p>
+    <div class="code long"><span class="cap">The install prompt</span><button class="cp" data-target="prompt">Copy</button><pre id="prompt">Install ANGI OS on my Raspberry Pi 5 over USB-C. Do the whole install from this one prompt.
+
+Setup
+- The Pi is connected to this computer with a USB-A to USB-C data cable.
+- The microSD card to erase and flash is in this computer&#x27;s card reader.
+- Source: https://github.com/danaia/ANGI.git
+
+Rules
+- Do the terminal work yourself and keep explanations short.
+- Ask me only for what you cannot determine: passwords, approvals, or a physical action.
+- Never write to a system disk or any drive I have not approved. Show me the card you identified and recheck it right before writing.
+
+Steps
+1. Inspect this computer: OS, disk space, memory, network manager and attached storage. Use the tested Arch Linux + NetworkManager workflow. If mine differs, tell me what is needed before changing anything.
+2. Clone the repository from GitHub, or reuse an existing checkout without overwriting local changes. Read README.md and docs/phase1.md and follow them.
+3. Reuse or create an Ed25519 SSH key without overwriting any existing key. Pass its public key as SSH_PUBLIC_KEY to every build command.
+4. Install the build tools, then run make configure, make dependencies, make build and make check-image. Continue only when output/images/sdcard.img passes validation.
+5. Create or reuse the agx-direct NetworkManager profile for the USB-C Ethernet link: MAC 02:77:00:00:00:01, 10.77.0.1/24 on this computer, no gateway, IPv6 off. Leave my internet connection untouched. The Pi will be 10.77.0.2.
+6. Flash sdcard.img to the card I approved, verify the written bytes against the image, then eject it. I authorize erasing that card once you have shown it to me.
+7. Ask me to move the card into the Pi and reconnect the cable. Wait for my go-ahead.
+8. Connect as root@10.77.0.2, check the board identity and run agx status --json.
+9. Open agx tui and explain its keys. Then offer to set up the Pi&#x27;s Wi-Fi from the Network tab so the Pi can reach the web. The cable carries the install and live updates; Wi-Fi carries the internet.
+
+Report what you verified and anything still unresolved.</pre></div>
+    <p style="font-size:15px">Your agent may need your computer password or approval to install packages and write the card. Enter passwords through your computer's secure prompt. The first build downloads toolchains and sources, so allow time and stay online.</p>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">03</div>
+    <h2><span class="grad">What your agent does</span></h2>
+    <p>You can read along. This is what the prompt asks for, in order.</p>
+    <ul class="l">
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Inspects your computer</b>: OS, disk space, memory, network manager and attached storage.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Clones the repository</b> and reads the build docs, without overwriting local changes.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Reuses or creates an Ed25519 SSH key</b>. The private key never leaves your computer.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>, and continues only when <span class="mono">output/images/sdcard.img</span> passes validation.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Prepares the USB link</b>: an <span class="mono">agx-direct</span> NetworkManager profile that leaves your normal internet connection alone.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Writes the card</b>. It shows you which card it identified, rechecks it right before writing, flushes, verifies the written bytes against the image, then ejects it.</span></li>
+    </ul>
+    <div class="box"><h4>One raw image, not an installer</h4><p>The card receives a single disk image. There is no ISO to boot, no installer to click through and no setup wizard. The same image is what the Pi runs.</p></div>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">04</div>
+    <h2><span class="grad">Move the card when asked</span></h2>
+    <p>This is the only physical step. Once your agent says the card is written and verified:</p>
+    <ul class="l">
+      <li><svg class="i"><use href="#i-check"/></svg><span>Unplug the Pi's USB cable so it is powered off.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Take the microSD card out of your computer's reader and put it into the Pi's microSD slot.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Reconnect the USB cable.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Tell your agent: <b>“The card is in and the Pi is connected. Continue.”</b></span></li>
+    </ul>
+    <div class="code"><pre>Before:  Computer ── card reader ── microSD
+                                      │
+                                move the card
+                                      ↓
+After:   Computer ── USB cable ── Pi [microSD]</pre></div>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">05</div>
+    <h2><span class="grad">Connect over the cable</span></h2>
+    <p>Your computer and the Pi talk over a direct Ethernet link. It carries the install and every live update, and it needs no router. Your agent handles this step; these are the settings it uses.</p>
+    <div class="three">
+      <div class="box"><span class="tag">USB-C Ethernet</span><h4>Pi at 10.77.0.2</h4><p>The Pi appears as an Ethernet device on the USB-C cable. Your computer uses 10.77.0.1/24 with no gateway. This is the install path.</p></div>
+      <div class="box"><span class="tag">RJ45 Ethernet</span><h4>Pi at 10.78.0.2</h4><p>A direct RJ45 cable between the two computers, with yours at 10.78.0.1/24 and the Pi on <span class="mono">eth0</span>. Also no router.</p></div>
+      <div class="box"><span class="tag">Wi-Fi</span><h4>The web</h4><p>The cable has no gateway, so it does not share your internet. The Pi reaches the web over Wi-Fi, which you set up from its dashboard.</p></div>
+    </div>
+    <div class="code"><span class="cap">One-time network profile on your computer (USB-C)</span><button class="cp" data-target="nm">Copy</button><pre id="nm">nmcli connection add type ethernet ifname '*' con-name agx-direct \
+  802-3-ethernet.mac-address 02:77:00:00:00:01 \
+  ipv4.method manual ipv4.addresses 10.77.0.1/24 ipv4.never-default yes \
+  ipv6.method disabled connection.autoconnect yes</pre></div>
+    <div class="code"><span class="cap">Check the link and sign in</span><button class="cp" data-target="ssh">Copy</button><pre id="ssh">nmcli device status
+ping -c 3 10.77.0.2
+ssh -i ~/.ssh/id_ed25519 root@10.77.0.2
+agx status --json</pre></div>
+    <p style="font-size:15px">The first connection asks you to trust the Pi's new host key. Reflashing produces new host keys, so check the fingerprint before removing an old entry with <span class="mono">ssh-keygen -R 10.77.0.2</span>.</p>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">06</div>
+    <h2><span class="grad">Use ANGI</span></h2>
+    <p>Your agent opens the terminal dashboard with <span class="mono or">agx tui</span>, or gives you the exact command to open it yourself.</p>
+    <div class="keys"><kbd>1</kbd><span>Profile</span><kbd>2</kbd><span>Overview</span><kbd>3</kbd><span>Hardware</span><kbd>4</kbd><span>Network</span><kbd>5</kbd><span>System</span><kbd>6</kbd><span>Services</span><kbd>7</kbd><span>Logs</span></div>
+    <div class="keys"><kbd>?</kbd><span>Help</span><kbd>F9</kbd><span>Power off</span><kbd>F10</kbd><span>Reboot</span><kbd>q</kbd><span>Back to the Pi's terminal</span></div>
+    <p style="font-size:15px">Open the <b>Network</b> tab (<kbd>4</kbd>) to connect the Pi to Wi-Fi so it can reach the web. Click tabs and rows, or use the arrow keys and mouse wheel. To finish, ask your agent to shut the Pi down, or run <span class="mono">poweroff</span>, then wait a few seconds after the connection closes before unplugging.</p>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">07</div>
+    <h2><span class="grad">Extend it, live</span></h2>
+    <p>From here, nothing needs a reflash. Build and install new software through the same cable. Run <span class="mono or">agent angi</span> on the Pi to describe something to build, or change the code on your computer and deploy it.</p>
+    <div class="code"><span class="cap">Deploy from your computer, over the Ethernet link</span><button class="cp" data-target="dep">Copy</button><pre id="dep">make deploy-tui      # terminal dashboard
+make deploy-gui      # desktop
+make deploy-init     # init and service supervisor
+make deploy-network  # network services</pre></div>
+    <ul class="l">
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Live refresh.</b> An installed desktop release loads into the running session. It saves settings, then re-executes in the same process, so there is no reboot.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Rollback guard.</b> A watchdog checks that the new release comes up and stays up, and restores the previous release if it does not.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Set <span class="mono">AGX_SSH_HOST</span> and <span class="mono">AGX_SSH_KEY</span></b> to point the deploy scripts at the USB-C (10.77.0.2) or RJ45 (10.78.0.2) address of your Pi.</span></li>
+    </ul>
+    <div class="after">The deploy targets need the build packages from the desktop section of the defconfig; see the project docs.</div>
+  </div>
+
+</div>
+
+<div class="stuck" id="stuck">
+  <div class="head reveal"><div class="eyebrow">If you get stuck</div><h2><span class="grad">Tell your agent what happened.</span></h2><p class="lead">Ask it to keep diagnosing the setup. These are the usual causes.</p></div>
+  <div class="box reveal"><h4>The Pi keeps restarting or disconnecting</h4><p>Your computer's USB port may provide too little power. Use a suitable powered data connection, or the official Pi power supply with an RJ45 Ethernet cable.</p></div>
+  <div class="box reveal"><h4>The agent cannot identify the card</h4><p>Give it the card's capacity and reader details, and let it inspect devices again after you remove and reinsert the card.</p></div>
+  <div class="box reveal"><h4>The build stopped</h4><p>Ask the agent to fix the error and resume. It reuses downloaded files and completed build work.</p></div>
+  <div class="box reveal"><h4>The dashboard looks wrong</h4><p>Ask the agent to try <span class="mono">agx tui --ascii --no-color --no-mouse</span>.</p></div>
+</div>
+</div>
+</section>
+
+<div class="final" style="padding-top:60px">
+  <div class="wrap reveal">
+    <h2><span class="grad">Now build something.</span></h2>
+    <p class="lead">ANGI is in early development. The terminal dashboard runs on a real Pi 5, and the desktop is still being verified on the Pi's own display. Deeper guides live in the repository.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/danaia/ANGI"><svg class="i"><use href="#i-gh"/></svg> Open the repository</a>
+      <a class="btn ghost" href="https://github.com/danaia/ANGI/blob/main/docs/phase1.md">Manual build &amp; recovery guide</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <svg class="mark"><use href="#mark"/></svg>
+    <span>Pronounced “AN-jee”. Early development; figures are development measurements, not release benchmarks.</span>
+  </div>
+</footer>
+
+<script>
+  const nav=document.getElementById('nav');
+  const onS=()=>nav.classList.toggle('s',scrollY>20); onS(); addEventListener('scroll',onS,{passive:true});
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.08});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+  document.querySelectorAll('.cp').forEach(b=>b.addEventListener('click',async()=>{
+    const t=document.getElementById(b.dataset.target).textContent;
+    try{await navigator.clipboard.writeText(t);b.textContent='Copied';}catch(e){b.textContent='Select + copy';}
+    setTimeout(()=>b.textContent='Copy',1800);
+  }));
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+import { Theme } from "data.slint";
+import { AgentButton, AgentText } from "agent-controls.slint";
+import { DesktopInput } from "desktop-input.slint";
+import { AgentWork, WorkSummary } from "agent-work-summary.slint";
+
+export component AgentWorkView inherits Rectangle {
+    in property <bool> active;
+    callback activate();
+    callback pointer-moved(length, length);
+    background: Theme.bg-dark;
+    clip: true;
+
+    VerticalLayout {
+        Rectangle {
+            height: 54px;
+            background: Theme.bg;
+            Rectangle { y: parent.height - 1px; width: parent.width; height: 1px; background: Theme.muted; }
+            HorizontalLayout {
+                padding-left: 12px; padding-right: 12px; padding-top: 7px; padding-bottom: 7px;
+                spacing: 12px;
+                AgentButton {
+                    width: 146px; label: "Back to History"; symbol: "←";
+                    activated => { root.activate(); AgentWork.back(); }
+                }
+                AgentText {
+                    text: AgentWork.record.title;
+                    font-size: 15px; font-weight: 700; vertical-alignment: center; overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+        }
+        surface := Rectangle {
+            min-height: 0px;
+            vertical-stretch: 1;
+            clip: true;
+            init => {
+                AgentWork.viewport-width = round(self.width / 1px);
+                AgentWork.viewport-height = round(self.height / 1px);
+            }
+            changed width => { AgentWork.viewport-width = round(self.width / 1px); }
+            changed height => { AgentWork.viewport-height = round(self.height / 1px); }
+
+            if !AgentWork.ready && AgentWork.error == "": AgentText {
+                x: 14px; y: 14px;
+                text: "Opening work review…";
+            }
+            if AgentWork.error != "": VerticalLayout {
+                padding: 14px; spacing: 10px;
+                AgentText { text: AgentWork.error; color: Theme.red; wrap: word-wrap; }
+                WorkSummary { vertical-stretch: 1; }
+            }
+            if AgentWork.ready && AgentWork.error == "": Image {
+                x: 0px; y: 0px; width: AgentWork.frame-width * 1px; height: AgentWork.frame-height * 1px;
+                source: AgentWork.frame; image-fit: fill;
+            }
+            keys := FocusScope {
+                width: parent.width; height: parent.height;
+                property <bool> focusable-page: root.active && AgentWork.ready && AgentWork.error == "" && AgentWork.dialog == "";
+                changed focusable-page => { if (self.focusable-page) { self.focus(); } }
+                key-pressed(e) => {
+                    if (self.focusable-page && AgentWork.key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, true)) { return accept; }
+                    reject
+                }
+                key-released(e) => {
+                    if (self.focusable-page && AgentWork.key(e.text, e.modifiers.control, e.modifiers.alt, e.modifiers.shift, e.modifiers.meta, false)) { return accept; }
+                    reject
+                }
+                if AgentWork.ready && AgentWork.error == "" && AgentWork.dialog == "": DesktopInput {
+                    cursor: AgentWork.cursor;
+                    pointer(k, b, x, y, c, a, s, m) => {
+                        if (k == 0) { root.activate(); keys.focus(); }
+                        AgentWork.pointer(k, b, (x - surface.absolute-position.x) / 1px, (y - surface.absolute-position.y) / 1px, c, a, s, m);
+                    }
+                    scroll(dx, dy, c, a, s, m) => { AgentWork.scroll(dx, dy, c, a, s, m); }
+                    pointer-moved(x, y) => { root.pointer-moved(x, y); }
+                }
+            }
+        }
+    }
+    if AgentWork.dialog != "": Rectangle {
+        background: #05070c99;
+        TouchArea {}
+        dialog-keys := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) { AgentWork.answer(false); return accept; }
+                if (e.text == Key.Return) { AgentWork.answer(true); return accept; }
+                reject
+            }
+            Rectangle {
+                width: min(parent.width - 26px, 390px); height: min(parent.height, 146px);
+                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                background: Theme.bg; border-width: 1px; border-color: Theme.muted; border-radius: 10px;
+                VerticalLayout {
+                    padding: 14px; spacing: 10px;
+                    AgentText { text: AgentWork.dialog; wrap: word-wrap; vertical-stretch: 1; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        AgentButton { label: "Keep editing"; activated => { AgentWork.answer(false); } }
+                        AgentButton { label: "Discard changes"; activated => { AgentWork.answer(true); } }
+                    }
+                }
+            }
+        }
+    }
+}

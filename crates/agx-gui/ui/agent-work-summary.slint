@@ -11,7 +11,21 @@ export struct WorkRecord {
 export global AgentWork {
     in-out property <bool> open;
     in-out property <WorkRecord> record;
+    in-out property <image> frame;
+    in-out property <int> viewport-width;
+    in-out property <int> viewport-height;
+    in-out property <int> frame-width;
+    in-out property <int> frame-height;
+    in-out property <int> cursor;
+    in-out property <bool> ready;
+    in-out property <string> error;
+    in-out property <string> dialog;
     callback open-folder(string);
+    callback back();
+    callback answer(bool);
+    callback pointer(int, int, float, float, bool, bool, bool, bool);
+    callback scroll(float, float, bool, bool, bool, bool);
+    callback key(string, bool, bool, bool, bool, bool) -> bool;
 }
 
 export component WorkSummary inherits ScrollView {
@@ -19,19 +33,6 @@ export component WorkSummary inherits ScrollView {
     VerticalLayout {
         padding-top: 24px; padding-bottom: 24px; padding-right: 8px;
         spacing: 16px; alignment: start;
-        HorizontalLayout {
-            alignment: space-between;
-            spacing: 8px;
-            AgentText {
-                text: AgentWork.record.mode == "os" ? "OS update" : "Project";
-                font-size: 13px; font-weight: 700; color: Theme.accent; vertical-alignment: center;
-            }
-            AgentButton {
-                width: 150px;
-                label: "Back to workspace";
-                activated => { AgentWork.open = false; }
-            }
-        }
         AgentText { text: AgentWork.record.title; font-size: 26px; font-weight: 700; wrap: word-wrap; }
         AgentText { text: "Original request"; font-size: 14px; font-weight: 700; }
         AgentText { text: AgentWork.record.brief; font-size: 14px; color: Theme.fg; wrap: word-wrap; }

@@ -20,7 +20,8 @@ static int descriptor(const char *text)
 int main(int argc, char **argv)
 {
     g_set_prgname("agx-web");
-    g_set_application_name("ANGI Web");
+    gboolean embedded = !g_strcmp0(g_getenv("AGX_WEB_EMBEDDED"), "1");
+    g_set_application_name(embedded ? "Agent Angi" : "ANGI Web");
     if ((argc != 5 && argc != 7) || strcmp(argv[1], "--control-fd") || strcmp(argv[3], "--frame-fd")
         || (argc == 7 && strcmp(argv[5], "--gpu-fd"))) {
         g_printerr("agx-web is an embedding host; open Web from ANGI Applications.\n");
@@ -73,15 +74,18 @@ int main(int argc, char **argv)
     /* Only shader cache files are writable in the content sandbox. Cookie and
      * page-data stores remain behind WebKit's network/storage processes. */
     webkit_web_context_add_path_to_sandbox(context, shader_dir, FALSE);
-    g_autoptr(WebKitNetworkSession) session = webkit_network_session_new(data_dir, cache_dir);
+    g_autoptr(WebKitNetworkSession) session = embedded ? webkit_network_session_new_ephemeral()
+        : webkit_network_session_new(data_dir, cache_dir);
     webkit_network_session_set_itp_enabled(session, TRUE);
-    g_autofree char *cookies = g_build_filename(data_dir, "cookies.sqlite", NULL);
-    webkit_cookie_manager_set_persistent_storage(webkit_network_session_get_cookie_manager(session),
-        cookies, WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
+    if (!embedded) {
+        g_autofree char *cookies = g_build_filename(data_dir, "cookies.sqlite", NULL);
+        webkit_cookie_manager_set_persistent_storage(webkit_network_session_get_cookie_manager(session),
+            cookies, WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
+    }
     host.display = display;
     host.context = context;
     host.session = session;
-    web_downloads_connect(&host, store_dir);
+    if (!embedded) web_downloads_connect(&host, store_dir);
     host.tabs = g_ptr_array_new_with_free_func(g_object_unref);
     host.tabs_enabled = !g_strcmp0(g_getenv("AGX_WEB_TABS"), "1");
     host.width = 800;
