@@ -2,8 +2,8 @@ import { Theme } from "data.slint";
 import { Button } from "std-widgets.slint";
 import { HoverDwell, HoverTip } from "hover-tip.slint";
 
-// What Agent Angie does: build the operating system ("os"), build in one project folder ("project"),
-// or just talk ("chat").
+// What Agent Angi does: build the operating system ("os"), build in one project folder ("project"),
+// or talk and optionally work with local files ("chat").
 //
 // The project folder arrives through two callbacks only:
 //   choose-project()   the user asked to pick a folder; agent_project.rs opens ANGI Files' picker.
@@ -11,6 +11,8 @@ import { HoverDwell, HoverTip } from "hover-tip.slint";
 export global AgentScope {
     in-out property <string> mode: "os";
     in-out property <string> project;
+    in-out property <string> chat-folder;
+    in-out property <bool> picker-for-chat;
     in-out property <string> error;
     in-out property <bool> checking;
     out property <bool> ready: mode != "project" || project != "";
@@ -48,14 +50,16 @@ export component ScopeTip inherits HoverTip {
     shown: root.hint >= 0;
     width: 330px;
     text: root.hint == 2
-        ? "Chat: just talk. Angie answers as herself in a plain conversation. She builds nothing and touches no files."
+        ? "Chat: talk with Angi, browse folders, and save text files. Chat starts in your home folder."
         : root.hint == 1
         ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
         : "OS: you are extending the operating system. Herdr's agents focus strictly on ANGI itself: its source, services and desktop on this device.";
 }
 
-// Shown in Project mode: the chosen folder and a button that opens the folder picker.
 export component ProjectRow inherits VerticalLayout {
+    in property <bool> chat;
+    in property <bool> folder-enabled: true;
+    property <string> folder: root.chat ? AgentScope.chat-folder : AgentScope.project;
     spacing: 8px;
     HorizontalLayout {
         spacing: 10px;
@@ -64,11 +68,12 @@ export component ProjectRow inherits VerticalLayout {
             border-width: 1px; border-color: AgentScope.error != "" ? Theme.red : Theme.muted;
             Text {
                 x: 10px; width: parent.width - 20px; vertical-alignment: center; overflow: elide; font-size: 12px;
-                text: AgentScope.project != "" ? AgentScope.project : "No project folder selected";
-                color: AgentScope.project != "" ? Theme.fg-bright : Theme.fg-dim;
+                text: root.folder != "" ? root.folder : root.chat ? "Home folder" : "No project folder selected";
+                color: root.folder != "" ? Theme.fg-bright : Theme.fg-dim;
             }
         }
-        Button { height: 32px; vertical-stretch: 0; text: AgentScope.project != "" ? "Change…" : "Select folder…"; enabled: !AgentScope.checking; clicked => { AgentScope.choose-project(); } }
+        Button { height: 32px; vertical-stretch: 0; text: root.chat || root.folder != "" ? "Change folder…" : "Select folder…"; enabled: root.folder-enabled && !AgentScope.checking; clicked => { AgentScope.choose-project(); } }
+        if root.chat && root.folder != "": Button { height: 32px; vertical-stretch: 0; text: "Use Home"; enabled: root.folder-enabled && !AgentScope.checking; clicked => { AgentScope.chat-folder = ""; } }
     }
     if AgentScope.error != "": Text { text: AgentScope.error; color: Theme.red; font-size: 12px; wrap: word-wrap; }
 }

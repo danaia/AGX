@@ -83,7 +83,7 @@ def start():
     subprocess.Popen([sys.executable, str(Path(__file__).with_name("update.py")), "watch", str(pid), current, entry.get("parent") or ""],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     return (f"Refreshing the desktop from {name} to {current} in {DELAY} seconds. This closes ANGI's terminals, including this one, "
-            "so finish your report now. Reopen Agent Angie and resume to continue; `angi-update status` shows how the refresh went. "
+            "so finish your report now. Reopen Agent Angi and resume to continue; `angi-update status` shows how the refresh went. "
             "If the new desktop does not stay up, the previous release is restored automatically.")
 
 

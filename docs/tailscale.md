@@ -1,6 +1,6 @@
-# Tailscale for Agent Angie's LM Studio
+# Tailscale for Agent Angi's LM Studio
 
-Agent Angie can build with a model served by LM Studio on another computer. The two machines
+Agent Angi can build with a model served by LM Studio on another computer. The two machines
 reach each other privately over Tailscale; nothing is exposed to the Internet.
 
 ## Why userspace networking
@@ -37,14 +37,14 @@ init takes effect at the next boot. Until then `deploy-tailscale.sh` starts the 
 
 ## Use
 
-1. Open **LM Studio** below the Agent Angie prompt and choose **Sign in to Tailscale**. Approve it
+1. Open **LM Studio** below the Agent Angi prompt and choose **Sign in to Tailscale**. Approve it
    in the browser window with your Tailscale account. The panel shows the device as connected.
 2. On your computer, in LM Studio load a model, start the server and turn on **Serve on local
    network**.
 3. Enter that computer's Tailscale name or address (for example `your-computer` or
    `100.x.y.z:1234`; the default port is 1234) and choose **Test and connect**. The test goes
    through the same relay builds use. Embedding models are not offered.
-4. Choose **Use** to make LM Studio the one service Agent Angie builds with, then pick a model
+4. Choose **Use** to make LM Studio the one service Agent Angi builds with, then pick a model
    for each role.
 
 ## Checks and recovery

@@ -1,4 +1,4 @@
-// Modal folder chooser built on the file browser. Agent Angie's Project mode opens it; the result
+// Modal folder chooser built on the file browser. Project and Chat open it; the result
 // goes back through AgentScope.use-project, where the agent runtime validates the folder.
 import { Theme } from "data.slint";
 import { Button } from "std-widgets.slint";
@@ -26,8 +26,8 @@ export component FolderPicker inherits FocusScope {
                     height: 56px;
                     VerticalLayout {
                         padding-left: 18px; padding-right: 18px; padding-top: 10px; spacing: 3px;
-                        Text { text: "Choose a project folder"; color: Theme.fg-bright; font-size: 17px; font-weight: 700; }
-                        Text { text: "Agent Angie will work only inside the folder you choose."; color: Theme.fg-dim; font-size: 12px; overflow: elide; }
+                        Text { text: AgentScope.picker-for-chat ? "Choose a folder for Chat" : "Choose a project folder"; color: Theme.fg-bright; font-size: 17px; font-weight: 700; }
+                        Text { text: AgentScope.picker-for-chat ? "Chat can read and save text files and create folders here." : "Agent Angi will work only inside the folder you choose."; color: Theme.fg-dim; font-size: 12px; overflow: elide; }
                     }
                 }
                 browser := FileBrowser {

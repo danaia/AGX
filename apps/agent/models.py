@@ -13,7 +13,7 @@ OS_ROLE = "os"
 ALL_ROLES = (*ROLES, OS_ROLE)
 
 
-# Services Agent Angie can use, one at a time.
+# Services Agent Angi can use, one at a time.
 SERVICES = ("apple", "openai", "lmstudio")
 
 
@@ -32,7 +32,7 @@ def selections(service=None):
         return {}
     result = json.loads(path.read_text())
     if not isinstance(result, dict) or any(role not in ALL_ROLES or not isinstance(model, str) or not model.strip() or "/" not in model for role, model in result.items()):
-        raise RuntimeError("Invalid saved Agent Angie model choices.")
+        raise RuntimeError("Invalid saved Agent Angi model choices.")
     if service is None:
         return result
     return {role: model for role, model in result.items() if model.partition("/")[0] == service}
@@ -47,7 +47,7 @@ def active():
         except (ValueError, AttributeError):
             service = None
         if service not in SERVICES:
-            raise RuntimeError("Invalid saved Agent Angie service choice.")
+            raise RuntimeError("Invalid saved Agent Angi service choice.")
         return service
     for model in selections().values():
         if model.partition("/")[0] in SERVICES:
@@ -57,7 +57,7 @@ def active():
 
 def activate(service):
     if service not in SERVICES:
-        raise ValueError("Agent Angie cannot use this service yet.")
+        raise ValueError("Agent Angi cannot use this service yet.")
     atomic_write(active_path(), {"service": service})
     return service
 
@@ -84,7 +84,7 @@ def save(role, model):
         raise ValueError("Unknown workshop role.")
     provider = model.partition("/")[0]
     if provider != active():
-        raise ValueError("Use this service for Agent Angie before choosing its models.")
+        raise ValueError("Use this service for Agent Angi before choosing its models.")
     if model not in catalog(provider):
         raise ValueError("Choose a model available in OpenCode.")
     choices = selections()

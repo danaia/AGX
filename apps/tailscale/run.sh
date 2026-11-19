@@ -5,7 +5,7 @@
 # or firewall rules, so SSH and the Pi's own networking are untouched. The node is logged in with
 # shields up, so nothing on the tailnet can connect in (the desktop VNC listens on loopback
 # without a password and must not become reachable). The only use is outbound: a loopback relay
-# (see inetd.conf) carries Agent Angie's LM Studio traffic to its tailnet address.
+# (see inetd.conf) carries Agent Angi's LM Studio traffic to its tailnet address.
 base=/var/lib/agx-data/tailscale
 socket=/run/tailscale/tailscaled.sock
 relay_pid=/run/tailscale/relay.pid

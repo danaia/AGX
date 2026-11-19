@@ -6,7 +6,7 @@ import { AgentScope, ModeSwitch, ProjectRow, ScopeTip } from "agent-scope.slint"
 import { AgentChat, ChatMessage, ChatMessages } from "agent-chat.slint";
 export { AgentProviders, CardModels, AgentScope, AgentChat, ChatMessage }
 
-export global AgentAngie {
+export global AgentAngi {
     // Agents and swarms still running for this account, kept current by agent_swarm.rs. A swarm
     // keeps running after its terminal tab is closed, so the panel offers a way back to Herdr.
     in-out property <int> running-agents;
@@ -24,32 +24,32 @@ component HerdrCta inherits Rectangle {
     property <bool> confirming;
     height: 52px;
     border-radius: 10px; border-width: 1px; background: Theme.bg-light;
-    border-color: root.confirming ? Theme.red : AgentAngie.stopping ? Theme.yellow : Theme.green;
+    border-color: root.confirming ? Theme.red : AgentAngi.stopping ? Theme.yellow : Theme.green;
     HorizontalLayout {
         padding-left: 14px; padding-right: 8px; padding-top: 8px; padding-bottom: 8px; spacing: 12px;
         VerticalLayout {
             horizontal-stretch: 1; alignment: center; spacing: 2px;
             Text {
-                text: AgentAngie.stopping ? "Stopping agents…" : root.confirming ? "Stop all \{AgentAngie.running-agents}?"
-                    : AgentAngie.running-agents == 1 ? "1 agent running" : "\{AgentAngie.running-agents} agents running";
-                color: AgentAngie.stopping ? Theme.yellow : root.confirming ? Theme.red : Theme.green;
+                text: AgentAngi.stopping ? "Stopping agents…" : root.confirming ? "Stop all \{AgentAngi.running-agents}?"
+                    : AgentAngi.running-agents == 1 ? "1 agent running" : "\{AgentAngi.running-agents} agents running";
+                color: AgentAngi.stopping ? Theme.yellow : root.confirming ? Theme.red : Theme.green;
                 font-size: 13px; font-weight: 700; overflow: elide;
             }
-            if root.confirming && !AgentAngie.stopping: Text {
+            if root.confirming && !AgentAngi.stopping: Text {
                 text: "Ends their work. Files stay."; color: Theme.fg-dim; font-size: 10px; overflow: elide;
             }
-            if !root.confirming && !AgentAngie.stopping && AgentAngie.running-swarms > 1: Text {
-                text: "\{AgentAngie.running-swarms} sessions · Herdr shows the newest"; color: Theme.fg-dim; font-size: 10px; overflow: elide;
+            if !root.confirming && !AgentAngi.stopping && AgentAngi.running-swarms > 1: Text {
+                text: "\{AgentAngi.running-swarms} sessions · Herdr shows the newest"; color: Theme.fg-dim; font-size: 10px; overflow: elide;
             }
         }
-        if !root.confirming && !AgentAngie.stopping: HorizontalLayout {
+        if !root.confirming && !AgentAngi.stopping: HorizontalLayout {
             spacing: 8px;
-            Button { text: "Open Herdr"; clicked => { AgentAngie.open-herdr(); } }
+            Button { text: "Open Herdr"; clicked => { AgentAngi.open-herdr(); } }
             Button { text: "Stop"; clicked => { root.confirming = true; } }
         }
-        if root.confirming && !AgentAngie.stopping: HorizontalLayout {
+        if root.confirming && !AgentAngi.stopping: HorizontalLayout {
             spacing: 8px;
-            Button { text: "Stop all"; clicked => { root.confirming = false; AgentAngie.stop-agents(); } }
+            Button { text: "Stop all"; clicked => { root.confirming = false; AgentAngi.stop-agents(); } }
             Button { text: "Keep"; clicked => { root.confirming = false; } }
         }
     }
@@ -64,13 +64,13 @@ export component AgentPanel inherits Rectangle {
     TouchArea {
         changed mouse-x => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         changed mouse-y => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
-        pointer-event(e) => { if (e.kind == PointerEventKind.down) { AgentAngie.activate(); } }
+        pointer-event(e) => { if (e.kind == PointerEventKind.down) { AgentAngi.activate(); } }
     }
     content := Rectangle {
     x: 0px; y: 0px;
     width: AgentProviders.open ? max(0px, parent.width - min(440px, parent.width * 0.48)) : parent.width;
     height: parent.height;
-    property <bool> herdr-visible: AgentAngie.running-agents > 0;
+    property <bool> herdr-visible: AgentAngi.running-agents > 0;
     property <bool> chatting: AgentScope.mode == "chat";
     VerticalLayout {
         x: max(20px, (content.width - 660px) / 2);
@@ -86,20 +86,21 @@ export component AgentPanel inherits Rectangle {
         alignment: content.chatting ? stretch : start;
         HorizontalLayout {
             spacing: 12px;
-            Text { text: content.chatting ? "AGENT ANGIE · CHAT" : "AGENT ANGIE"; color: Theme.accent; font-size: 13px; font-weight: 700; vertical-alignment: center; }
+            Text { text: content.chatting ? "AGENT ANGI · CHAT" : "AGENT ANGI"; color: Theme.accent; font-size: 13px; font-weight: 700; vertical-alignment: center; }
             Rectangle { horizontal-stretch: 1; }
             if content.chatting: Button { text: "New chat"; enabled: AgentChat.messages.length > 0 && !AgentChat.busy; clicked => { AgentChat.new-chat(); } }
         }
         if !content.chatting: Text { text: "What do you want to build today?"; color: Theme.fg-bright; font-size: 26px; font-weight: 700; wrap: word-wrap; }
-        if !content.chatting: Text { text: "Describe your idea and Agent Angie will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
+        if !content.chatting: Text { text: "Describe your idea and Agent Angi will get to work."; color: Theme.fg; font-size: 13px; wrap: word-wrap; }
+        if content.chatting: ProjectRow { chat: true; folder-enabled: !AgentChat.busy; }
         if content.chatting: ChatMessages { vertical-stretch: 1; }
         prompt := LineEdit {
-            placeholder-text: content.chatting ? "Say hi to Angie…" : "Describe what you want to build…";
+            placeholder-text: content.chatting ? "Say hi to Angi…" : "Describe what you want to build…";
             accepted => {
                 if (self.text == "" || !AgentScope.ready) { return; }
                 if (content.chatting) {
                     if (!AgentChat.busy) { AgentChat.send(self.text); self.text = ""; }
-                } else { AgentAngie.submit(self.text); }
+                } else { AgentAngi.submit(self.text); }
             }
         }
         HorizontalLayout {
@@ -111,7 +112,7 @@ export component AgentPanel inherits Rectangle {
                 enabled: prompt.text != "" && AgentScope.ready && !(content.chatting && AgentChat.busy);
                 clicked => {
                     if (content.chatting) { AgentChat.send(prompt.text); prompt.text = ""; }
-                    else { AgentAngie.submit(prompt.text); }
+                    else { AgentAngi.submit(prompt.text); }
                 }
             }
         }

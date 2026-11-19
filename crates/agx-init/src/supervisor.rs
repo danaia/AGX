@@ -30,7 +30,7 @@ pub const DISPLAY_ACCESS: &str = "/usr/libexec/agx-display-access";
 fn display_access() -> Definition {
     Definition::new("display-access", "/bin/sh", &[DISPLAY_ACCESS], false)
 }
-/// Tailscale in userspace mode, for Agent Angie's LM Studio; see apps/tailscale/run.sh.
+/// Tailscale in userspace mode, for Agent Angi's LM Studio; see apps/tailscale/run.sh.
 pub const TAILSCALE: &str = "/usr/libexec/agx-tailscale/run";
 fn tailscale() -> Definition {
     Definition::new("tailscale", "/bin/sh", &[TAILSCALE], true)

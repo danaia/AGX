@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import threading
@@ -13,6 +14,7 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent"))
 import applefit
+import chat
 import providers
 import session
 import solo
@@ -198,6 +200,37 @@ class OnlyAppleTests(unittest.TestCase):
                     patch.object(providers, "apple_config", return_value=apple), patch.object(applefit, "ensure") as ensure:
                 session.start_size_guard()
                 self.assertEqual(ensure.called, starts)
+
+    def test_chat_uses_the_active_provider_and_starts_the_apple_guard_before_the_first_turn(self):
+        (self.root / "profiles/chat.md").write_text("Angi's chat prompt")
+        skill = self.root / "skills/angi-chat"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("---\nname: angi-chat\n---\nAngi's persona")
+        original_cwd = Path.cwd()
+        self.addCleanup(os.chdir, original_cwd)
+        for service, model, provider in (
+            ("apple", "apple/base", {"apple": applefit.provider_config(self.APPLE)}),
+            ("openai", "openai/chat", None),
+            ("lmstudio", "lmstudio/qwen", {"lmstudio": self.LMSTUDIO}),
+        ):
+            with self.subTest(service=service), patch.dict(os.environ, {"HOME": str(self.root)}), patch.object(session, "ASSETS", self.root), \
+                    patch.object(session, "active", return_value=service), patch.object(providers, "apple_config", return_value=self.APPLE), \
+                    patch.object(providers, "lmstudio_config", return_value=self.LMSTUDIO), \
+                    patch.object(chat, "active_selections", return_value={} if service == "apple" else {"os": model}), \
+                    patch.object(applefit, "ensure") as ensure:
+                def run(*_, **__):
+                    self.assertEqual(ensure.called, service == "apple")
+                    config = json.loads(os.environ["OPENCODE_CONFIG_CONTENT"])
+                    self.assertEqual(config.get("provider"), provider)
+                    profile = config["agent"][chat.AGENT]
+                    self.assertEqual(profile["model"], model)
+                    self.assertEqual(profile["permission"]["*"], "deny")
+                    self.assertEqual(profile["permission"]["angi_files_save"], "allow")
+                    self.assertEqual(config["mcp"]["angi_files"]["command"][-1], str(self.root.resolve()))
+                    self.assertIn("Angi's persona", profile["prompt"])
+                    return subprocess.CompletedProcess([], 0, stdout='{"type":"text","part":{"text":"Hello"}}', stderr="")
+                with patch.object(chat.subprocess, "run", side_effect=run):
+                    self.assertEqual(chat.turn(self.root, "Hello", new=True), {"text": "Hello"})
 
     def test_an_unrelated_profile_is_not_modified_by_building_apples(self):
         profile = {"prompt": "P", "permission": {"*": "allow"}}

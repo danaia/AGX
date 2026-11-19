@@ -184,7 +184,7 @@ def attach(state):
     """Open Herdr on the newest swarm that is still running (the desktop's "Open Herdr" button)."""
     runs = live_runs(state)
     if not runs:
-        raise RuntimeError("No Agent Angie swarm is running.")
+        raise RuntimeError("No Agent Angi swarm is running.")
     attach_run(runs[0])
 
 

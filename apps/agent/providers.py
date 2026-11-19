@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 import tailnet
 from messaging import ROLES
-from models import ALL_ROLES, activate, active, save, selections, settings_path
+from models import ALL_ROLES, activate, active, atomic_write, save, selections
 
 
 class Providers:
@@ -78,7 +78,7 @@ class Providers:
             elif active() == "lmstudio":
                 text = "In use. " + ("Changes apply to new builds." if selections("lmstudio") else "Choose a model for each role; until you do, new builds use OpenCode's default model.")
             else:
-                text = "Connected. Use it to make it the one service Agent Angie builds with."
+                text = "Connected. Use it to make it the one service Agent Angi builds with."
             if config and where:
                 text += f" LM Studio is at {where[0]}:{where[1]}."
             network = tailnet.state()
@@ -89,7 +89,7 @@ class Providers:
             return {"connected": bool(config), "active": active() == "lmstudio" and bool(config), "models": ["lmstudio/" + key for key in config.get("models", {})], "status": text, "choices": selections("lmstudio"), "tailscale": network}
         if provider == "apple":
             config = apple_config()
-            return {"connected": bool(config), "active": active() == "apple", "models": ["apple/" + key for key in config.get("models", {})], "status": "Server configured. A role with no model chosen uses Apple's too. Test the connection again if the device address changes." if config else "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running.", "choices": apple_models()}
+            return {"connected": bool(config), "active": active() == "apple", "models": ["apple/" + key for key in config.get("models", {})], "status": "Server configured. A role with no model chosen uses Apple's too. Test the connection again if the device address changes." if config else "Install Local LLM Server on your Apple Intelligence device, enable Apple Intelligence, start its OpenAI-compatible server and enter the address shown by the app. Keep both devices on the same trusted network and keep the app running.", "choices": apple_models(), "address": apple_address(config)}
         connected = signed_in(provider)
         models = []
         if connected:
@@ -99,7 +99,7 @@ class Providers:
                     models = sorted(provider + "/" + key for key, model in item["models"].items() if model.get("capabilities", {}).get("toolcall", True) and model.get("status") != "deprecated")
         in_use = connected and active() == provider
         chosen = "Changes apply to new builds." if selections(provider) else "Choose a model for each role; until you do, new builds use OpenCode's default model."
-        notice = "In use. " + chosen if in_use else "Connected. Use it to make it the one service Agent Angie builds with."
+        notice = "In use. " + chosen if in_use else "Connected. Use it to make it the one service Agent Angi builds with."
         return {"connected": connected, "active": in_use, "models": models, "choices": selections(provider), "status": notice if connected else (self.message or ("Complete sign-in in the browser, then return here." if self.pending else "Sign in with your ChatGPT subscription to connect OpenAI to OpenCode."))}
 
     def use(self, provider):
@@ -161,6 +161,20 @@ def apple_config():
     return local_config("apple")
 
 
+def apple_address_path():
+    return Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm/apple-address.json"
+
+
+def apple_address(config):
+    try:
+        saved = json.loads(apple_address_path().read_text())
+        if isinstance(saved, str) and saved:
+            return saved
+    except (FileNotFoundError, ValueError):
+        pass
+    return config.get("options", {}).get("baseURL", "")
+
+
 def apple_models():
     """Each role's Apple model as a run will use it: the saved choice, or the Apple model it falls back to."""
     import applefit
@@ -210,15 +224,22 @@ def connect_lmstudio(address):
     config = {"npm": "@ai-sdk/openai-compatible", "name": "LM Studio", "options": {"baseURL": tailnet.RELAY}, "models": {key: {"name": key} for key in identifiers}}
     path = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/angi-lmstudio.json"
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    from models import atomic_write
     atomic_write(path, config)
     return config
 
 
 def connect_apple(address):
+    address = address.strip()
     parsed = urlsplit(address)
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("Enter the server's HTTP or HTTPS address, without credentials.")
+    try:
+        parsed.port
+    except ValueError:
+        raise ValueError("Enter a valid server port.") from None
+    if any(character.isspace() for character in address):
+        raise ValueError("Enter the server address without spaces.")
+    atomic_write(apple_address_path(), address)
     address = address.rstrip("/")
     if not address.endswith("/v1"):
         address += "/v1"
@@ -230,7 +251,6 @@ def connect_apple(address):
     config = {"npm": "@ai-sdk/openai-compatible", "name": "Apple Intelligence", "options": {"baseURL": address}, "models": {key: {"name": key} for key in identifiers}}
     path = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/angi-apple.json"
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    from models import atomic_write
     atomic_write(path, config)
     return config
 

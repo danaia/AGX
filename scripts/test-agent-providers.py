@@ -69,6 +69,19 @@ class ProviderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             providers.connect_apple("http://user:password@localhost:1234")
 
+    def test_apple_remembers_submitted_address_when_server_is_offline(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_CONFIG_HOME": temporary, "XDG_STATE_HOME": temporary}):
+            config = {"options": {"baseURL": "http://previous-device:1234/v1"}, "models": {"base": {}}}
+            models.atomic_write(Path(temporary) / "opencode/angi-apple.json", config)
+            self.assertEqual(providers.Providers().status("apple")["address"], config["options"]["baseURL"])
+            address = "http://new-device:1234"
+            with patch.object(providers.urllib.request, "urlopen", side_effect=OSError("offline")):
+                with self.assertRaises(OSError):
+                    providers.connect_apple(f" {address} ")
+                status = providers.Providers().status("apple")
+            self.assertEqual(status["address"], address)
+            self.assertEqual(providers.apple_config(), config)
+
     def test_oauth_is_started_using_runtime_method_and_callback(self):
         service = providers.Providers()
         finished = threading.Event()

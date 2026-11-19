@@ -38,7 +38,7 @@ impl Desktop {
         desktop.ws[0].z = vec![Kind::Settings, Kind::Overview, Kind::Cpu, Kind::Memory];
         desktop.ws[0].focus = Some(Kind::Memory);
         for (i, kind) in [
-            Kind::AgentAngie,
+            Kind::AgentAngi,
             Kind::TerminalWindow(0),
             Kind::Web,
             Kind::System,

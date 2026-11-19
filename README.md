@@ -38,7 +38,7 @@ From first boot to your first application, we want to make ambitious software de
 
 Most operating systems are made for people and later adapted for agents. ANGI starts from the other end. It is a small, fully inspectable machine whose every command, service, and log is available to an agent as plain text and JSON, running on a Raspberry Pi 5 that costs a fraction of a developer workstation. The whole system, from boot to the dashboard, lives in one repository. An agent can read it, change it, rebuild it, flash it, and verify the result. Nothing is inherited from someone else's distribution, so nothing is off-limits.
 
-**A note on names.** The product is **ANGI** (pronounced "Angie"). **AGX** stays as the technical name under the hood: the `agx` command, the `agx-*` crates and services, and file paths such as `/usr/share/agx`. The GitHub repository is named ANGI. Everything you see on screen, in the terminal dashboard, and on the desktop says ANGI.
+**A note on names.** The product is **ANGI** (pronounced “AN-jee”). **AGX** stays as the technical name under the hood: the `agx` command, the `agx-*` crates and services, and file paths such as `/usr/share/agx`. The GitHub repository is named ANGI. Everything you see on screen, in the terminal dashboard, and on the desktop says ANGI.
 
 ### How ANGI is different
 

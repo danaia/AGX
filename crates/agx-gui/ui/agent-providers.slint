@@ -8,6 +8,7 @@ export global AgentProviders {
     in-out property <bool> busy;
     in-out property <bool> watching;
     in-out property <string> status;
+    in-out property <string> apple-address;
     // LM Studio is reached over Tailscale: its state, and whether sign-in can be offered.
     in-out property <string> tailscale;
     in-out property <bool> tailscale-ready;
@@ -141,7 +142,7 @@ export component ProviderPanel inherits Rectangle {
                     alignment: start; spacing: 12px;
                     Button { height: 36px; vertical-stretch: 0; text: "Open Local LLM Server in the App Store"; clicked => { AgentProviders.open-link("https://apps.apple.com/us/app/local-llm-server/id6757007308"); } }
                     Text { text: "Use the network address shown by the app, not localhost. Apple Intelligence must be enabled and its model downloaded on the Apple device."; color: Theme.fg-dim; font-size: 12px; wrap: word-wrap; }
-                    endpoint := LineEdit { height: 36px; vertical-stretch: 0; placeholder-text: "http://your-device-address:port/v1"; }
+                    endpoint := LineEdit { height: 36px; vertical-stretch: 0; placeholder-text: "http://your-device-address:port/v1"; text <=> AgentProviders.apple-address; }
                     Button { height: 36px; vertical-stretch: 0; text: "Test and connect"; enabled: !AgentProviders.busy && endpoint.text != ""; clicked => { AgentProviders.action(2, endpoint.text); } }
                 }
                 if AgentProviders.provider == "openai" && !AgentProviders.connected: VerticalLayout {
@@ -159,17 +160,22 @@ export component ProviderPanel inherits Rectangle {
                 }
                 if AgentProviders.connected && AgentProviders.active-index != AgentProviders.index-of(AgentProviders.provider): VerticalLayout {
                     alignment: start; spacing: 12px;
-                    Button { height: 36px; vertical-stretch: 0; text: "Use " + AgentProviders.names[AgentProviders.index-of(AgentProviders.provider)] + " for Agent Angie"; enabled: !AgentProviders.busy; clicked => { AgentProviders.action(3, ""); } }
+                    Button { height: 36px; vertical-stretch: 0; text: "Use " + AgentProviders.names[AgentProviders.index-of(AgentProviders.provider)] + " for Agent Angi"; enabled: !AgentProviders.busy; clicked => { AgentProviders.action(3, ""); } }
                     Text {
-                        text: AgentProviders.active-index < 0 ? "Agent Angie builds with one service at a time." : "Agent Angie currently builds with " + AgentProviders.names[AgentProviders.active-index] + ". Using this service switches new builds to it.";
+                        text: AgentProviders.active-index < 0 ? "Agent Angi builds with one service at a time." : "Agent Angi currently builds with " + AgentProviders.names[AgentProviders.active-index] + ". Using this service switches new builds to it.";
                         color: Theme.fg-dim; font-size: 11px; wrap: word-wrap;
                     }
                 }
                 if AgentProviders.connected && AgentProviders.active-index == AgentProviders.index-of(AgentProviders.provider): VerticalLayout {
                     alignment: start; spacing: 18px;
                     Text { text: "Models for new builds"; color: Theme.fg-bright; font-size: 17px; font-weight: 600; }
-                    RoleModel { role: "os"; label: "OS updates"; selected: AgentProviders.os-updates; index: AgentProviders.role-index[3]; }
-                    Text { text: "Changes to the desktop and system. One agent, no swarm, installs through angi-update."; color: Theme.fg-dim; font-size: 11px; wrap: word-wrap; }
+                    RoleModel { role: "os"; label: AgentProviders.provider == "openai" ? "OS updates / Chat" : "OS updates"; selected: AgentProviders.os-updates; index: AgentProviders.role-index[3]; }
+                    Text {
+                        text: AgentProviders.provider == "openai"
+                            ? "This model handles Chat and changes to the desktop and system."
+                            : "Changes to the desktop and system. One agent, no swarm, installs through angi-update.";
+                        color: Theme.fg-dim; font-size: 11px; wrap: word-wrap;
+                    }
                     Text { text: "Projects"; color: Theme.fg-bright; font-size: 14px; font-weight: 600; }
                     RoleModel { role: "orchestrator"; selected: AgentProviders.orchestrator; index: AgentProviders.role-index[0]; }
                     RoleModel { role: "builder"; selected: AgentProviders.builder; index: AgentProviders.role-index[1]; }

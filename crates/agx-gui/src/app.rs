@@ -112,7 +112,7 @@ impl App {
                 .any(|w| w.kind.is_terminal() && !w.collapsed);
         if !terminal_search
             && self.desk.focused() != Some(Kind::Settings)
-            && self.desk.focused() != Some(Kind::AgentAngie)
+            && self.desk.focused() != Some(Kind::AgentAngi)
             && self.desk.focused() != Some(Kind::Files)
             && (self.desk.focused() != Some(Kind::Web) || !browser_visible)
         {

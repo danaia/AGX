@@ -1,9 +1,9 @@
-//! Agent Angie swarms that are running, found from the process list.
+//! Agent Angi swarms that are running, found from the process list.
 //!
 //! A swarm outlives the terminal tab that started it: closing the tab detaches Herdr but leaves its
 //! server and agents running, holding memory with nothing on screen. This watches for them and gives
-//! Agent Angie's page a button that opens Herdr again (`App::terminal_open_herdr`).
-use crate::{AgentAngie, App, AppWindow};
+//! Agent Angi's page a button that opens Herdr again (`App::terminal_open_herdr`).
+use crate::{AgentAngi, App, AppWindow};
 use slint::ComponentHandle;
 use std::{cell::RefCell, os::unix::fs::MetadataExt, rc::Rc, time::Duration};
 
@@ -107,16 +107,16 @@ fn end(find: impl Fn() -> Vec<i32>, patience: Duration) {
 
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     let (weak, state) = (ui.as_weak(), app.clone());
-    ui.global::<AgentAngie>().on_open_herdr(move || {
+    ui.global::<AgentAngi>().on_open_herdr(move || {
         if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
             app.terminal_open_herdr(&ui);
         }
     });
     // The banner asks for confirmation before it calls this.
     let weak = ui.as_weak();
-    ui.global::<AgentAngie>().on_stop_agents(move || {
+    ui.global::<AgentAngi>().on_stop_agents(move || {
         let Some(ui) = weak.upgrade() else { return };
-        let global = ui.global::<AgentAngie>();
+        let global = ui.global::<AgentAngi>();
         if global.get_stopping() {
             return;
         }
@@ -148,7 +148,7 @@ fn publish(weak: &slint::Weak<AppWindow>, now: Swarms, stopped: bool) -> bool {
     let weak = weak.clone();
     slint::invoke_from_event_loop(move || {
         if let Some(ui) = weak.upgrade() {
-            let global = ui.global::<AgentAngie>();
+            let global = ui.global::<AgentAngi>();
             global.set_running_agents(now.agents as i32);
             global.set_running_swarms(now.swarms as i32);
             if stopped {

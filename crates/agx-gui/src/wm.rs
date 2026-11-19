@@ -94,7 +94,7 @@ pub enum Kind {
     Web,
     Terminal,
     Settings,
-    AgentAngie,
+    AgentAngi,
     Files,
     TerminalWindow(u32),
 }
@@ -110,7 +110,7 @@ impl Kind {
         Kind::Web,
         Kind::Terminal,
         Kind::Settings,
-        Kind::AgentAngie,
+        Kind::AgentAngi,
         Kind::Files,
     ];
     pub fn is_terminal(self) -> bool {
@@ -134,7 +134,7 @@ impl Kind {
             Kind::Web => "Web",
             Kind::Terminal | Kind::TerminalWindow(_) => "Terminal",
             Kind::Settings => "Settings",
-            Kind::AgentAngie => "Agent Angie",
+            Kind::AgentAngi => "Agent Angi",
             Kind::Files => "Files",
         }
     }

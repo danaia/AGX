@@ -80,16 +80,16 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     {
         let (weak, state) = (ui.as_weak(), app.clone());
-        ui.global::<crate::AgentAngie>().on_activate(move || {
+        ui.global::<crate::AgentAngi>().on_activate(move || {
             if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
-                app.desk.focus(crate::wm::Kind::AgentAngie);
+                app.desk.focus(crate::wm::Kind::AgentAngi);
                 app.refresh(&ui);
             }
         });
     }
     {
         let (weak, state) = (ui.as_weak(), app.clone());
-        ui.global::<crate::AgentAngie>().on_submit(move |prompt| {
+        ui.global::<crate::AgentAngi>().on_submit(move |prompt| {
             if let (Some(ui), Ok(mut app)) = (weak.upgrade(), state.try_borrow_mut()) {
                 // OS mode builds the operating system; Project mode builds in the chosen folder.
                 let scope = ui.global::<crate::AgentScope>();

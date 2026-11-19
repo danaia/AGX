@@ -1,18 +1,18 @@
 import { Theme } from "data.slint";
 
-// Agent Angie's Chat mode: a conversation shown as bubbles. agent_chat.rs owns the messages and talks to
+// Agent Angi's Chat mode: a conversation shown as bubbles. agent_chat.rs owns the messages and talks to
 // the agent runtime (`agent chat-turn`); this file only draws them.
 export struct ChatMessage {
-    // True for the person's own messages (right, accent), false for Angie's (left).
+    // True for the person's own messages (right, accent), false for Angi's (left).
     mine: bool,
     text: string,
-    // A reply that failed: shown in red so it is never mistaken for something Angie said.
+    // A reply that failed: shown in red so it is never mistaken for something Angi said.
     failed: bool,
 }
 
 export global AgentChat {
     in-out property <[ChatMessage]> messages;
-    // True from sending until Angie's reply (or failure) arrives.
+    // True from sending until Angi's reply (or failure) arrives.
     in-out property <bool> busy;
     callback send(string);
     callback new-chat();
@@ -59,7 +59,7 @@ export component ChatMessages inherits Rectangle {
         VerticalLayout {
             padding: 14px; spacing: 10px; alignment: start;
             if AgentChat.messages.length == 0 && !AgentChat.busy: Text {
-                text: "Say hi. Angie is listening."; color: Theme.fg-dim; font-size: 13px; horizontal-alignment: center;
+                text: "Say hi. Angi is listening."; color: Theme.fg-dim; font-size: 13px; horizontal-alignment: center;
             }
             for message in AgentChat.messages: HorizontalLayout {
                 if message.mine: Rectangle { horizontal-stretch: 1; }

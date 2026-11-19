@@ -80,6 +80,11 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
             if request["provider"].as_str() != Some(global.get_provider().as_str()) { continue; }
             global.set_busy(false);
             if let Some(error) = response["error"].as_str() { global.set_status(error.into()); continue; }
+            if request["provider"] == "apple" && global.get_apple_address().is_empty() {
+                if let Some(address) = response["address"].as_str() {
+                    global.set_apple_address(address.into());
+                }
+            }
             if let Some(status) = response["status"].as_str() { global.set_status(status.into()); }
             if let Some(tailscale) = response["tailscale"].as_object() {
                 let ready = tailscale.get("ready").and_then(Value::as_bool).unwrap_or(false);

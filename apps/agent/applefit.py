@@ -178,6 +178,8 @@ def tighten(sent, status, reply):
 
 def lean(profile):
     """An agent profile for a small-request server: the costliest rarely-needed tools off, skills read as files."""
+    if profile.get("permission", {}).get("*") == "deny":
+        return profile
     skills = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser() / "opencode/skills"
     note = (f"\n\nThis model accepts only small requests. Keep tool output short (pipe long output through head or tail), "
             f"run one focused command at a time, and read a skill as a file when told to use it: {skills}/NAME/SKILL.md.")

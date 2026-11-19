@@ -1,5 +1,5 @@
 //! ANGI Files: a native, virtualized file browser. It backs the Files window and the folder picker
-//! Agent Angie opens from workspace 2.
+//! Agent Angi opens from workspace 2.
 //!
 //! `hub.rs` owns commands, the clipboard and undo history for both browsers; `pane.rs` one
 //! browser's state; `model.rs` the lazily formatted rows; `worker.rs` the scan and operation
@@ -65,7 +65,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
         })
     };
 
-    // Desktop effects: terminals, local servers, and Agent Angie's folder choice.
+    // Desktop effects: terminals, local servers, and Agent Angi's folder choice.
     let perform = {
         let (weak, app, servers) = (ui.as_weak(), app.clone(), servers.clone());
         Rc::new(move |effect: Effect| {

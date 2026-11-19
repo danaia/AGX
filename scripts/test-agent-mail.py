@@ -105,7 +105,7 @@ class AttachTests(unittest.TestCase):
     def test_attach_without_a_running_swarm_says_so(self):
         with tempfile.TemporaryDirectory() as temporary:
             with patch("session.herdr", side_effect=RuntimeError("no server")):
-                with self.assertRaisesRegex(RuntimeError, "No Agent Angie swarm is running"):
+                with self.assertRaisesRegex(RuntimeError, "No Agent Angi swarm is running"):
                     attach(Path(temporary))
 
 

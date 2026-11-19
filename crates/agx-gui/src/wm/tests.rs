@@ -194,11 +194,11 @@ fn initial_windows_follow_display_size_but_custom_positions_survive() {
 #[test]
 fn opening_splits_the_focused_tile_along_its_long_side() {
     let mut d = desk();
-    d.cur = 1; // Agent Angie
-    let before = rect(&d, Kind::AgentAngie);
+    d.cur = 1; // Agent Angi
+    let before = rect(&d, Kind::AgentAngi);
     assert!(before.w > before.h);
     d.open(Kind::Hardware);
-    let (n, h) = (rect(&d, Kind::AgentAngie), rect(&d, Kind::Hardware));
+    let (n, h) = (rect(&d, Kind::AgentAngi), rect(&d, Kind::Hardware));
     assert!(n.right() <= h.x, "wide tile splits side by side");
     assert_eq!(d.focused(), Some(Kind::Hardware));
 }
@@ -364,7 +364,7 @@ fn move_window_between_workspaces() {
 #[test]
 fn closed_panels_reopen_on_the_current_workspace() {
     let mut d = desk();
-    d.close(Kind::AgentAngie);
+    d.close(Kind::AgentAngi);
     assert!(!d.occupied(1));
     d.open(Kind::Network);
     assert!(d.rect_of(Kind::Network).is_some());

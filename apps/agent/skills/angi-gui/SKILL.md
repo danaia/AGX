@@ -11,7 +11,7 @@ Rust in `src/`, Slint UI in `ui/`. Read the checkout's `AGENTS.md` and
 ANGI; technical names stay `agx`.
 
 For desktop tooltips, read `.agents/skills/angi-desktop-tooltips/SKILL.md` in the
-checkout. Use its shared Slint components from Agent Angie's OS and Project toggle.
+checkout. Use its shared Slint components from Agent Angi's OS and Project toggle.
 
 ## The loop
 
@@ -25,7 +25,7 @@ checkout. Use its shared Slint components from Agent Angie's OS and Project togg
    the running desktop three seconds later, which closes ANGI's terminals and browser sessions,
    including this one, so nothing you do after it will be seen. Never restart the desktop any other
    way (no `kill`, `killall` or reboot).
-5. The user reopens Agent Angie and resumes (`agent angi`, then resume) to continue. After a refresh,
+5. The user reopens Agent Angi and resumes (`agent angi`, then resume) to continue. After a refresh,
    `angi-update status` shows the release now running and how the refresh went; check it, and
    `tail /run/agx/gui.log`. If the new desktop fails to stay up, `angi-update` restores the
    previous release by itself; use `angi-update rollback` plus another refresh if it merely misbehaves.

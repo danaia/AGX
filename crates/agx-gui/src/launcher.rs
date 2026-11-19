@@ -108,9 +108,9 @@ fn catalogue(
             "settings preferences mouse sensitivity acceleration scrolling bluetooth wireless pair devices",
         ),
         (
-            "Agent Angie",
-            "Build with Agent Angie",
-            "agent angie herdr build",
+            "Agent Angi",
+            "Build with Agent Angi",
+            "agent angi herdr build",
         ),
         (
             "Files",

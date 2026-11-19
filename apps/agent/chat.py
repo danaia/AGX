@@ -1,8 +1,4 @@
-"""Chat: one OpenCode agent with Angie's persona, no Herdr, no project folder, no tools.
-
-Chat is for talking. The agent loads the angi-chat skill, may use nothing else, and starts in its own
-private folder so resuming continues the chat and never the OS agent's session.
-"""
+"""Chat: one OpenCode agent with optional tools for a selected local folder."""
 import json
 import os
 from pathlib import Path
@@ -10,7 +6,7 @@ import subprocess
 import time
 
 from models import active_selections
-from scope import chat_scope_text
+from scope import chat_scope_text, validate_project
 import session
 
 AGENT = "angi-chat"
@@ -18,20 +14,34 @@ SKILL = "angi-chat"
 MARKER = "chat-current"
 
 
-def config():
-    """OpenCode configuration with the single chat agent. It may load skills and nothing else."""
-    profile = {"description": "Angie, in conversation", "mode": "primary", "permission": {"*": "deny", "skill": "allow"},
-               "prompt": (session.ASSETS / "profiles/chat.md").read_text() + "\n" + chat_scope_text()}
+def config(folder):
+    """Include Angi's persona in the prompt so it is available on every provider."""
+    skill = (session.ASSETS / "skills" / SKILL / "SKILL.md").read_text().split("---", 2)[2].strip()
+    prompt = (session.ASSETS / "profiles/chat.md").read_text().strip()
+    from chat_files import TOOLS
+    permission = {"*": "deny", **{f"angi_files_{name}": "allow" for name in TOOLS}}
+    profile = {"description": "Angi, in conversation", "mode": "primary", "permission": permission,
+               "prompt": "\n\n".join((prompt, chat_scope_text(folder), skill))}
     # Chat is a single agent like an OS update, so it shares that role's model; none chosen means OpenCode's default.
     model = active_selections().get("os")
     if model:
         profile["model"] = model
-    return session.opencode_config({AGENT: profile})
+    result = json.loads(session.opencode_config({AGENT: profile}))
+    result["mcp"] = {"angi_files": {
+        "type": "local",
+        "command": ["/usr/bin/python3", str(Path(__file__).with_name("chat_files.py").resolve()), str(folder)],
+    }}
+    return json.dumps(result)
 
 
-def prepare(state):
-    session.install_skills()
-    os.environ["OPENCODE_CONFIG_CONTENT"] = config()
+def prepare(state, folder=None):
+    if folder is None:
+        folder = str(Path.home().resolve())
+    selected = validate_project(folder, allow_home=True)
+    if str(selected) != folder:
+        raise ValueError("The Chat folder has moved. Select it again.")
+    session.start_size_guard()
+    os.environ["OPENCODE_CONFIG_CONTENT"] = config(selected)
     home = state / "chat"
     home.mkdir(mode=0o700, exist_ok=True)
     os.chdir(home)
@@ -65,28 +75,31 @@ def parse_reply(output):
             text.append(event.get("part", {}).get("text", ""))
         elif event.get("type") == "error":
             detail = event.get("error", {})
-            error = (detail.get("data") or {}).get("message") or detail.get("message") or detail.get("name") or "Angie hit a problem."
+            error = (detail.get("data") or {}).get("message") or detail.get("message") or detail.get("name") or "Angi hit a problem."
     return "".join(text).strip(), error
 
 
-def turn(state, message, new=False, timeout=300):
+def turn(state, message, new=False, timeout=300, folder=None):
     """One chat exchange for the desktop's chat view: {"text": reply} or {"error": reason}.
 
     A new chat starts a fresh OpenCode session; otherwise the folder's last session continues.
     """
-    prepare(state)
-    command = ["opencode", "run", "--agent", AGENT, "--format", "json", *([] if new else ["--continue"]), message]
+    command = ["opencode", "run", "--agent", AGENT, "--format", "json", *([] if new else ["--continue"]), "--", message]
+    try:
+        prepare(state, folder)
+    except (OSError, RuntimeError, ValueError) as error:
+        return {"error": str(error)}
     try:
         result = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return {"error": "Angie took too long to answer. Try again."}
+        return {"error": "Angi took too long to answer. Try again."}
     except OSError:
         return {"error": "OpenCode is not available."}
     reply, error = parse_reply(result.stdout)
     if reply:
         return {"text": reply}
     lines = result.stderr.strip().splitlines()
-    return {"error": error or (lines[-1] if lines else "Angie did not answer. Check the model in Agent Angie's provider setup.")}
+    return {"error": error or (lines[-1] if lines else "Angi did not answer. Check the model in Agent Angi's provider setup.")}
 
 
 def newest(state):

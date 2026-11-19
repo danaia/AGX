@@ -8,13 +8,13 @@ right. Use **Ctrl+B, then Q** to detach while they continue working. Run
 session; old sessions remain available in Herdr rather than being killed.
 
 Closing the terminal tab also detaches Herdr, and the agents keep running (and keep their memory).
-While any are running, Agent Angie's page shows an **Open Herdr** banner with the agent count. It
+While any are running, Agent Angi's page shows an **Open Herdr** banner with the agent count. It
 focuses the tab already showing Herdr or opens a new one, running **`agent attach`**, which opens
 the newest swarm whose Herdr server is still up.
 
 Herdr shows one session at a time, so the banner's agent count can be larger than what Herdr shows:
 every earlier build still has its own Herdr server, three agents and a mail-delivery worker that
-polls the server every two seconds. **Stop** (it asks first) ends every Agent Angie session of the
+polls the server every two seconds. **Stop** (it asks first) ends every Agent Angi session of the
 account at once: servers, agents and workers. The files the agents wrote stay; only the running
 sessions end. It does not touch OS-update runs or other Herdr sessions.
 
@@ -108,7 +108,7 @@ Upstream: [Herdr 0.9.5](https://github.com/herdrdev/herdr/releases/tag/v0.9.5)
 and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
 
 
-## What Agent Angie does: OS, Project or Chat
+## What Agent Angi does: OS, Project or Chat
 
 A three-way switch under the prompt chooses the scope of a run; hovering a side explains it.
 
@@ -123,21 +123,25 @@ A three-way switch under the prompt chooses the scope of a run; hovering a side 
   chosen. All three Herdr panes start in that folder, and the agents are told to work only inside
   it, to leave the operating system and its source alone, and not to use `angi-root`.
 
-* **Chat** is just conversation with Angie's persona, shown as chat bubbles in the panel itself
-  (no terminal): your messages on the right, Angie's on the left, a typing indicator while she
+* **Chat** is conversation with Angi, shown as chat bubbles in the panel itself
+  (no terminal): your messages on the right, Angi's on the left, a typing indicator while she
   answers and a red bubble if a turn fails. **New chat** clears the conversation. Like OS it is
-  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new] MESSAGE`
+  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new] [--folder PATH] MESSAGE`
   (`apps/agent/chat.py`), which calls `opencode run --agent angi-chat --format json` and prints one
-  JSON line, `{"text": ...}` or `{"error": ...}`. The agent loads the `angi-chat` skill
-  (`apps/agent/skills/angi-chat/SKILL.md`: who Angie is, how she talks, honesty rules) and is
-  allowed nothing else, so it reads, writes and runs nothing. It works in a private `chat` folder
+  JSON line, `{"text": ...}` or `{"error": ...}`. Chat can list directories, read UTF-8
+  text, create folders, and save text in the user's home folder. For example, ask Angi
+  to create `Test` under home, then ask her to save `index.html` inside it.
+  **Change folder…** chooses a different workspace, and **Use Home** returns to the default.
+  The file tools skip hidden files and symbolic links. Replacing an existing file
+  requires an explicit overwrite request. The conversation works in a private `chat` folder
   in the swarm state directory; the first message of a conversation passes `--new`, later ones
   continue that session. `agent angi --prompt BRIEF --chat` still runs the same agent in a terminal.
-  Chat needs no folder. It uses the model chosen for **OS updates** (the other single-agent role),
-  or OpenCode's default when none is chosen. The provider cards are hidden while chatting to give
-  the conversation the room.
+  Chat shares the OS updates model. In OpenAI setup, it is labeled **OS updates / Chat**. With Apple Intelligence
+  active, Chat starts the local request guard and uses the server's first model if no model
+  was chosen. For other providers, OpenCode supplies its default when no model was chosen.
+  The provider cards are hidden while chatting to give the conversation the room.
 
-Provider setup has a model for **OS updates** next to the project roles. It is saved like the others
+Provider setup lists the shared model next to the project roles. It is saved like the others
 (per service, applied to new runs) and, until one is chosen, OpenCode's default model is used.
 `agent angi` resumes the most recent run, whichever kind it was (chat, OS update or swarm). Runs started before this change that
 were OS swarms still resume as swarms.
@@ -209,7 +213,7 @@ refuses, and never to reset, stash or clean the checkout.
 
 The three cards below the build prompt open provider setup panels. OpenAI uses
 OpenCode’s browser OAuth flow for a ChatGPT subscription. Finish sign-in in the
-browser, then return to Agent Angie; the panel checks stored authentication and
+browser, then return to Agent Angi; the panel checks stored authentication and
 shows the provider’s coding models. Closing the browser does not itself finish
 sign-in. Choose each role’s model independently; preferences are saved privately
 and applied to new builds, while existing sessions retain their configuration.
@@ -241,7 +245,7 @@ Tailscale. See [Tailscale for LM Studio](tailscale.md) for the setup, the usersp
 design and the safety settings. Claude subscription sign-in works only in the unmodified Claude Code
 application, so ANGI no longer offers a Claude card; see [Anthropic’s authentication guidance](https://code.claude.com/docs/en/legal-and-compliance).
 
-Agent Angie builds with **one service at a time**. A card whose service is connected shows **Use**;
+Agent Angi builds with **one service at a time**. A card whose service is connected shows **Use**;
 the card in use shows an **ACTIVE** label and a green outline, and **Use** on another card switches
 new builds to it. Each card's bottom-right footer lists the models chosen for the orchestrator,
 builder and tester roles (dimmed while that service is not in use). Model choices are kept per

@@ -96,7 +96,7 @@ impl EventListener for Proxy {
         self.0.dirty.store(true, Ordering::Release);
     }
 }
-/// What an Agent Angie terminal run is for: the operating system or a project folder. (Chat has its own
+/// What an Agent Angi terminal run is for: the operating system or a project folder. (Chat has its own
 /// bubble view, `agent_chat.rs`.)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum AgentRun {
@@ -104,7 +104,7 @@ pub(crate) enum AgentRun {
     /// A folder the agent runtime validates.
     Project(String),
 }
-/// Command line for Agent Angie: the operating system by default, or `--project DIR`.
+/// Command line for Agent Angi: the operating system by default, or `--project DIR`.
 pub(super) fn agent_arguments(prompt: String, run: AgentRun) -> Vec<String> {
     let mut arguments = vec!["angi".into(), "--prompt".into(), prompt];
     match run {
@@ -154,17 +154,17 @@ impl Session {
     pub fn opencode(size: Size) -> io::Result<Self> {
         Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }
-    /// Agent Angie on the operating system, or in a project folder.
+    /// Agent Angi on the operating system, or in a project folder.
     pub fn agent(size: Size, prompt: String, run: AgentRun) -> io::Result<Self> {
         Self::start(
             size,
-            Some(("/usr/bin/agent", agent_arguments(prompt, run), "Agent Angie")),
+            Some(("/usr/bin/agent", agent_arguments(prompt, run), "Agent Angi")),
             None,
         )
     }
     /// Herdr on the newest swarm that is still running (`agent attach`).
     pub fn herdr(size: Size) -> io::Result<Self> {
-        let mut session = Self::start(size, Some(("/usr/bin/agent", vec!["attach".into()], "Agent Angie")), None)?;
+        let mut session = Self::start(size, Some(("/usr/bin/agent", vec!["attach".into()], "Agent Angi")), None)?;
         session.attaches = true;
         Ok(session)
     }

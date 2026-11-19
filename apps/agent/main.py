@@ -59,13 +59,19 @@ def main():
         except ValueError as error:
             print(json.dumps({"error": str(error)}))
         return
-    if len(args) in (2, 3) and args[0] == "chat-turn" and (len(args) == 2 or args[1] == "--new") and args[-1].strip():
+    if args[:1] == ["chat-turn"] and len(args) >= 2:
         # One exchange for the desktop's chat bubbles: a single JSON line, text or error.
         if os.getuid() == 0:
             raise RuntimeError("Run agent chat-turn as your desktop account.")
+        options = args[1:-1]
+        new = options[:1] == ["--new"]
+        if new:
+            options = options[1:]
+        if (options and not (len(options) == 2 and options[0] == "--folder")) or not args[-1].strip():
+            raise ValueError("Usage: agent chat-turn [--new] [--folder PATH] MESSAGE")
         state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
         state.mkdir(parents=True, exist_ok=True, mode=0o700)
-        print(json.dumps(chat.turn(state, args[-1].strip(), new=len(args) == 3)))
+        print(json.dumps(chat.turn(state, args[-1].strip(), new=new, folder=options[1] if options else None)))
         return
     if args and args[0] == "_dispatch":
         dispatch(Path(args[1]))
