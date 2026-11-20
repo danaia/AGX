@@ -1,0 +1,4 @@
+/etc/agx/gui.env f 600 0 0 - - - - -
+/etc/dropbear d 700 0 0 - - - - -
+/var/lib/agx-data d 755 0 0 - - - - -
+/var/lib/agx-data/agx-opencode-users d 1777 0 0 - - - - -

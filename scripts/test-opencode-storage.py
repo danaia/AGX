@@ -18,8 +18,10 @@ with tempfile.TemporaryDirectory(prefix="angi-opencode-") as temporary:
     engine = tools / "engine"
     engine.write_text('#!/bin/bash\nprintf "%s\\n" "$PWD" "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$OPENCODE_DISABLE_AUTOUPDATE" "$@"\n')
     engine.chmod(0o755)
+    board = base / "board"
     launcher = base / "opencode"
     launcher.write_text((ROOT / "apps/opencode/launch.sh").read_text()
+                        .replace("/usr/share/agx/board", str(board))
                         .replace("/var/lib/agx-data/agx-opencode-users", str(users))
                         .replace("/usr/libexec/opencode/opencode", str(engine)))
     launcher.chmod(0o755)
@@ -45,4 +47,11 @@ with tempfile.TemporaryDirectory(prefix="angi-opencode-") as temporary:
     mountpoint.write_text("#!/bin/sh\nexit 1\n")
     result = subprocess.run([str(launcher)], cwd=work, env=env, capture_output=True, text=True)
     assert result.returncode != 0 and "NVMe" in result.stderr
-print("OpenCode launcher checks passed: private storage, symlink refusal, NVMe requirement, cwd and arguments.")
+    board.write_text("zero2w\n")
+    result = subprocess.run([str(launcher)], cwd=work, env=env, capture_output=True, text=True)
+    assert result.returncode != 0 and not list(victim.iterdir())
+    store.unlink()
+    result = subprocess.run([str(launcher), "--version"], cwd=work, env=env, capture_output=True, text=True, check=True)
+    assert result.stdout.splitlines() == [str(work), str(store / "data"), str(store / "config"), "true", "--version"]
+    assert store.stat().st_mode & 0o777 == 0o700
+print("OpenCode launcher checks passed for NVMe and SD storage.")

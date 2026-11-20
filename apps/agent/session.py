@@ -86,6 +86,11 @@ def opencode_config(profiles):
     from providers import apple_config, lmstudio_config
     config = {"agent": profiles, "share": "disabled", "autoupdate": False}
     service = active()
+    from edition import zero2w
+    if zero2w():
+        if service not in ("openai", "lmstudio"):
+            raise ValueError("Connect and activate OpenAI or LM Studio in Agent Angi.")
+        config["enabled_providers"] = [service]
     local = {"apple": apple_config, "lmstudio": lmstudio_config}.get(service)
     if local and local():
         config["provider"] = {service: local()}

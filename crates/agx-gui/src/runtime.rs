@@ -8,13 +8,23 @@ use slint::{ComponentHandle, ModelRc, Timer, TimerMode};
 use std::{cell::RefCell, rc::Rc, time::Duration};
 pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
+    if crate::HEADLESS {
+        ui.set_headless(true);
+        ui.global::<crate::AgentScope>().set_project_and_chat_only(true);
+        ui.global::<crate::AgentScope>().set_mode("chat".into());
+        ui.global::<crate::AgentProviders>().set_headless(true);
+        ui.global::<crate::Files>().set_web_available(false);
+        ui.global::<crate::MouseSettings>().set_bluetooth_available(false);
+    }
     graphics::attach_input(&ui);
     let _settings_save = crate::settings::install(&ui);
     let _process_watch = crate::memory_processes::install(&ui);
     let _storage_watch = crate::storage::install(&ui);
     apply_omarchy_theme(&ui);
     ui.global::<Sys>().set_mode_note(
-        if cfg!(feature = "kms") {
+        if crate::HEADLESS {
+            "Software desktop over VNC"
+        } else if cfg!(feature = "kms") {
             "DRM/KMS appliance, no display server"
         } else {
             "desktop preview window; power actions disabled"
@@ -23,7 +33,7 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let app = Rc::new(RefCell::new(App::new()));
-    let _services_watch = crate::services::install(&ui);
+    let _services_watch = (!crate::HEADLESS).then(|| crate::services::install(&ui));
     ui.set_wins(ModelRc::from(app.borrow().view.windows.clone()));
     ui.set_ws_occupied(ModelRc::from(app.borrow().occupied.clone()));
     ui.set_mod_name(app.borrow().modk.name().into());
@@ -138,16 +148,18 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
             || a.browser_key(&ui, &text, mods(ctrl, alt, shift, meta), down)
     });
     let _terminal_watch = terminal::install(&ui, &app);
-    let _browser_watch = browser::install(&ui, &app);
+    let _browser_watch = (!crate::HEADLESS).then(|| browser::install(&ui, &app));
     let _provider_watch = crate::agent_providers::install(&ui, &app);
     let _chat_watch = crate::agent_chat::install(&ui);
     let _history_watch = crate::agent_history::install(&ui, &app);
     let _files_watch = crate::files::install(&ui, &app);
     let _project_watch = crate::agent_project::install(&ui);
-    let _bluetooth_watch = crate::bluetooth::install(&ui, &app);
-    let _library_watch = crate::library::install(&ui, &app);
-    crate::agent_swarm::install(&ui, &app);
-    let _open_watch = crate::open_request::install(&ui, &app);
+    let _bluetooth_watch = (!crate::HEADLESS).then(|| crate::bluetooth::install(&ui, &app));
+    let _library_watch = (!crate::HEADLESS).then(|| crate::library::install(&ui, &app));
+    let _open_watch = (!crate::HEADLESS).then(|| {
+        crate::agent_swarm::install(&ui, &app);
+        crate::open_request::install(&ui, &app)
+    });
     app.borrow().refresh(&ui);
 
     // The compositor-less backend sizes the window after the UI is built, and a change

@@ -18,7 +18,7 @@ fn apps_include_running_and_closed_tools_and_open_them_from_any_workspace() {
     let mut desktop = desktop();
     desktop.close(Kind::Services);
     let apps = results(&desktop, "Super", "", SETTINGS, &available);
-    assert_eq!(apps.len(), Kind::ALL.len() + 2);
+    assert_eq!(apps.len(), Kind::ALL.len() + 2 - if crate::HEADLESS { 3 } else { 0 });
     assert_eq!(
         results(&desktop, "Super", "terminal", SETTINGS, &available)[0].command,
         Cmd::Open(Kind::Terminal)
@@ -33,21 +33,27 @@ fn apps_include_running_and_closed_tools_and_open_them_from_any_workspace() {
         Cmd::OpenCode
     );
     assert_eq!(apps[0].command, Cmd::Open(Kind::Overview));
-    assert!(
-        apps.iter()
-            .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
+    assert_eq!(
+        apps.iter().any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running),
+        !crate::HEADLESS
     );
     desktop.goto(3);
-    assert_eq!(desktop.focused(), Some(Kind::Web), "Web is seeded on workspace 4");
-    desktop.goto(0);
-    assert_eq!(
-        results(&desktop, "Super", "webkit", SETTINGS, &available)[0].command,
-        Cmd::Open(Kind::Web)
-    );
-    desktop.open(Kind::Web);
-    assert_eq!(desktop.focused(), Some(Kind::Web));
-    desktop.close(Kind::Web);
-    assert!(!desktop.is_open(Kind::Web));
+    if crate::HEADLESS {
+        assert_eq!(desktop.focused(), None);
+        assert!(apps.iter().all(|entry| !matches!(entry.command, Cmd::Open(Kind::Web) | Cmd::Tui)));
+        desktop.goto(0);
+    } else {
+        assert_eq!(desktop.focused(), Some(Kind::Web), "Web is seeded on workspace 4");
+        desktop.goto(0);
+        assert_eq!(
+            results(&desktop, "Super", "webkit", SETTINGS, &available)[0].command,
+            Cmd::Open(Kind::Web)
+        );
+        desktop.open(Kind::Web);
+        assert_eq!(desktop.focused(), Some(Kind::Web));
+        desktop.close(Kind::Web);
+        assert!(!desktop.is_open(Kind::Web));
+    }
     desktop.goto(4);
     desktop.open(Kind::Overview);
     assert_eq!(desktop.focused(), Some(Kind::Overview));
@@ -244,7 +250,11 @@ fn only_a_few_apps_and_the_built_in_browser_carry_the_recommended_badge() {
     assert!(badged.contains(&"ripgrep") && badged.contains(&"btop"), "{badged:?}");
     assert!(badged.len() < listed.len() / 3, "a badge on everything means nothing");
     let tools = results(&desktop, "Super", "", SETTINGS, &available);
-    let web = tools.iter().find(|entry| entry.command == Cmd::Open(Kind::Web)).unwrap();
-    assert_eq!(web.badge, "Recommended", "ANGI Web is the tuned WebKit browser");
-    assert_eq!(tools.iter().filter(|entry| !entry.badge.is_empty()).count(), 1);
+    let web = tools.iter().find(|entry| entry.command == Cmd::Open(Kind::Web));
+    if crate::HEADLESS {
+        assert!(web.is_none());
+    } else {
+        assert_eq!(web.unwrap().badge, "Recommended", "ANGI Web is the tuned WebKit browser");
+    }
+    assert_eq!(tools.iter().filter(|entry| !entry.badge.is_empty()).count(), usize::from(!crate::HEADLESS));
 }

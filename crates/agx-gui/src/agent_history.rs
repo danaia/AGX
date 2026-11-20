@@ -53,7 +53,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     history.on_remove(move |id| enqueue(vec!["remove".into(), id.into()]));
 
     let (weak, timer, app) = (ui.as_weak(), Timer::default(), app.clone());
-    let editor = WorkEditor::install(ui, &app);
+    let editor = (!crate::HEADLESS).then(|| WorkEditor::install(ui, &app));
     timer.start(TimerMode::Repeated, Duration::from_millis(33), move || {
         let Some(ui) = weak.upgrade() else {
             return;
@@ -79,7 +79,8 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                 }
                 Ok(answer) if history.get_open() => {
                     restore(&ui, &answer);
-                    if matches!(answer["mode"].as_str(), Some("os" | "project"))
+                    if let Some(editor) = &editor
+                        && matches!(answer["mode"].as_str(), Some("os" | "project"))
                         && let Some(id) = answer["id"].as_str()
                     {
                         editor.borrow_mut().select(&ui, id);
@@ -91,7 +92,9 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                 _ => {}
             }
         }
-        editor.borrow_mut().poll(&ui, &app);
+        if let Some(editor) = &editor {
+            editor.borrow_mut().poll(&ui, &app);
+        }
     });
     timer
 }

@@ -113,6 +113,38 @@ class ProviderTests(unittest.TestCase):
             self.assertTrue(finished.wait(2))
         self.assertIn(("/provider/openai/oauth/callback", {"method":1}), calls)
 
+    def test_zero_direct_lmstudio_only_replaces_configuration_after_discovery(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {"XDG_CONFIG_HOME": temporary}), \
+                patch.object(providers, "zero2w", return_value=True), patch.object(providers, "lmstudio_models") as discover:
+            discover.return_value = ["code"]
+            previous = providers.connect_lmstudio("workstation.lan:1234")
+            discover.assert_called_once_with("http://workstation.lan:1234/v1")
+            self.assertEqual(providers.lmstudio_config(), previous)
+            discover.side_effect = OSError("offline")
+            with self.assertRaises(ValueError):
+                providers.connect_lmstudio("offline.lan")
+            self.assertEqual(providers.lmstudio_config(), previous)
+            with self.assertRaises(ValueError):
+                providers.connect_lmstudio("http://name:password@workstation.lan")
+            self.assertEqual(discover.call_count, 2)
+
+    def test_zero_openai_uses_device_code_and_releases_provider_process(self):
+        finished = threading.Event()
+        service = providers.Providers()
+        def api(path, data=None, timeout=30):
+            if path == "/provider/auth":
+                return {"openai": [{"type": "oauth", "label": "Browser"}, {"type": "oauth", "label": "Headless"}]}
+            if path.endswith("authorize"):
+                self.assertEqual(data, {"method": 1})
+                return {"url": "https://example.com/device", "method": "auto", "instructions": "Enter code: EXAMPLE"}
+            return True
+        with patch.object(providers, "zero2w", return_value=True), patch.object(service, "api", side_effect=api), \
+                patch.object(service, "close", side_effect=finished.set):
+            status = service.connect()
+            self.assertEqual(status["url"], "https://example.com/device")
+            self.assertIn("EXAMPLE", status["status"])
+            self.assertTrue(finished.wait(2))
+
     def test_requests_wait_for_a_server_that_swallows_early_connections(self):
         # OpenCode opens its port before it serves; a request sent then is never answered.
         release = threading.Event()

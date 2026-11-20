@@ -40,9 +40,10 @@ pub const BLUETOOTH: &str = "/usr/libexec/agx-bluetooth/run";
 fn bluetooth() -> Definition {
     Definition::new("bluetooth", "/bin/sh", &[BLUETOOTH], true)
 }
-fn console_definition(gui: bool) -> Definition {
+fn console_definition(gui: bool, headless: bool) -> Definition {
     if gui {
-        Definition::new("console", "/usr/bin/agx-gui", &["--login"], false)
+        let args: &[&str] = if headless { &["--login", "--headless"] } else { &["--login"] };
+        Definition::new("console", "/usr/bin/agx-gui", args, false)
     } else {
         Definition::new(
             "console",
@@ -97,6 +98,9 @@ fn attach_graphical_console() -> io::Result<()> {
 pub fn definitions(pid1: bool) -> Vec<Definition> {
     let mut services = Vec::new();
     if pid1 {
+        let headless = fs::read_to_string("/usr/share/agx/board")
+            .is_ok_and(|board| board.trim() == "zero2w");
+        let serial = if headless { "ttyAMA0" } else { "ttyAMA10" };
         services.extend([
             Definition::new(
                 "syslog",
@@ -111,11 +115,11 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
                 &["-F", "-E", "-g", "-p", "22", "-R"],
                 false,
             ),
-            console_definition(std::path::Path::new("/usr/bin/agx-gui").is_file()),
+            console_definition(std::path::Path::new("/usr/bin/agx-gui").is_file(), headless),
             Definition::new(
                 "serial-console",
                 "/sbin/getty",
-                &["-L", "ttyAMA10", "115200", "vt100"],
+                &["-L", serial, "115200", "vt100"],
                 false,
             ),
             Definition::new("cron", "/usr/sbin/crond", &["-f"], true),
@@ -345,7 +349,9 @@ impl Supervisor {
                     .stdin(Stdio::null())
                     .stdout(Stdio::null())
                     .stderr(Stdio::null());
-                if service.definition.name == "console" && service.definition.args == ["--login"] {
+                if service.definition.name == "console"
+                    && service.definition.args.first().is_some_and(|arg| arg == "--login")
+                {
                     // The greeter and unprivileged session inherit the same stderr.
                     // Keep profiling output available over SSH; rotate between sessions.
                     let log = "/run/agx/gui.log";
@@ -361,8 +367,10 @@ impl Supervisor {
                     {
                         command.stderr(log);
                     }
-                    unsafe {
-                        command.pre_exec(attach_graphical_console);
+                    if service.definition.args == ["--login"] {
+                        unsafe {
+                            command.pre_exec(attach_graphical_console);
+                        }
                     }
                 }
                 match command.spawn() {
@@ -563,12 +571,13 @@ mod tests {
     }
     #[test]
     fn desktop_console_enters_greeter_and_headless_keeps_getty() {
-        let gui = console_definition(true);
+        let gui = console_definition(true, false);
         assert_eq!(gui.name, "console");
         assert_eq!(gui.program, "/usr/bin/agx-gui");
         assert_eq!(gui.args, ["--login"]);
         assert!(!gui.controllable);
-        let text = console_definition(false);
+        assert_eq!(console_definition(true, true).args, ["--login", "--headless"]);
+        let text = console_definition(false, false);
         assert_eq!(text.program, "/sbin/getty");
         assert_eq!(text.args, ["-L", "tty1", "0", "vt100"]);
     }

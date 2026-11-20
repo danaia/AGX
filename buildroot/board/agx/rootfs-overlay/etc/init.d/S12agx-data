@@ -9,6 +9,16 @@ prepare_apps() {
 }
 case "$1" in
     start)
+        if grep -qx zero2w /usr/share/agx/board 2>/dev/null; then
+            # A failed swap setup must leave recovery SSH available.
+            if ! grep -q '^/dev/zram0 ' /proc/swaps &&
+                test -w /sys/block/zram0/disksize; then
+                if printf '%s\n' 536870912 > /sys/block/zram0/disksize; then
+                    mkswap /dev/zram0 && swapon /dev/zram0 || echo 'ANGI compressed swap unavailable' >&2
+                fi
+            fi
+            exit 0
+        fi
         test -r /etc/agx/data-volume.uuid || exit 0
         uuid=$(cat /etc/agx/data-volume.uuid)
         case "$uuid" in ''|*[!0-9a-fA-F-]*) echo 'Invalid AGX data UUID' >&2; exit 1 ;; esac
@@ -25,6 +35,12 @@ case "$1" in
         echo 'AGX data volume not found' >&2
         exit 1
         ;;
-    stop) mountpoint -q /var/lib/agx-data && umount /var/lib/agx-data || true ;;
+    stop)
+        if grep -qx zero2w /usr/share/agx/board 2>/dev/null; then
+            grep -q '^/dev/zram0 ' /proc/swaps && swapoff /dev/zram0 || true
+        else
+            mountpoint -q /var/lib/agx-data && umount /var/lib/agx-data || true
+        fi
+        ;;
     *) exit 0 ;;
 esac

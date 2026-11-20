@@ -1,5 +1,5 @@
 config BR2_PACKAGE_AGX_AGENT
-	bool "ANGI Herdr development swarm"
+	bool "ANGI coding workspace"
 	depends on BR2_aarch64
 	depends on BR2_TOOLCHAIN_USES_GLIBC
 	depends on BR2_USE_MMU
@@ -12,5 +12,11 @@ config BR2_PACKAGE_AGX_AGENT
 	select BR2_PACKAGE_PYTHON3_CURSES
 	select BR2_PACKAGE_PYTHON3_SQLITE
 	help
-	  Herdr with three OpenCode roles, a build-brief TUI and admin helper.
-	  Native development SDK and source are provisioned separately on NVMe.
+	  Agent Angi with OpenCode and the Python workspace runtime.
+
+config BR2_PACKAGE_AGX_AGENT_SWARM
+	bool "Herdr, work review and native OS tools"
+	depends on BR2_PACKAGE_AGX_AGENT
+	default y
+	help
+	  Include the three-role Herdr workspace, Monaco review assets and OS updater.

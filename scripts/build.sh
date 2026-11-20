@@ -9,11 +9,16 @@ VERSION=2026.08.1
 SHA256=34fb7bea8a213ffde39cc02e61703391560f26e0850f03138c722d0b09880f2b
 ARCHIVE="$ROOT/.cache/downloads/buildroot-$VERSION.tar.xz"
 SOURCE="$ROOT/.cache/src/buildroot-$VERSION"
-OUTPUT="$ROOT/output"
+BOARD=${2:-pi5}
+case "$BOARD" in
+    pi5) OUTPUT="$ROOT/output"; BOARD_DIR=agx; DEFCONFIG=agx_rpi5_defconfig ;;
+    zero2w) OUTPUT="$ROOT/output/zero2w"; BOARD_DIR=zero2w; DEFCONFIG=agx_zero2w_defconfig ;;
+    *) echo "Unknown ANGI board: $BOARD" >&2; exit 2 ;;
+esac
 ACTION=${1:-build}
 case "$ACTION" in
     prepare|configure|build|dependencies) ;;
-    *) echo "Usage: $0 {prepare|configure|dependencies|build}" >&2; exit 2 ;;
+    *) echo "Usage: $0 {prepare|configure|dependencies|build} [pi5|zero2w]" >&2; exit 2 ;;
 esac
 mkdir -p "$(dirname "$ARCHIVE")" "$(dirname "$SOURCE")"
 if [[ ! -f "$ARCHIVE" ]]; then
@@ -42,7 +47,7 @@ brmake() {
     make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "$@"
 }
 if [[ "$ACTION" == configure || ! -f "$OUTPUT/.config" ]]; then
-    brmake agx_rpi5_defconfig
+    brmake "$DEFCONFIG"
 fi
 case "$ACTION" in
     configure) ;;
@@ -51,13 +56,19 @@ case "$ACTION" in
         if grep -q '^BR2_PACKAGE_AGX=y$' "$OUTPUT/.config"; then
             # Supply Cargo for vendoring even on hosts without a Rust installation.
             brmake "BR2_JLEVEL=${JOBS:-8}" host-rustc
-            "$ROOT/scripts/prepare-rust-package.sh"
+            AGX_BUILD_OUTPUT="$OUTPUT" "$ROOT/scripts/prepare-rust-package.sh" "$BOARD"
             # Local source packages need an explicit rebuild to pick up edits.
             brmake "BR2_JLEVEL=${JOBS:-8}" agx-rebuild
         fi
+        if grep -q '^BR2_PACKAGE_AGX_GUI=y$' "$OUTPUT/.config"; then
+            brmake "BR2_JLEVEL=${JOBS:-8}" agx-gui-rebuild
+        fi
+        if [[ "$BOARD" == zero2w ]]; then
+            brmake "BR2_JLEVEL=${JOBS:-8}" agx-agent-rebuild agx-opencode-rebuild
+        fi
         # Buildroot does not otherwise recopy changed external firmware configuration.
-        if ! cmp -s "$ROOT/buildroot/board/agx/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||
-           ! cmp -s "$ROOT/buildroot/board/agx/cmdline.txt" "$OUTPUT/images/rpi-firmware/cmdline.txt"; then
+        if ! cmp -s "$ROOT/buildroot/board/$BOARD_DIR/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||
+           ! cmp -s "$ROOT/buildroot/board/$BOARD_DIR/cmdline.txt" "$OUTPUT/images/rpi-firmware/cmdline.txt"; then
             brmake "BR2_JLEVEL=${JOBS:-8}" rpi-firmware-rebuild
         fi
         brmake "BR2_JLEVEL=${JOBS:-8}" all

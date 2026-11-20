@@ -76,6 +76,8 @@ and subscription sign-in workflow remain separate roadmap work. The
 
 Your agent downloads the code, installs the build tools, builds ANGI OS, writes the card, and sets up the USB connection. You move the finished card into the Pi, and the agent checks that ANGI is running.
 
+For the headless image, see [ANGI on Raspberry Pi Zero 2 W](docs/pi-zero-2w.md).
+
 ANGI is in early development. The instructions below use the tested **Arch Linux + NetworkManager + Raspberry Pi 5** setup. The prompt is for a coding agent with terminal access on your computer, such as Codex. It guides the agent through the repository's build tools; there is no separate one-click installer yet.
 
 ### 1. Plug everything in

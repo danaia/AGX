@@ -66,6 +66,7 @@ export component AppLauncher inherits Rectangle {
     in-out property <int> selected: 0;
     // 0 Apps (the landing tab), 1 Commands, 2 Settings; keep in step with the constants in launcher.rs.
     in-out property <int> section: 0;
+    in property <bool> apps-available: true;
     // Row waiting for a second click (or Delete) before an installed app is removed; -1 when none.
     private property <int> confirm-remove: -1;
     // Total height of the list: the last row's position plus its slot.
@@ -170,8 +171,8 @@ export component AppLauncher inherits Rectangle {
                                 if (e.text == Key.PageDown) { root.selected = min(root.selected + 5, root.rows.length - 1); return accept; }
                                 if (e.text == Key.PageUp) { root.selected = max(root.selected - 5, 0); return accept; }
                                 if (e.text == Key.Delete && search.text == "") { root.try-remove(root.selected); return accept; }
-                                if (e.text == Key.Tab) { root.switch-section(Math.mod(root.section + 1, 3)); return accept; }
-                                if (e.text == Key.Backtab) { root.switch-section(Math.mod(root.section + 2, 3)); return accept; }
+                                if (e.text == Key.Tab) { root.switch-section(root.apps-available ? Math.mod(root.section + 1, 3) : 3 - root.section); return accept; }
+                                if (e.text == Key.Backtab) { root.switch-section(root.apps-available ? Math.mod(root.section + 2, 3) : 3 - root.section); return accept; }
                                 reject
                             }
                         }
@@ -190,7 +191,7 @@ export component AppLauncher inherits Rectangle {
             }
             HorizontalLayout {
                 height: 32px; spacing: 6px;
-                LauncherTab { label: "Apps"; active: root.section == 0; chosen => { root.switch-section(0); } }
+                if root.apps-available: LauncherTab { label: "Apps"; active: root.section == 0; chosen => { root.switch-section(0); } }
                 LauncherTab { label: "Commands"; active: root.section == 1; chosen => { root.switch-section(1); } }
                 LauncherTab { label: "Settings"; active: root.section == 2; chosen => { root.switch-section(2); } }
                 Rectangle { horizontal-stretch: 1; }

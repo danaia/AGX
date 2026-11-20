@@ -127,18 +127,19 @@ fn resize_replies_and_pixels_stay_separate_and_other_viewers_are_notified() {
 #[test]
 fn fixed_display_refuses_resize_without_dropping_the_viewer() {
     let shared = Shared::new(|_| {});
-    shared.publish(frame(640, 480, 10));
+    let (width, height) = crate::remote::initial_size();
+    shared.publish(frame(width.into(), height.into(), 10));
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     serve_listener(listener, shared).unwrap();
     let mut client = Client::connect(addr);
-    client.handshake();
+    assert_eq!(client.handshake(), (width, height));
     client.negotiate_resize();
     client.resize(1920, 1080);
-    assert_eq!(client.extended_layout(), (1, 1, 640, 480));
+    assert_eq!(client.extended_layout(), (1, 1, width, height));
     client.request(false);
-    assert_eq!(client.extended_layout(), (0, 0, 640, 480));
-    assert_eq!(client.update().2, 640);
+    assert_eq!(client.extended_layout(), (0, 0, width, height));
+    assert_eq!(client.update().2, width);
 }
 
 #[test]

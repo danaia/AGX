@@ -49,6 +49,7 @@ dependencies = [
  "agx-profile",
  "alacritty_terminal",
  "glow",
+ "i-slint-core",
  "input",
  "libc",
  "libloading",

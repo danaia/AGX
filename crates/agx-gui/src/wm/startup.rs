@@ -47,7 +47,9 @@ impl Desktop {
         .enumerate()
         {
             desktop.cur = i + 1;
-            desktop.open(kind);
+            if kind != Kind::Web || !crate::HEADLESS {
+                desktop.open(kind);
+            }
         }
         desktop.ws[2].tree = Some(Node::Split {
             id: desktop.next_split,

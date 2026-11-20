@@ -1,8 +1,10 @@
+BOARD ?= pi5
+
 .PHONY: prepare configure dependencies build check-image
 prepare configure dependencies build:
-	./scripts/build.sh $@
+	./scripts/build.sh $@ $(BOARD)
 check-image:
-	python3 scripts/check-image.py output/images
+	python3 scripts/check-image.py --board $(BOARD)
 
 .PHONY: tui-test tui-build deploy-tui
 tui-test:
@@ -84,6 +86,7 @@ agent-test:
 	python3 scripts/test-agent-mail.py
 	python3 scripts/test-agent-models.py
 	python3 scripts/test-agent-providers.py
+	python3 scripts/test-agent-project.py
 	python3 scripts/test-agent-scope.py
 	python3 scripts/test-agent-history.py
 	python3 scripts/test-agent-chat-files.py

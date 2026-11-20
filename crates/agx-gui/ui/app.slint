@@ -254,6 +254,10 @@ export component LoginWindow inherits Window {
 }
 
 export component AppWindow inherits Window {
+    in property <bool> headless;
+    property <[string]> session-labels: self.headless
+        ? ["Settings", "Log out", "Reboot…", "Shut down…"]
+        : ["Settings", "Log out", "Enter TUI", "Reboot…", "Shut down…"];
     title: "ANGI";
     background: Theme.bg;
     default-font-family: "JetBrainsMono Nerd Font";
@@ -317,7 +321,7 @@ export component AppWindow inherits Window {
 
     function choose-session(index: int) {
         if (index == 0) { root.settings-open(); }
-        else { root.session-action(index - 1); }
+        else { root.session-action(root.headless && index >= 2 ? index : index - 1); }
     }
 
     function track-cursor(x: length, y: length) {
@@ -338,8 +342,8 @@ export component AppWindow inherits Window {
             if Services.progress-open || Services.review-open || StorageView.empty-confirming || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
-                if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
-                if (e.text == Key.UpArrow) { root.session-index = mod(root.session-index + 4, 5); }
+                if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, root.session-labels.length); }
+                if (e.text == Key.UpArrow) { root.session-index = mod(root.session-index + root.session-labels.length - 1, root.session-labels.length); }
                 if (e.text == Key.Return) { root.session-open = false; root.choose-session(root.session-index); }
                 return accept;
             }
@@ -541,6 +545,7 @@ export component AppWindow inherits Window {
             pointer-moved(x, y) => { root.track-cursor(x, y); }
         }
         if root.menu-open: AppLauncher {
+            apps-available: !root.headless;
             rows: root.menu-rows;
             selected <=> root.menu-index;
             section <=> root.menu-section;
@@ -577,12 +582,12 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     padding: 8px;
                     spacing: 2px;
-                    for label[i] in ["Settings", "Log out", "Enter TUI", "Reboot…", "Shut down…"]: Rectangle {
+                    for label[i] in root.session-labels: Rectangle {
                         background: row-touch.has-hover || root.session-index == i ? Theme.bg-light : transparent;
                         border-radius: 4px;
                         accessible-role: button;
                         accessible-label: label;
-                        Text { x: 12px; text: label; color: i >= 3 ? Theme.red : Theme.fg-bright; font-size: 14px; vertical-alignment: center; }
+                        Text { x: 12px; text: label; color: i >= (root.headless ? 2 : 3) ? Theme.red : Theme.fg-bright; font-size: 14px; vertical-alignment: center; }
                         row-touch := TouchArea {
                             mouse-cursor: MouseCursor.pointer;
                             pointer-event(e) => { root.track-cursor(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }

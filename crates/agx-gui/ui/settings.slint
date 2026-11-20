@@ -12,6 +12,7 @@ export global MouseSettings {
     in-out property <float> scroll-speed: 100;
     in-out property <string> status: "Changes apply immediately and are saved for your account";
     in-out property <bool> native: false;
+    in-out property <bool> bluetooth-available: true;
     in-out property <int> focus-serial: 0;
     // Chosen Settings page: 0 Mouse & pointer, 1 Bluetooth. Kept here because the desktop rebuilds
     // the panel whenever its window moves in the list (maximize, another app opening), which
@@ -60,7 +61,7 @@ export component SettingsPanel inherits Rectangle {
     property <bool> bluetooth-showing: root.active && root.page == 1;
     changed bluetooth-showing => { BluetoothSettings.active = root.bluetooth-showing; }
     function show-page(index: int) {
-        if (index == root.page || index < 0 || index > 1) { return; }
+        if (index == root.page || index < 0 || index > (MouseSettings.bluetooth-available ? 1 : 0)) { return; }
         root.page = index;
         root.focus-step = -1;
         keys.focus();
@@ -129,7 +130,7 @@ export component SettingsPanel inherits Rectangle {
                             padding: root.width < 620px ? 4px : 14px;
                             spacing: 14px;
                             if root.width >= 620px: Text { text: "PREFERENCES"; color: Theme.fg-dim; font-size: 10px; }
-                            for glyph[index] in ["\u{f037d}", "\u{f00af}"]: Rectangle {
+                            for glyph[index] in (MouseSettings.bluetooth-available ? ["\u{f037d}", "\u{f00af}"] : ["\u{f037d}"]): Rectangle {
                                 height: 48px;
                                 background: root.page == index ? Theme.bg-light : side.has-hover ? Theme.bg : Theme.bg-dark;
                                 border-radius: 6px;
@@ -150,7 +151,7 @@ export component SettingsPanel inherits Rectangle {
                                 }
                             }
                             Rectangle { vertical-stretch: 1; }
-                            if root.width >= 620px: Text { text: "Your desktop.\nYour preferences.\n\nPgUp / PgDn\nswitch page"; color: Theme.fg-dim; font-size: 11px; }
+                            if root.width >= 620px && MouseSettings.bluetooth-available: Text { text: "Your desktop.\nYour preferences.\n\nPgUp / PgDn\nswitch page"; color: Theme.fg-dim; font-size: 11px; }
                         }
                     }
                     Rectangle { width: 1px; background: Theme.bg-light; }

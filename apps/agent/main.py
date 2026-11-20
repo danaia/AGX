@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 from messaging import inbox, send
+from edition import zero2w
 import chat
 import solo
 from session import attach, launch, resume, status, dispatch
@@ -118,6 +119,15 @@ def main():
         raise RuntimeError("Run agent angi as your desktop account. Use angi-root for privileged work.")
     state = Path(os.environ["XDG_STATE_HOME"]) / "angi-swarm"
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if zero2w():
+        if talk:
+            chat.launch(state, brief)
+        elif project and brief:
+            from project import launch as launch_project
+            launch_project(state, brief, project)
+        else:
+            raise ValueError("Choose a folder in Agent Angi’s Project mode or use agent angi --prompt BRIEF --project DIR.")
+        return
     action, brief = ("start", brief) if brief else welcome((state / "current").exists() or (state / "os-current").exists() or (state / chat.MARKER).exists())
     if action == "connect":
         os.execvp("opencode", ["opencode", "/var/lib/agx-data/angi-dev"])

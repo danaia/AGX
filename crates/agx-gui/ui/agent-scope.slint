@@ -10,6 +10,7 @@ import { AgentText } from "agent-controls.slint";
 //   use-project(path)  a folder was chosen by any means. The agent runtime validates it.
 export global AgentScope {
     in-out property <string> mode: "os";
+    in-out property <bool> project-and-chat-only;
     in-out property <string> project;
     in-out property <string> os-draft;
     in-out property <string> project-draft;
@@ -27,13 +28,15 @@ export global AgentScope {
 export component ModeSwitch inherits Rectangle {
     out property <int> hint: -1;
     callback selected();
-    property <[string]> modes: ["os", "project", "chat"];
+    property <[string]> modes: AgentScope.project-and-chat-only ? ["project", "chat"] : ["os", "project", "chat"];
+    property <[string]> labels: AgentScope.project-and-chat-only ? ["Project", "Chat"] : ["OS", "Project", "Chat"];
     width: 240px; height: 32px;
     border-radius: 8px; border-width: 1px;
     border-color: Theme.muted;
     background: Theme.bg-dark;
-    for label[index] in ["OS", "Project", "Chat"] : segment := Rectangle {
-        x: index * parent.width / 3; width: parent.width / 3; height: parent.height;
+    for label[index] in root.labels : segment := Rectangle {
+        x: index * self.width; width: parent.width / root.labels.length; height: parent.height;
+        property <int> hint-id: AgentScope.project-and-chat-only ? index + 1 : index;
         property <bool> selected: AgentScope.mode == root.modes[index];
         function select-mode() { AgentScope.mode = root.modes[index]; dwell.dismiss(); root.selected(); }
         border-radius: 7px;
@@ -60,8 +63,8 @@ export component ModeSwitch inherits Rectangle {
         dwell := HoverDwell {
             hovered: pointer.has-hover;
             changed ready => {
-                if self.ready { root.hint = index; }
-                else if root.hint == index { root.hint = -1; }
+                if self.ready { root.hint = segment.hint-id; }
+                else if root.hint == segment.hint-id { root.hint = -1; }
             }
         }
     }
@@ -74,6 +77,8 @@ export component ScopeTip inherits HoverTip {
     text: root.hint == 2
         ? "Chat: talk with Angi, browse folders, and save text files. Chat starts in your home folder."
         : root.hint == 1
-        ? "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone."
+        ? (AgentScope.project-and-chat-only
+            ? "Project: work with one coding agent in the folder you choose."
+            : "Project: build your own software. Herdr's agents work only inside the folder you choose and leave the operating system alone.")
         : "OS: Angi works on ANGI’s desktop, services, and system files.";
 }

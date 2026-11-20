@@ -42,7 +42,8 @@ impl EventLoopProxy for Proxy {
 impl Platform for Display {
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, slint::PlatformError> {
         let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
-        window.set_size(slint::PhysicalSize::new(1280, 720));
+        let (width, height) = crate::remote::initial_size();
+        window.set_size(slint::PhysicalSize::new(width.into(), height.into()));
         Ok(window)
     }
 
@@ -80,6 +81,8 @@ mod tests {
         initialize().unwrap();
         let ui = crate::AppWindow::new().unwrap();
         ui.show().unwrap();
+        let (width, height) = crate::remote::initial_size();
+        assert_eq!(ui.window().size(), slint::PhysicalSize::new(width.into(), height.into()));
         for (w, h) in [(1280, 720), (1600, 900), (800, 600)] {
             ui.window().set_size(slint::PhysicalSize::new(w, h));
             let snapshot = ui.window().take_snapshot().unwrap();

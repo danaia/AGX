@@ -23,6 +23,10 @@ use std::{
 };
 
 pub const ENV: &str = "AGX_GUI_VNC";
+pub(crate) const fn initial_size() -> (u16, u16) {
+    if crate::HEADLESS { (1024, 768) } else { (1280, 720) }
+}
+
 const DEFAULT_PORT: u16 = 5900;
 const POLL: Duration = Duration::from_millis(33);
 const BUSY_INTERVAL: Duration = Duration::from_millis(66);
@@ -98,7 +102,7 @@ pub fn start<C: ComponentHandle + 'static>(ui: &C) -> Option<Remote> {
             .clone();
         let _ = weak.upgrade_in_event_loop(move |ui| input::dispatch(ui.window(), input));
     });
-    if std::env::var("SLINT_BACKEND").as_deref() == Ok("vnc-software") {
+    if !crate::HEADLESS && std::env::var("SLINT_BACKEND").as_deref() == Ok("vnc-software") {
         let resize_weak = std::sync::Mutex::new(weak.clone());
         shared.set_resize_handler(move |width, height| {
             let weak = resize_weak

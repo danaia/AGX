@@ -118,6 +118,9 @@ fn catalogue(
             "files file manager folder explorer nautilus browse directory trash copy move",
         ),
     ]) {
+        if crate::HEADLESS && matches!(kind, Kind::Web | Kind::Services) {
+            continue;
+        }
         entries.push(Entry {
             label: label.into(),
             description: description.into(),
@@ -156,19 +159,21 @@ fn catalogue(
         badge: "",
         heading: String::new(),
     });
-    entries.push(Entry {
-        label: "System Console".into(),
-        description: "Switch to ANGI’s text-based tools".into(),
-        hint: "TUI".into(),
-        aliases: "console tui recovery",
-        icon: 7,
-        section: SETTINGS,
-        running: false,
-        command: Cmd::Tui,
-        status: Status::default(),
-        badge: "",
-        heading: String::new(),
-    });
+    if !crate::HEADLESS {
+        entries.push(Entry {
+            label: "System Console".into(),
+            description: "Switch to ANGI’s text-based tools".into(),
+            hint: "TUI".into(),
+            aliases: "console tui recovery",
+            icon: 7,
+            section: SETTINGS,
+            running: false,
+            command: Cmd::Tui,
+            status: Status::default(),
+            badge: "",
+            heading: String::new(),
+        });
+    }
     let mut command = |label: String, description: String, hint: String, icon, cmd| {
         entries.push(Entry {
             label,
@@ -331,13 +336,16 @@ impl App {
     pub(super) fn set_menu_rows(&mut self, ui: &AppWindow, query: &str) {
         self.menu_query = query.to_string();
         let library = self.library.clone();
-        let entries = results(
+        let mut entries = results(
             &self.desk,
             self.modk.name(),
             query,
             ui.get_menu_section(),
             &|id| library.availability(id),
         );
+        if crate::HEADLESS {
+            entries.retain(|entry| entry.section != APPS);
+        }
         let mut top = 0.0;
         let rows: Vec<_> = entries
             .iter()
@@ -372,12 +380,14 @@ impl App {
     pub(super) fn open_menu(&mut self, ui: &AppWindow) {
         self.menu_workspace = self.desk.current();
         ui.set_session_open(false);
-        ui.set_menu_section(APPS);
+        ui.set_menu_section(if crate::HEADLESS { SETTINGS } else { APPS });
         self.set_menu_rows(ui, "");
         ui.set_menu_index(0);
         ui.set_menu_open(true);
         // Cheap when the cached answer is fresh; otherwise learns of newer releases of installed apps.
-        self.library.check_if_stale();
+        if !crate::HEADLESS {
+            self.library.check_if_stale();
+        }
     }
 
     pub(super) fn menu_accept(&mut self, ui: &AppWindow, index: i32) {

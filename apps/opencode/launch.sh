@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run the pinned CLI as the caller, with private data and caches on NVMe.
 set -euo pipefail
-if ! mountpoint -q /var/lib/agx-data; then
+if ! grep -qx zero2w /usr/share/agx/board 2>/dev/null && ! mountpoint -q /var/lib/agx-data; then
     printf 'OpenCode needs the ANGI NVMe data volume to be mounted.\n' >&2
     exit 1
 fi

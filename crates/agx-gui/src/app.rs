@@ -200,6 +200,7 @@ impl App {
             Cmd::CycleFocus(back) => self.desk.cycle_focus(back),
             Cmd::Resize { dw, dh } => self.desk.resize(dw, dh),
             Cmd::Menu => self.open_menu(ui),
+            Cmd::Open(Kind::Web | Kind::Services) | Cmd::Tui if crate::HEADLESS => return,
             Cmd::Open(Kind::Terminal) => self.terminal_new_window(ui),
             Cmd::Open(k) => {
                 self.desk.open(k);
@@ -262,7 +263,7 @@ fn power(ui: &AppWindow, cmd: Option<Cmd>) {
         _ => return,
     };
     let sys = ui.global::<Sys>();
-    if cfg!(feature = "kms") {
+    if crate::HEADLESS || cfg!(feature = "kms") {
         // The CLI already confirms by flag; this GUI asked the user first.
         match Command::new("agx").args([verb, "--yes"]).status() {
             Ok(status) if status.success() => {}

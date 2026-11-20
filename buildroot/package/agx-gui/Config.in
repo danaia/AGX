@@ -1,0 +1,12 @@
+config BR2_PACKAGE_AGX_GUI
+	bool "ANGI headless desktop"
+	depends on BR2_PACKAGE_HOST_RUSTC_TARGET_ARCH_SUPPORTS
+	depends on BR2_USE_WCHAR
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on !BR2_STATIC_LIBS
+	select BR2_PACKAGE_HOST_RUSTC
+	select BR2_PACKAGE_LIBXCRYPT
+	select BR2_PACKAGE_FONTCONFIG
+	select BR2_PACKAGE_DEJAVU
+	help
+	  ANGI desktop with a software framebuffer and loopback VNC.

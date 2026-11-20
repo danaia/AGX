@@ -95,6 +95,10 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
                 }
             }
             if let Some(status) = response["status"].as_str() { global.set_status(status.into()); }
+            if crate::HEADLESS && response["pending"] == false {
+                global.set_sign_in_url("".into());
+                global.set_watching(false);
+            }
             if let Some(tailscale) = response["tailscale"].as_object() {
                 let ready = tailscale.get("ready").and_then(Value::as_bool).unwrap_or(false);
                 global.set_tailscale(tailscale.get("text").and_then(Value::as_str).unwrap_or("").into());
@@ -126,7 +130,9 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
             }
             if let Some(url) = response["url"].as_str().filter(|url| url.starts_with("https://")) {
                 global.set_watching(true);
-                if let Ok(mut app) = state.try_borrow_mut() {
+                if crate::HEADLESS {
+                    global.set_sign_in_url(url.into());
+                } else if let Ok(mut app) = state.try_borrow_mut() {
                     app.run(&ui, Cmd::Open(Kind::Web));
                     app.browser_navigate(&ui, url);
                 }
@@ -139,7 +145,7 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
         }
         if !global.get_open() {
             last_apple_check = None;
-        } else if !global.get_busy() && !checking_apple
+        } else if !crate::HEADLESS && !global.get_busy() && !checking_apple
             && last_apple_check.is_none_or(|checked| checked.elapsed() >= Duration::from_secs(5))
         {
             checking_apple = send.send(json!({"action":"status","provider":"apple","background":true})).is_ok();

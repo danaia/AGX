@@ -19,6 +19,7 @@ export struct PaneState {
 
 // Pane 0 is the Files window, pane 1 the folder picker. Callbacks carry the pane number.
 export global Files {
+    in-out property <bool> web-available: true;
     in property <PaneState> browser;
     in property <PaneState> chooser;
     in-out property <bool> chooser-open: false;
@@ -410,7 +411,7 @@ export component FileBrowser inherits Rectangle {
         property <[{label: string, command: string, enabled: bool, rule: bool}]> items: root.menu-row ? [
             { label: root.s.single-folder ? "Open" : "", command: root.s.single-folder ? "open" : "", enabled: root.s.single-folder, rule: false },
             { label: "Open a terminal here", command: "terminal", enabled: true, rule: false },
-            { label: !root.picker && root.s.single-folder ? "Start Python server" : "", command: "python-server", enabled: root.s.single-folder, rule: false },
+            { label: Files.web-available && !root.picker && root.s.single-folder ? "Start Python server" : "", command: "python-server", enabled: root.s.single-folder, rule: false },
             { label: "Cut", command: "cut", enabled: !root.picker, rule: true },
             { label: "Copy", command: "copy", enabled: !root.picker, rule: false },
             { label: "Rename", command: "rename", enabled: root.s.selected == 1, rule: true },
@@ -424,7 +425,7 @@ export component FileBrowser inherits Rectangle {
             { label: "Show hidden files", command: "hidden", enabled: true, rule: true },
             { label: "Open a terminal here", command: "terminal", enabled: true, rule: false },
             { label: "Refresh", command: "refresh", enabled: true, rule: false },
-            { label: !root.picker ? "Start Python server here" : "", command: "python-server-here", enabled: true, rule: false },
+            { label: Files.web-available && !root.picker ? "Start Python server here" : "", command: "python-server-here", enabled: true, rule: false },
         ];
         x: max(4px, min(root.menu-x, root.width - self.width - 4px));
         y: max(4px, min(root.menu-y, root.height - self.height - 4px));

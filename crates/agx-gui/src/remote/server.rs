@@ -129,7 +129,7 @@ impl Shared {
             .frame
             .as_ref()
             .map(|f| (f.width as u16, f.height as u16))
-            .unwrap_or((1280, 720));
+            .unwrap_or_else(super::initial_size);
         for (&viewer, client) in &mut hub.clients {
             if client.extended_desktop_size && (viewer == id || status == 0) {
                 if client.layouts.len() >= 16 {

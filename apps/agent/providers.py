@@ -16,6 +16,7 @@ import urllib.request
 from urllib.parse import urlsplit
 
 import tailnet
+from edition import zero2w
 from messaging import ROLES
 from models import ALL_ROLES, activate, active, atomic_write, save, selections
 
@@ -26,6 +27,7 @@ class Providers:
         self.url = None
         self.password = secrets.token_urlsafe(32)
         self.pending = False
+        self.device_auth = {}
         self.message = ""
         self.tailscale_waiting = False
         self.apple_health = ("", False)
@@ -74,6 +76,16 @@ class Providers:
     def status(self, provider):
         if provider == "lmstudio":
             config = lmstudio_config()
+            if zero2w():
+                configured = bool(config)
+                return {
+                    "connected": configured,
+                    "active": configured and active() == "lmstudio",
+                    "models": ["lmstudio/" + key for key in config.get("models", {})],
+                    "status": f'Configured server: {config["options"]["baseURL"]}' if configured else
+                              "Connect to LM Studio on your local network.",
+                    "choices": selections("lmstudio"),
+                }
             where = tailnet.target()
             if not config:
                 text = "Run LM Studio on your computer and reach it privately over Tailscale. Sign in to Tailscale below, then enter your computer's Tailscale name or address."
@@ -98,7 +110,7 @@ class Providers:
                 connected = False
             self.apple_health = (endpoint, connected)
             return self.apple_status(config)
-        connected = signed_in(provider)
+        connected = signed_in(provider) and not (zero2w() and self.pending)
         models = []
         if connected:
             catalog = self.api("/provider")
@@ -108,7 +120,10 @@ class Providers:
         in_use = connected and active() == provider
         chosen = "Changes apply to new builds." if selections(provider) else "Choose a model for each role; until you do, new builds use OpenCode's default model."
         notice = "In use. " + chosen if in_use else "Connected. Use it to make it the one service Agent Angi builds with."
-        return {"connected": connected, "active": in_use, "models": models, "choices": selections(provider), "status": notice if connected else (self.message or ("Complete sign-in in the browser, then return here." if self.pending else "Sign in with your ChatGPT subscription to connect OpenAI to OpenCode."))}
+        return {"connected": connected, "active": in_use, "models": models, "choices": selections(provider),
+                "pending": self.pending, "status": notice if connected else (self.message or
+                ("Complete sign-in in the browser, then return here." if self.pending else
+                 "Sign in with your ChatGPT subscription to connect OpenAI to OpenCode.")), **self.device_auth}
 
     def apple_status(self, config):
         connected = self.apple_health == (apple_endpoint(config), True)
@@ -135,32 +150,45 @@ class Providers:
         if self.pending:
             raise ValueError("A sign-in is already in progress. Complete it in the browser first.")
         methods = self.api("/provider/auth", timeout=90).get("openai", [])
-        index = next((i for i, method in enumerate(methods) if method["type"] == "oauth" and "browser" in method["label"].lower()), None)
+        mode = "headless" if zero2w() else "browser"
+        index = next((i for i, method in enumerate(methods)
+                      if method["type"] == "oauth" and mode in method["label"].lower()), None)
         if index is None:
-            raise ValueError("This OpenCode runtime has no OpenAI browser sign-in method.")
+            raise ValueError(f"This OpenCode runtime has no OpenAI {mode} sign-in method.")
         result = self.api("/provider/openai/oauth/authorize", {"method": index})
         if result["method"] != "auto":
             raise ValueError("This provider requires a manual authorization code.")
         self.pending = True
         self.message = ""
+        instructions = result.get("instructions", "Complete sign-in in your browser.")
+        if mode == "headless":
+            instructions = "Open the address below in your workstation browser. " + instructions
+        sign_in = {"url": result["url"], "status": instructions, "pending": True}
+        if mode == "headless":
+            self.device_auth = sign_in
+
         def finish():
             try:
                 self.api("/provider/openai/oauth/callback", {"method": index}, timeout=900)
             except Exception:
                 self.message = "Sign-in did not complete. Try connecting again."
             finally:
+                if mode == "headless":
+                    self.close()
+                    self.device_auth = {}
                 self.pending = False
         threading.Thread(target=finish, daemon=True).start()
-        return {"url": result["url"], "status": result.get("instructions", "Complete sign-in in your browser.")}
+        return sign_in
 
     def close(self):
-        if self.process is not None:
-            self.process.terminate()
+        process, self.process = self.process, None
+        if process is not None:
+            process.terminate()
             try:
-                self.process.wait(timeout=5)
+                process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait()
+                process.kill()
+                process.wait()
 
 
 def signed_in(provider):
@@ -218,7 +246,7 @@ def lmstudio_config():
     return local_config("lmstudio")
 
 
-def parse_lmstudio(address):
+def parse_lmstudio(address, *, network="Tailscale"):
     """Host and port from what a person types: a Tailscale name, an address, or a pasted server URL."""
     text = address.strip()
     parsed = urlsplit(text if "://" in text else "http://" + text)
@@ -228,33 +256,56 @@ def parse_lmstudio(address):
         raise ValueError("Enter the port as a number, for example your-computer:1234.")
     host = parsed.hostname or ""
     if parsed.scheme != "http" or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ("", "/", "/v1", "/v1/"):
-        raise ValueError("Enter your computer's Tailscale name or address, for example your-computer:1234.")
+        raise ValueError(f"Enter your computer's {network} name or address, for example your-computer:1234.")
     if not re.fullmatch(r"[A-Za-z0-9._-]+", host) or host.startswith("-"):
-        raise ValueError("Enter your computer's Tailscale name or address, for example your-computer:1234.")
+        raise ValueError(f"Enter your computer's {network} name or address, for example your-computer:1234.")
     return host, port
 
 
 def connect_lmstudio(address):
+    if zero2w():
+        host, port = parse_lmstudio(address, network="LAN")
+        endpoint = f"http://{host}:{port}/v1"
+        try:
+            identifiers = lmstudio_models(endpoint)
+        except (OSError, ValueError, http.client.HTTPException) as error:
+            raise ValueError(f"Could not reach LM Studio at {host}:{port}. Check that its server is running.") from error
+        return save_lmstudio(endpoint, identifiers)
+
     host, port = parse_lmstudio(address)
     if not tailnet.state()["ready"]:
         raise ValueError("Sign in to Tailscale first.")
     previous = tailnet.target()
     tailnet.set_target(host, port)
     try:
-        # The test uses the same loopback relay as builds do, so it proves the whole path.
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(tailnet.RELAY + "/models", timeout=20) as response:
-            data = json.load(response)
+        identifiers = lmstudio_models(tailnet.RELAY)
     except (OSError, ValueError):
         if previous:
             tailnet.set_target(*previous)
         raise ValueError(f"Could not reach LM Studio at {host}:{port} over Tailscale. In LM Studio, load a model, start the server and turn on Serve on local network, then check the address.")
-    identifiers = [item["id"] for item in data.get("data", []) if isinstance(item.get("id"), str) and item["id"] and "embed" not in item["id"].lower()]
     if not identifiers:
         if previous:
             tailnet.set_target(*previous)
         raise ValueError("LM Studio returned no chat models. Load a model in LM Studio first.")
-    config = {"npm": "@ai-sdk/openai-compatible", "name": "LM Studio", "options": {"baseURL": tailnet.RELAY}, "models": {key: {"name": key} for key in identifiers}}
+    return save_lmstudio(tailnet.RELAY, identifiers)
+
+
+def lmstudio_models(endpoint):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(endpoint + "/models", timeout=20) as response:
+        data = json.load(response)
+    models = data.get("data") if isinstance(data, dict) else None
+    if not isinstance(models, list):
+        raise ValueError("LM Studio returned an invalid model list.")
+    return [item["id"] for item in models if isinstance(item, dict) and
+            isinstance(item.get("id"), str) and item["id"] and "embed" not in item["id"].lower()]
+
+
+def save_lmstudio(endpoint, identifiers):
+    if not identifiers:
+        raise ValueError("LM Studio returned no chat models. Load a model in LM Studio first.")
+    config = {"npm": "@ai-sdk/openai-compatible", "name": "LM Studio", "options": {"baseURL": endpoint},
+              "models": {key: {"name": key} for key in identifiers}}
     path = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/angi-lmstudio.json"
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     atomic_write(path, config)
@@ -302,7 +353,8 @@ def bridge():
             try:
                 request = json.loads(line)
                 provider = request.get("provider", "openai")
-                if provider not in ("apple", "openai", "lmstudio"):
+                supported = ("openai", "lmstudio") if zero2w() else ("apple", "openai", "lmstudio")
+                if provider not in supported:
                     raise ValueError("Unknown provider.")
                 action = request["action"]
                 if action == "connect":
@@ -314,7 +366,7 @@ def bridge():
                 elif action == "lmstudio":
                     connect_lmstudio(request["address"])
                     result = providers.status("lmstudio")
-                elif action == "tailscale":
+                elif action == "tailscale" and not zero2w():
                     url = tailnet.login()
                     result = providers.status("lmstudio")
                     if url:
@@ -338,6 +390,8 @@ def bridge():
                 result["overview"] = overview(providers.apple_health)
             except Exception:
                 pass
+            if zero2w() and not providers.pending:
+                providers.close()
             print(json.dumps(result), flush=True)
     finally:
         providers.close()

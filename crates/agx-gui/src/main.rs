@@ -52,6 +52,7 @@ use {
     wm::Kind,
 };
 slint::include_modules!();
+const HEADLESS: bool = cfg!(feature = "headless");
 const EXIT_TUI: i32 = 10;
 const TOP: f32 = 34.0;
 const BOTTOM: f32 = 26.0;
