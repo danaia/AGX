@@ -70,7 +70,7 @@
       ],
       "serial": "ttyS0",
       "wifi_fw": "brcmfmac43455-sdio.raspberrypi,4-model-b.bin",
-      "note": "Headless image (SSH, TUI, Wi-Fi, Bluetooth, agent). Builds from agx_rpi4_defconfig; not yet booted on hardware. No desktop yet.",
+      "note": "Includes ANGI Desktop, VNC over SSH, and ANGI Web. Desktop and browser hardware verification is pending.",
       "marketing": {
         "short": "Pi 4 / 400",
         "tagline": "The everyday favourite.",

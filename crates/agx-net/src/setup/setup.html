@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151517">
+  <title>Set up ANGI</title>
+  <link rel="stylesheet" href="/setup.css">
+  <script defer src="/setup.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="brand">
+      <img src="/brand-bug.svg" alt="" width="231" height="218">
+      <span>ANGI</span>
+    </header>
+    <main>
+      <div class="intro">
+        <h1>Set up ANGI</h1>
+        <p>Create your administrator account and connect this Pi to Wi-Fi.</p>
+      </div>
+      <form method="post" action="/claim">
+        <div class="panels">
+          <section class="panel" aria-labelledby="account-heading">
+            <h2 id="account-heading">Administrator account</h2>
+            <label class="field">
+              <span>Your name</span>
+              <input name="name" autocomplete="name" placeholder="Full name" maxlength="80" required>
+            </label>
+            <label class="field">
+              <span>Username</span>
+              <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false"
+                     placeholder="Username" pattern="[a-z][a-z0-9_\-]*" maxlength="32" required>
+            </label>
+            <label class="field">
+              <span>Device hostname</span>
+              <input name="hostname" value="angi" autocapitalize="none" spellcheck="false"
+                     maxlength="63" pattern="[a-z0-9][a-z0-9\-]*" required>
+            </label>
+            <div class="field-pair">
+              <label class="field">
+                <span>Account password</span>
+                <input name="password" type="password" autocomplete="new-password"
+                       placeholder="Password" maxlength="128" required>
+              </label>
+              <label class="field">
+                <span>Confirm password</span>
+                <input id="password-confirmation" type="password" autocomplete="new-password"
+                       placeholder="Confirm password" maxlength="128" required>
+              </label>
+            </div>
+            <label class="field">
+              <span>SSH public key <span class="optional">(optional)</span></span>
+              <textarea name="ssh_key" rows="3" maxlength="4096" spellcheck="false"
+                        placeholder="Paste your SSH public key, such as an ssh-ed25519 key"></textarea>
+            </label>
+          </section>
+          <section class="panel" aria-labelledby="wifi-heading">
+            <h2 id="wifi-heading">Wi-Fi</h2>
+            <div class="scan-row">
+              <label class="field">
+                <span>Country code</span>
+                <input name="country" placeholder="US" pattern="[A-Za-z]{2}" maxlength="2"
+                       autocapitalize="characters" spellcheck="false" required>
+              </label>
+              <button id="scan" class="button secondary" type="button" disabled>Scan nearby networks</button>
+            </div>
+            <label class="field">
+              <span id="networks-label">Nearby Wi-Fi networks</span>
+              <span class="hint" id="networks-hint">Select a network from the list, or enter the network name below.</span>
+              <select id="networks" aria-labelledby="networks-label" aria-describedby="networks-hint scan-status" disabled>
+                <option value="">Choose a network</option>
+              </select>
+            </label>
+            <p id="scan-status" class="scan-status" role="status"></p>
+            <label class="field">
+              <span>Wi-Fi network name (SSID)</span>
+              <input name="ssid" placeholder="Network name" maxlength="32"
+                     autocapitalize="none" spellcheck="false" required>
+            </label>
+            <label class="field">
+              <span>Security</span>
+              <select name="security">
+                <option value="Wpa2">WPA / WPA2</option>
+                <option value="Wpa3">WPA3</option>
+                <option value="Open">Open</option>
+                <option value="Owe">Enhanced open</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Wi-Fi password</span>
+              <input name="wifi_password" type="password" autocomplete="off"
+                     placeholder="Wi-Fi password" maxlength="64">
+            </label>
+            <label class="checkbox"><input name="hidden" type="checkbox"> Hidden network</label>
+          </section>
+        </div>
+        <div class="actions">
+          <button type="submit" class="button primary" disabled>Connect and create account</button>
+        </div>
+      </form>
+      <p id="result" class="result" role="status"></p>
+      <section id="confirmation" class="confirmation panel" aria-labelledby="confirmation-heading" hidden>
+        <span class="confirmation-mark" aria-hidden="true"></span>
+        <h1 id="confirmation-heading" tabindex="-1">Setup complete</h1>
+        <p>Go back to your agent and say <strong>“Continue.”</strong></p>
+        <details class="connection-details">
+          <summary>Connection details</summary>
+          <p id="connection-result"></p>
+        </details>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

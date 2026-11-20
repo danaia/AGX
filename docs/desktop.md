@@ -31,7 +31,7 @@ In **Files**, right-click one folder and choose **Start Python server** to serve
 
 ## Boot and graphical login
 
-With `/usr/bin/agx-gui` installed, Rust init starts `agx-gui --login` directly on HDMI (`tty1`). There is no text username/password prompt or interface chooser. Sign in with the existing AGX administrator username and password; the desktop runs as that user, with their home directory and supplementary groups. Root, empty passwords, locked accounts and expired credentials are rejected. A failed login has a two-second retry delay. Exiting the desktop or the TUI session returns to graphical login through the supervisor.
+With `/usr/bin/agx-gui` installed, Rust init starts `agx-gui --login` on the HDMI console (`tty1`). If no HDMI monitor is connected and VNC is enabled, the greeter uses the software display. Sign in with the ANGI administrator username and password. The desktop runs as that user, with their home directory and supplementary groups. Root, empty passwords, locked accounts and expired credentials are rejected. A failed login has a two-second retry delay. Exiting the desktop or the TUI session returns to graphical login through the supervisor.
 
 `agx desktop` opens the desktop immediately. Its **Open TUI** menu action switches to the authenticated user's TUI, and **Sign out** returns to login. SSH and serial (`ttyAMA10`) retain their existing login paths. Images without the GUI retain the HDMI text login. A GUI startup failure is retried with supervisor backoff; recovery is available through SSH or serial.
 
@@ -39,7 +39,7 @@ The power icon at the right of the GUI header opens a session dropdown: **Log ou
 
 From the HDMI TUI, **F8** returns directly to the GUI. The same action is available as **Back to GUI** in Profile and **[GUI F8]** in the footer beside shutdown and reboot. Save or discard Profile edits before switching. Both directions run through one authenticated CLI session; repeated switching does not create nested launchers. SSH/serial TUI sessions display the shortcut disabled and stay in their terminal rather than opening the Pi's graphical display.
 
-Install the GUI, CLI, init and device-access helper with `make deploy-gui`, then reboot. Override `AGX_SSH_HOST` and `AGX_SSH_KEY` when needed. The running PID 1 stays in place until reboot. Original installed binaries are saved in `/root/agx-gui-backup`. The GUI is still built/deployed separately from the Buildroot Rust workspace; a fresh image needs the GUI binary and desktop runtime libraries installed before graphical login is selected.
+The Pi 4 / 400 image ships with the GUI and desktop runtime libraries. For a development deployment on Pi 5, `make deploy-gui` installs the GUI, CLI, init and device-access helper and saves the original binaries in `/root/agx-gui-backup`. Override `AGX_SSH_HOST` and `AGX_SSH_KEY` when needed. Reboot to activate the new init process.
 
 Use [direct Ethernet](pi-ethernet.md) for development access and deployment. As a recovery alternative, the development Pi was reachable over Wi-Fi at `192.168.1.184` (DHCP; checked November 16, 2026). Its SSH host key matches the recorded USB address. To deploy over this connection:
 
@@ -101,7 +101,9 @@ The first GPU deployment mistakenly linked `/lib/libgcc_s.so.1` to NVMe, creatin
 
 ## Remote access (VNC)
 
-`agx-gui` can serve its own screen over VNC, so a viewer such as Remmina can see and drive the desktop and the login screen without a monitor on the Pi. It is off by default. Set `AGX_GUI_VNC` to turn it on: put `AGX_GUI_VNC=on` in `/etc/agx/gui.env` on the Pi and reboot (the greeter passes it to the signed-in session), or export it when running a preview. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`; `off` or unset disables it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
+`agx-gui` can serve its own screen over VNC, so a viewer such as Remmina can see and drive the desktop and the login screen without a monitor on the Pi. The Pi 4 / 400 image includes the desktop and ANGI Web and sets `AGX_GUI_VNC=on` at build time. On other images, set it in `/etc/agx/gui.env` on the Pi and reboot to enable it, or export it when running a preview. The greeter passes this setting to the signed-in session. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`; `off` or unset disables it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
+
+After claiming a generic Pi 4 / 400 image, use the administrator account and SSH host fingerprint from setup. Forward a local port with `ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:5941:127.0.0.1:5900 <username>@10.77.0.2` over USB-C (or use `10.78.0.2` over direct Ethernet). Connect the VNC viewer to `127.0.0.1:5941`, then sign in to ANGI with the account created during setup.
 
 For an actual desktop resolution that follows the Remmina window, select the VNC-only software display in `/etc/agx/gui.env`:
 

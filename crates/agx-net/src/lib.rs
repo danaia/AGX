@@ -1,8 +1,9 @@
-//! Shared Wi-Fi protocol. Passwords travel only over a root-only Unix socket.
+//! Wi-Fi service and local clients, with first-boot setup over the USB gadget.
 mod client;
 mod credentials;
 mod protocol;
 pub mod service;
+mod setup;
 mod ssid;
 
 pub const SOCKET: &str = "/run/agx/network.sock";

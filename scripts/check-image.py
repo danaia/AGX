@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Pi 4/Pi 5 image artifacts (board from images/board.txt) without mounting or accessing block devices."""
+"""Validate Pi 4/Pi 5 image artifacts without mounting or accessing block devices."""
 import hashlib
 from pathlib import Path
 import re
@@ -23,6 +23,15 @@ def digest_region(stream, length):
     return digest.digest()
 
 
+def check_arm64_files(target, read_packed, filenames):
+    for name in filenames:
+        binary = (target / name).read_bytes()
+        require(binary.startswith(b'\x7fELF\x02\x01') and len(binary) >= 20,
+                f'{name} must be a 64-bit little-endian ELF')
+        require(struct.unpack_from('<H', binary, 18)[0] == 183, f'{name} must target ARM64')
+        require(read_packed(name) == binary, f'Packed {name} differs from the build output')
+
+
 PROFILES = {
     "rpi5": {"dtbs": ["bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb"], "serial": "ttyAMA10",
              "wifi_fw": "brcmfmac43455-sdio.raspberrypi,5-model-b.bin", "label": "Pi 5", "extra_boot": []},
@@ -37,7 +46,13 @@ def check(images):
     board = stamp.read_text().strip() if stamp.is_file() else "rpi5"
     require(board in PROFILES, f"Unknown board stamp: {board}")
     profile = PROFILES[board]
+    build_config = (images.parent / '.config').read_text().splitlines()
+    desktop = 'BR2_PACKAGE_AGX_GUI=y' in build_config
+    if board == 'rpi4':
+        require(desktop and 'BR2_PACKAGE_AGX_WEB=y' in build_config,
+                'Pi 4 / 400 requires the ANGI desktop and browser')
     dtbs, serial, label = profile["dtbs"], profile["serial"], profile["label"]
+    disk_image = images / "sdcard.img"
     for name in ("Image", *dtbs, "boot.vfat", "rootfs.ext4", "sdcard.img"):
         require((images / name).is_file(), f"Missing artifact: {name}")
     with (images / "Image").open("rb") as kernel:
@@ -49,7 +64,7 @@ def check(images):
     with (images / "rootfs.ext4").open("rb") as rootfs:
         rootfs.seek(1080)
         require(rootfs.read(2) == b"\x53\xef", "Invalid ext filesystem magic")
-    with (images / "sdcard.img").open("rb") as image:
+    with disk_image.open("rb") as image:
         mbr = image.read(512)
         require(mbr[510:512] == b"\x55\xaa", "Invalid MBR signature")
         previous_end = 512
@@ -62,7 +77,7 @@ def check(images):
             size = (images / name).stat().st_size
             require(start * 512 >= previous_end, "Overlapping partitions")
             require(size <= sectors * 512, f"Partition too small: {name}")
-            require((start + sectors) * 512 <= (images / "sdcard.img").stat().st_size,
+            require((start + sectors) * 512 <= disk_image.stat().st_size,
                     f"Partition outside disk image: {name}")
             previous_end = (start + sectors) * 512
             image.seek(start * 512)
@@ -70,7 +85,10 @@ def check(images):
                 require(digest_region(image, size) == digest_region(source, size),
                         f"Partition contents differ: {name}")
     mtype = images.parent / "host/bin/mtype"
-    for name in ("Image", *dtbs, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo", *profile["extra_boot"]):
+    boot_files = ["Image", *dtbs, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo", *profile["extra_boot"]]
+    if board == 'rpi4':
+        boot_files.extend(('overlays/overlay_map.dtb', 'overlays/vc4-kms-v3d-pi4.dtbo'))
+    for name in boot_files:
         subprocess.run([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"],
                        stdout=subprocess.DEVNULL, check=True)
     for name in ("config.txt", "cmdline.txt"):
@@ -116,32 +134,88 @@ def check(images):
         require((target / name).is_file(), f"Missing Bluetooth component: {name}")
     require((target / "usr/libexec/agx-bluetooth/run").stat().st_mode & 0o111, "Bluetooth service script is not executable")
     keys = target / "root/.ssh/authorized_keys"
-    require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
+    generic = (images.parent / ".generic-iso").is_file()
+    if generic:
+        require(not keys.exists(), "Generic image contains an authorized SSH key")
+        for name in ("etc/agx/setup-enabled", "etc/agx/dhcp-usb.conf", "etc/avahi/avahi-daemon.conf",
+                     "usr/sbin/udhcpd", "usr/sbin/avahi-daemon", "usr/bin/dropbearkey", "usr/bin/ssh-keygen"):
+            require((target / name).is_file(), f"Missing browser setup prerequisite: {name}")
+    else:
+        require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
     debugfs = images.parent / "host/sbin/debugfs"
-    for name, mode in (("root/.ssh", 0o700), ("root/.ssh/authorized_keys", 0o600), ("etc/agx", 0o700), ("etc/agx/network.json", 0o600), ("etc/agx/wpa_supplicant.conf", 0o600)):
+
+    def read_packed(name):
+        return subprocess.run([str(debugfs), '-R', f'cat /{name}', str(images / 'rootfs.ext4')],
+                              capture_output=True, check=True).stdout
+
+    paths_and_modes = [
+        ("etc/dropbear", 0o700), ("root/.ssh", 0o700),
+        ("etc/agx", 0o700), ("etc/agx/network.json", 0o600), ("etc/agx/wpa_supplicant.conf", 0o600),
+    ]
+    if generic:
+        paths_and_modes.append(("etc/agx/setup-enabled", 0o600))
+    else:
+        paths_and_modes.append(("root/.ssh/authorized_keys", 0o600))
+    for name, mode in paths_and_modes:
         metadata = subprocess.run([str(debugfs), "-R", f"stat /{name}", str(images / "rootfs.ext4")],
                                   capture_output=True, check=True).stdout.decode()
         actual = re.search(r"\bMode:\s+([0-7]+)\b", metadata)
+        if name == "etc/dropbear":
+            require("Type: directory" in metadata, "Missing persistent SSH host-key directory")
+        if name == "etc/agx/setup-enabled":
+            require("Type: regular" in metadata, "Browser setup is not enabled in the generic ISO")
         require(actual is not None and int(actual.group(1), 8) == mode,
                 f"Incorrect packed SSH permissions: {name}")
         require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
                 f"Incorrect packed SSH ownership: {name}")
-    for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue", "etc/profile.d/agx-welcome.sh", "etc/init.d/S12agx-data", "usr/share/agx/logo.ascii", "root/.ssh/authorized_keys"):
-        packed = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
-                                capture_output=True, check=True).stdout
+    if generic:
+        for directory in ("root/.ssh", "etc/dropbear"):
+            entries = subprocess.check_output([str(debugfs), "-R", f"ls -p /{directory}", str(images / "rootfs.ext4")],
+                                              stderr=subprocess.DEVNULL, text=True)
+            names = {line.split("/")[5] for line in entries.splitlines() if line.startswith("/")}
+            require(names == {".", ".."}, f"Generic image contains SSH files in /{directory}")
+        shadow = subprocess.check_output([str(debugfs), "-R", "cat /etc/shadow", str(images / "rootfs.ext4")],
+                                         stderr=subprocess.DEVNULL)
+        require(re.search(rb"^root:!:", shadow, re.MULTILINE), "Generic image must lock the root password")
+    packed_files = ["etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue",
+                    "etc/profile.d/agx-welcome.sh", "etc/init.d/S12agx-data", "usr/share/agx/logo.ascii"]
+    generic_defaults = set()
+    if generic:
+        generic_defaults = {"etc/agx/network.json", "etc/agx/wpa_supplicant.conf",
+                            "etc/agx/dhcp-usb.conf", "etc/avahi/avahi-daemon.conf"}
+        packed_files.extend(sorted(generic_defaults))
+        require("CONFIG_USB_ETH_RNDIS=y" in kernel_config.splitlines(), "Missing USB RNDIS gadget configuration")
+        overlay = Path(__file__).resolve().parents[1] / "buildroot/board/agx/rootfs-overlay"
+    else:
+        packed_files.append("root/.ssh/authorized_keys")
+    if board == 'rpi4':
+        require('dtoverlay=vc4-kms-v3d' in config.splitlines(), 'Missing Pi 4 graphics overlay')
+        for driver in ('CONFIG_DRM_VC4', 'CONFIG_DRM_V3D'):
+            require(any(f'{driver}={kind}' in kernel_config.splitlines() for kind in ('y', 'm')),
+                    f'Missing Pi 4 graphics driver: {driver}')
+        for option in ('CONFIG_USER_NS=y', 'CONFIG_SECCOMP_FILTER=y'):
+            require(option in kernel_config.splitlines(), f'Missing browser sandbox option: {option}')
+        packed_files.extend(('etc/agx/gui.env', 'etc/modules-load.d/desktop.conf'))
+        require('AGX_GUI_VNC=on' in (target / 'etc/agx/gui.env').read_text().splitlines(),
+                'Pi 4 / 400 must enable loopback VNC')
+        require((target / 'usr/bin/open').readlink() == Path('agx-gui'), 'Missing desktop open command')
+        check_arm64_files(target, read_packed, (
+            'usr/bin/agx-gui', 'usr/lib/gbm/dri_gbm.so', 'usr/libexec/agx-web',
+            'usr/libexec/wpe-webkit-2.0/WPEWebProcess', 'usr/bin/bwrap', 'usr/bin/xdg-dbus-proxy',
+        ))
+    for name in packed_files:
+        packed = read_packed(name)
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
-    if 'BR2_PACKAGE_E2FSPROGS=y' in (images.parent / '.config').read_text().splitlines():
+        if name in generic_defaults:
+            require(packed == (overlay / name).read_bytes(), f"Generic image contains unexpected network settings: {name}")
+    if board == 'rpi4':
+        print('PASS: Pi 4 graphics, ANGI desktop, loopback VNC configuration and browser')
+    if 'BR2_PACKAGE_E2FSPROGS=y' in build_config:
         require((target / 'sbin/mke2fs').is_file() and not (target / 'sbin/mke2fs').is_symlink(),
                 'Real e2fsprogs mke2fs is required for ext4 data volumes')
-    if 'BR2_PACKAGE_AGX=y' in (images.parent / '.config').read_text().splitlines():
-        for name in ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp', 'usr/sbin/agx-init'):
-            binary = (target / name).read_bytes()
-            require(len(binary) >= 20 and binary[:4] == b'\x7fELF' and binary[4] == 2 and binary[5] == 1,
-                    f'{name} must be a 64-bit little-endian ELF')
-            require(struct.unpack_from('<H', binary, 18)[0] == 183, f'{name} must target ARM64')
-            packed = subprocess.run([str(debugfs), '-R', f'cat /{name}', str(images / 'rootfs.ext4')],
-                                    capture_output=True, check=True).stdout
-            require(packed == binary, f'Packed {name} differs from the build output')
+    if 'BR2_PACKAGE_AGX=y' in build_config:
+        check_arm64_files(target, read_packed, ('usr/bin/agx', 'usr/sbin/agx-netd', 'usr/sbin/agx-dhcp',
+                                               'usr/sbin/agx-init'))
         require('/usr/sbin/agx-init --supervise' in inittab, 'BusyBox recovery must start the Rust supervisor')
         for name in ('usr/sbin/wpa_supplicant', 'usr/sbin/iw', 'usr/bin/curl', 'etc/ssl/certs/ca-certificates.crt',
                      'lib/firmware/regulatory.db', 'lib/firmware/brcm/' + profile['wifi_fw']):

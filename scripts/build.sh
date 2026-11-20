@@ -14,7 +14,7 @@ board_field() { python3 -I "$ROOT/scripts/detect-board.py" --field "$BOARD" "$1"
 python3 -I "$ROOT/scripts/detect-board.py" --require "$BOARD" >/dev/null || {
     python3 -I "$ROOT/scripts/detect-board.py" --require "$BOARD" >&2; exit 3; }
 DEFCONFIG=$(board_field defconfig)
-OUTPUT="$ROOT/$(board_field output)"
+OUTPUT=$(realpath -m -- "${AGX_BUILD_OUTPUT:-"$ROOT/$(board_field output)"}")
 FIRMWARE_DIR="$ROOT/$(board_field firmware_dir)"
 ACTION=${1:-build}
 case "$ACTION" in
@@ -31,21 +31,32 @@ if [[ ! -d "$SOURCE" ]]; then
     tar -xJf "$ARCHIVE" -C "$(dirname "$SOURCE")"
 fi
 [[ "$ACTION" == prepare ]] && exit 0
-# Keep workstation-specific public keys out of the tracked board overlay.
-PUBLIC_KEY=${SSH_PUBLIC_KEY:-"${HOME}/.ssh/id_ed25519.pub"}
-if [[ ! -f "$PUBLIC_KEY" ]]; then
-    echo "Set SSH_PUBLIC_KEY to an SSH public key file before configuring/building." >&2
-    exit 1
+build_options=()
+if [[ ${AGX_GENERIC_ISO:-0} == 1 || -f "$OUTPUT/.generic-iso" ]]; then
+    [[ $BOARD == rpi4 && -n ${AGX_BUILD_OUTPUT:-} ]] || {
+        echo "Set AGX_BUILD_OUTPUT to a separate Pi 4 / 400 build directory for the generic ISO." >&2
+        exit 1
+    }
+    mkdir -p -- "$OUTPUT"
+    touch -- "$OUTPUT/.generic-iso"
+    build_options+=("BR2_ROOTFS_OVERLAY=$ROOT/buildroot/board/agx/rootfs-overlay $FIRMWARE_DIR/rootfs-overlay")
+else
+    # Keep workstation-specific public keys out of the tracked board overlay.
+    PUBLIC_KEY=${SSH_PUBLIC_KEY:-"${HOME}/.ssh/id_ed25519.pub"}
+    if [[ ! -f "$PUBLIC_KEY" ]]; then
+        echo "Set SSH_PUBLIC_KEY to an SSH public key file before configuring/building." >&2
+        exit 1
+    fi
+    ssh-keygen -lf "$PUBLIC_KEY" >/dev/null
+    if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)[^ ]* ' "$PUBLIC_KEY"; then
+        echo "Expected an OpenSSH public key, not a private key or certificate." >&2
+        exit 1
+    fi
+    install -d -m 700 "$ROOT/.cache/local-overlay/root/.ssh"
+    install -m 600 "$PUBLIC_KEY" "$ROOT/.cache/local-overlay/root/.ssh/authorized_keys"
 fi
-ssh-keygen -lf "$PUBLIC_KEY" >/dev/null
-if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)[^ ]* ' "$PUBLIC_KEY"; then
-    echo "Expected an OpenSSH public key, not a private key or certificate." >&2
-    exit 1
-fi
-install -d -m 700 "$ROOT/.cache/local-overlay/root/.ssh"
-install -m 600 "$PUBLIC_KEY" "$ROOT/.cache/local-overlay/root/.ssh/authorized_keys"
 brmake() {
-    make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "$@"
+    make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "${build_options[@]}" "$@"
 }
 if [[ "$ACTION" == configure || ! -f "$OUTPUT/.config" ]]; then
     brmake "$DEFCONFIG"
@@ -57,9 +68,16 @@ case "$ACTION" in
         if grep -q '^BR2_PACKAGE_AGX=y$' "$OUTPUT/.config"; then
             # Supply Cargo for vendoring even on hosts without a Rust installation.
             brmake "BR2_JLEVEL=${JOBS:-8}" host-rustc
-            "$ROOT/scripts/prepare-rust-package.sh"
+            stage_options=()
+            if grep -q '^BR2_PACKAGE_AGX_GUI=y$' "$OUTPUT/.config"; then
+                stage_options+=(--desktop)
+            fi
+            PATH="$OUTPUT/host/bin:$PATH" "$ROOT/scripts/prepare-rust-package.sh" "${stage_options[@]}"
             # Local source packages need an explicit rebuild to pick up edits.
             brmake "BR2_JLEVEL=${JOBS:-8}" agx-rebuild
+            if ((${#stage_options[@]})); then
+                brmake "BR2_JLEVEL=${JOBS:-8}" agx-gui-rebuild
+            fi
         fi
         # Buildroot does not otherwise recopy changed external firmware configuration.
         if ! cmp -s "$FIRMWARE_DIR/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||

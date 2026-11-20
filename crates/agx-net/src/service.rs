@@ -958,6 +958,7 @@ pub fn run() -> io::Result<()> {
         signal_hook::flag::register(signal, Arc::clone(&stop))?;
     }
     let mut manager = Manager::new()?;
+    crate::setup::start(Arc::clone(&stop));
     while !stop.load(Ordering::Relaxed) {
         manager.tick();
         match listener.accept() {

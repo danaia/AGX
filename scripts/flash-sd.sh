@@ -40,14 +40,17 @@ command -v lsblk >/dev/null || die "lsblk is required"
 
 field() { lsblk -dnpo "$2" "$1" 2>/dev/null | sed 's/^ *//; s/ *$//'; }
 identity() {
-    local device=$1 details number sequence=""
-    details=$(lsblk -dnPb -o MAJ:MIN,SIZE,MODEL,SERIAL,TRAN,RO -- "$device") || return 1
-    number=$(field "$device" MAJ:MIN) || return 1
-    [[ -n $details && -n $number ]] || return 1
-    if [[ -e /sys/dev/block/$number/diskseq ]]; then
-        read -r sequence <"/sys/dev/block/$number/diskseq" || return 1
+    local device=$1 details number bytes read_only sys_path sequence=""
+    # udev properties can disappear while its event is blocked by our disk lock.
+    # Keep model and serial in the confirmation display and use kernel data here.
+    details=$(lsblk -dnbr -o MAJ:MIN,SIZE,RO -- "$device") || return 1
+    read -r number bytes read_only <<<"$details"
+    [[ -n $number && -n $bytes && -n $read_only ]] || return 1
+    sys_path=$(readlink -e -- "/sys/dev/block/$number") || return 1
+    if [[ -e $sys_path/diskseq ]]; then
+        read -r sequence <"$sys_path/diskseq" || return 1
     fi
-    printf '%s|%s\n' "$details" "$sequence"
+    printf '%s|%s|%s\n' "$details" "$sys_path" "$sequence"
 }
 size_bytes() { lsblk -dnbo SIZE "$1" | tr -d ' '; }
 human() { numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"; }
@@ -181,8 +184,12 @@ BEFORE=$(identity "$DEVICE") || die "cannot read the card's identity"
 
 python3 "$ROOT/scripts/detect-board.py" --require "$BOARD" >/dev/null || { python3 "$ROOT/scripts/detect-board.py" --require "$BOARD" >&2 || true; die "no image for $BOARD; refusing"; }
 IMAGE_DIR=$(dirname -- "$IMAGE")
-STAMP="$IMAGE_DIR/board.txt"
-[[ -f $STAMP && $(<"$STAMP") == "$BOARD" ]] || die "the image was not built for $BOARD (${STAMP##*/} says: $(cat "$STAMP" 2>/dev/null || echo none)); rebuild for the right board"
+if [[ $IMAGE == *.iso ]]; then
+    [[ $BOARD == rpi4 ]] || die "the hybrid ISO requires Pi 4 / 400"
+else
+    STAMP="$IMAGE_DIR/board.txt"
+    [[ -f $STAMP && $(<"$STAMP") == "$BOARD" ]] || die "the image was not built for $BOARD (${STAMP##*/} says: $(cat "$STAMP" 2>/dev/null || echo none)); rebuild for the right board"
+fi
 
 # Safety checks.
 mounts=$(critical_mounts "$DEVICE") || die "cannot check the card's system mounts"
@@ -200,10 +207,15 @@ IMG_BYTES=$(stat -c %s "$IMAGE")
 (( BYTES >= IMG_BYTES )) || die "card is smaller than the image ($(human "$BYTES") < $(human "$IMG_BYTES"))"
 (( BYTES <= MAX_GIB * 1024 * 1024 * 1024 )) \
     || die "$DEVICE is $(human "$BYTES"), larger than ${MAX_GIB} GiB. That is unusual for a microSD card; pass --max-gib to override"
-python3 "$ROOT/scripts/check-image.py" "$IMAGE_DIR" >/dev/null \
-    || die "the image failed make check-image; refusing to write it"
-if [[ ! $IMAGE -ef "$IMAGE_DIR/sdcard.img" ]] && ! cmp -s -- "$IMAGE" "$IMAGE_DIR/sdcard.img"; then
-    die "the selected image differs from the checked sdcard.img"
+if [[ $IMAGE == *.iso ]]; then
+    python3 "$ROOT/scripts/iso_media.py" "$IMAGE" \
+        || die "the ISO failed validation; refusing to write it"
+else
+    python3 "$ROOT/scripts/check-image.py" "$IMAGE_DIR" >/dev/null \
+        || die "the image failed validation; refusing to write it"
+    if [[ ! $IMAGE -ef "$IMAGE_DIR/sdcard.img" ]] && ! cmp -s -- "$IMAGE" "$IMAGE_DIR/sdcard.img"; then
+        die "the selected image differs from the checked sdcard.img"
+    fi
 fi
 require_same_card
 

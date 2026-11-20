@@ -261,6 +261,18 @@ mod login_tests {
     }
 }
 pub fn save(save: Save) -> io::Result<String> {
+    save_account(save, false, None)
+}
+
+/// Create the first administrator and install its optional OpenSSH public key.
+pub fn save_initial(save: Save, public_key: Option<&str>) -> io::Result<String> {
+    if !save.create {
+        return Err(err("Initial setup must create an account"));
+    }
+    save_account(save, true, public_key)
+}
+
+fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Result<String> {
     validate(&save).map_err(io::Error::other)?;
     let gid = admin_gid()?;
     let hashed = if !save.password.is_empty() {
@@ -269,6 +281,9 @@ pub fn save(save: Save) -> io::Result<String> {
         None
     };
     let _lock = Lock::acquire()?;
+    if initial && !status()?.accounts.is_empty() {
+        return Err(err("This ANGI system already has an administrator"));
+    }
     let passwd = fs::read_to_string("/etc/passwd")?;
     let shadow = Zeroizing::new(fs::read_to_string("/etc/shadow")?);
     let existing = passwd
@@ -302,15 +317,6 @@ pub fn save(save: Save) -> io::Result<String> {
             .ok_or_else(|| err("No free user ID"))?
     };
     let home = format!("/home/{}", save.username);
-    if save.create {
-        fs::create_dir_all("/home")?;
-        fs::set_permissions("/home", fs::Permissions::from_mode(0o755))?;
-        // Never adopt or chown an existing home belonging to another account.
-        fs::create_dir(&home)
-            .map_err(|_| err("Home directory already exists or cannot be created"))?;
-        fs::set_permissions(&home, fs::Permissions::from_mode(0o700))?;
-        chown(Path::new(&home), uid, gid)?;
-    }
     let mut new_passwd = String::new();
     for line in passwd.lines() {
         if line.split(':').next() != Some(&save.username) {
@@ -359,14 +365,59 @@ pub fn save(save: Save) -> io::Result<String> {
             days()
         ));
     }
-    // Shadow first: a newly exposed passwd entry can never have a blank password.
-    atomic(Path::new("/etc/shadow"), new_shadow.as_bytes(), 0o600)?;
-    if let Err(error) = atomic(Path::new("/etc/passwd"), new_passwd.as_bytes(), 0o644) {
-        let _ = atomic(Path::new("/etc/shadow"), shadow.as_bytes(), 0o600);
+    let home = Path::new(&home);
+    if save.create {
+        fs::create_dir_all("/home")?;
+        fs::set_permissions("/home", fs::Permissions::from_mode(0o755))?;
+        // Never adopt or chown an existing home belonging to another account.
+        fs::create_dir(home)
+            .map_err(|_| err("Home directory already exists or cannot be created"))?;
+    }
+    let account = (|| {
+        if save.create {
+            fs::set_permissions(home, fs::Permissions::from_mode(0o700))?;
+            if let Some(key) = public_key {
+                let ssh = home.join(".ssh");
+                fs::create_dir(&ssh)?;
+                fs::set_permissions(&ssh, fs::Permissions::from_mode(0o700))?;
+                let authorized = ssh.join("authorized_keys");
+                atomic(&authorized, key.as_bytes(), 0o600)?;
+                chown(&authorized, uid, gid)?;
+                chown(&ssh, uid, gid)?;
+                File::open(&ssh)?.sync_all()?;
+            }
+            chown(home, uid, gid)?;
+            File::open(home)?.sync_all()?;
+            File::open("/home")?.sync_all()?;
+        }
+        // Shadow first: a newly exposed passwd entry can never have a blank password.
+        atomic(Path::new("/etc/shadow"), new_shadow.as_bytes(), 0o600)?;
+        if let Err(error) = atomic(Path::new("/etc/passwd"), new_passwd.as_bytes(), 0o644) {
+            let _ = atomic(Path::new("/etc/shadow"), shadow.as_bytes(), 0o600);
+            return Err(error);
+        }
+        Ok(())
+    })();
+    if let Err(error) = account {
+        if save.create
+            && fs::read_to_string("/etc/passwd").is_ok_and(|passwd| {
+                !passwd
+                    .lines()
+                    .any(|line| line.split(':').next() == Some(&save.username))
+            })
+        {
+            let _ = fs::remove_dir_all(home);
+        }
         return Err(error);
     }
     let result = apply_hostname(&save.hostname);
     if result.is_err() {
+        if initial {
+            return Ok(format!(
+                "Saved {}. The hostname could not be applied. Use the Pi's IP address.",
+                save.name.trim()
+            ));
+        }
         return Err(err(
             "Account saved, but hostname update failed. Retry Save to apply the hostname.",
         ));

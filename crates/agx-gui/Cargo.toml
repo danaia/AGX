@@ -5,9 +5,8 @@ edition = "2024"
 rust-version = "1.97"
 build = "build.rs"
 
-# Standalone on purpose: the Buildroot package builds `--workspace`, and the
-# GUI needs extra native libraries (libinput, xkbcommon, DRM). It joins the
-# image build once those packages are enabled.
+# Standalone so the core Rust workspace does not require the desktop's native
+# libraries. The optional Buildroot agx-gui package builds this workspace.
 [workspace]
 
 [[bin]]

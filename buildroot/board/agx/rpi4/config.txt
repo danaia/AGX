@@ -9,5 +9,7 @@ disable_overscan=1
 enable_uart=1
 # USB-C presents an Ethernet gadget to the attached Linux workstation.
 dtoverlay=dwc2,dr_mode=peripheral
+# HDMI display through DRM/KMS, using the Pi 4 overlay selected by the firmware.
+dtoverlay=vc4-kms-v3d
 # Bluetooth through the kernel driver.
 dtparam=krnbt=on

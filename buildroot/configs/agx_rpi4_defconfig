@@ -1,6 +1,5 @@
 # Raspberry Pi 4 / 400 target. Based on Buildroot 2026.08.1 raspberrypi4_64_defconfig and
-# agx_rpi5_defconfig. Headless first: SSH over USB-C or Ethernet, the AGX TUI/CLI, Wi-Fi, Bluetooth
-# and the agent workshop. The Pi 5 desktop (Mesa/V3D, WPE web) is not part of this target yet.
+# agx_rpi5_defconfig. The desktop uses DRM/KMS on HDMI and software rendering over VNC.
 BR2_aarch64=y
 BR2_cortex_a72=y
 BR2_TOOLCHAIN_EXTERNAL=y
@@ -32,7 +31,7 @@ BR2_PACKAGE_KMOD=y
 BR2_PACKAGE_KMOD_TOOLS=y
 BR2_TARGET_ROOTFS_EXT2=y
 BR2_TARGET_ROOTFS_EXT2_4=y
-# WPE, OpenCode and the CLI runtime need more room in new full images.
+# The desktop, WPE and command-line tools need space in the root filesystem.
 BR2_TARGET_ROOTFS_EXT2_SIZE="1024M"
 # BR2_TARGET_ROOTFS_TAR is not set
 BR2_PACKAGE_HOST_DOSFSTOOLS=y
@@ -43,7 +42,7 @@ BR2_TARGET_GENERIC_HOSTNAME="agx"
 BR2_TARGET_GENERIC_ISSUE="AGX OS Phase 1 - development console"
 BR2_TARGET_GENERIC_GETTY_PORT="ttyS0"
 BR2_TARGET_GENERIC_GETTY_BAUDRATE_115200=y
-BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_AGX_PATH)/board/agx/rootfs-overlay $(BR2_EXTERNAL_AGX_PATH)/../.cache/local-overlay"
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_AGX_PATH)/board/agx/rootfs-overlay $(BR2_EXTERNAL_AGX_PATH)/board/agx/rpi4/rootfs-overlay $(BR2_EXTERNAL_AGX_PATH)/../.cache/local-overlay"
 BR2_ROOTFS_DEVICE_TABLE="system/device_table.txt $(BR2_EXTERNAL_AGX_PATH)/board/agx/permissions.txt"
 BR2_REPRODUCIBLE=y
 BR2_PACKAGE_DROPBEAR=y
@@ -68,7 +67,24 @@ BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_AGX_PATH)/board/agx/bu
 # Filesystem tools for AGX data volumes.
 BR2_PACKAGE_E2FSPROGS=y
 
-# Pi 5-only desktop (Mesa/V3D, libinput, WPE web) is omitted from this headless Pi 4 target.
+# Desktop graphics, input, typography and the embedded WPE browser.
+BR2_PACKAGE_LIBUDEV_ZERO=y
+BR2_PACKAGE_LIBINPUT=y
+BR2_PACKAGE_LIBXKBCOMMON=y
+BR2_PACKAGE_XKEYBOARD_CONFIG=y
+BR2_PACKAGE_FONTCONFIG=y
+BR2_PACKAGE_MESA3D=y
+BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_V3D=y
+BR2_PACKAGE_MESA3D_OPENGL_EGL=y
+BR2_PACKAGE_MESA3D_OPENGL_ES=y
+BR2_PACKAGE_MESA3D_GBM=y
+BR2_PACKAGE_AGX_GUI=y
+BR2_PACKAGE_AGX_WEB=y
+BR2_PACKAGE_DEJAVU_SANS=y
+# BR2_PACKAGE_DEJAVU_MONO is not set
+# BR2_PACKAGE_DEJAVU_SERIF is not set
+# BR2_PACKAGE_DEJAVU_SANS_CONDENSED is not set
+# BR2_PACKAGE_DEJAVU_SERIF_CONDENSED is not set
 
 # Native terminal CLI tools. Keep the recovery /bin/sh and SSH server unchanged.
 BR2_PACKAGE_BASH=y
@@ -95,6 +111,10 @@ BR2_STRIP_EXCLUDE_FILES="opencode"
 # keyboard/mouse (HID and HID-over-GATT) support. bluetoothctl and btmon are for diagnostics.
 # agx-bluetoothd, supervised by agx-init, is what the desktop and `agx bluetooth` talk to.
 BR2_PACKAGE_DBUS=y
+BR2_PACKAGE_AVAHI=y
+# BR2_PACKAGE_AVAHI_AUTOIPD is not set
+BR2_PACKAGE_AVAHI_DAEMON=y
+# BR2_PACKAGE_AVAHI_DEFAULT_SERVICES is not set
 BR2_PACKAGE_BLUEZ5_UTILS=y
 BR2_PACKAGE_BLUEZ5_UTILS_CLIENT=y
 BR2_PACKAGE_BLUEZ5_UTILS_MONITOR=y
