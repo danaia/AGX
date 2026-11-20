@@ -103,7 +103,7 @@ The first GPU deployment mistakenly linked `/lib/libgcc_s.so.1` to NVMe, creatin
 
 `agx-gui` can serve its own screen over VNC, so a viewer such as Remmina can see and drive the desktop and the login screen without a monitor on the Pi. The Pi 4 / 400 image includes the desktop and ANGI Web and sets `AGX_GUI_VNC=on` at build time. On other images, set it in `/etc/agx/gui.env` on the Pi and reboot to enable it, or export it when running a preview. The greeter passes this setting to the signed-in session. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`; `off` or unset disables it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
 
-After claiming a generic Pi 4 / 400 image, use the administrator account and verify the SSH host fingerprint against the one shown during setup. Forward a free local port, for example `ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:5942:127.0.0.1:5900 <username>@10.77.0.2` over USB-C (or use `10.78.0.2` over direct Ethernet). Connect the VNC viewer to `127.0.0.1:5942`, then sign in to ANGI with the account created during setup.
+For Pi 4 / 400, the [provisioning guide](pi4-provisioning.md#open-the-desktop) shows how to open VNC over the direct SSH connection after creating the administrator. For a browser-provisioned ISO, use the administrator’s SSH login and verify the host fingerprint shown during browser setup.
 
 For an actual desktop resolution that follows the Remmina window, select the VNC-only software display in `/etc/agx/gui.env`:
 

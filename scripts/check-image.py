@@ -144,6 +144,9 @@ def check(images):
             require((target / name).is_file(), f"Missing browser setup prerequisite: {name}")
     else:
         require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
+        if board == 'rpi4':
+            require(not (target / 'etc/agx/setup-enabled').exists(),
+                    'The Pi 4 SSH setup image must start with browser setup disabled')
     debugfs = images.parent / "host/sbin/debugfs"
 
     def read_packed(name):
@@ -170,12 +173,13 @@ def check(images):
                 f"Incorrect packed SSH permissions: {name}")
         require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
                 f"Incorrect packed SSH ownership: {name}")
-    if generic:
-        for directory in ("root/.ssh", "etc/dropbear"):
+    if generic or board == 'rpi4':
+        for directory in (("root/.ssh", "etc/dropbear") if generic else ("etc/dropbear",)):
             entries = subprocess.check_output([str(debugfs), "-R", f"ls -p /{directory}", str(images / "rootfs.ext4")],
                                               stderr=subprocess.DEVNULL, text=True)
             names = {line.split("/")[5] for line in entries.splitlines() if line.startswith("/")}
-            require(names == {".", ".."}, f"Generic image contains SSH files in /{directory}")
+            require(names == {".", ".."}, f"Image contains unexpected SSH files in /{directory}")
+    if generic:
         shadow = subprocess.check_output([str(debugfs), "-R", "cat /etc/shadow", str(images / "rootfs.ext4")],
                                          stderr=subprocess.DEVNULL)
         require(re.search(rb"^root:!:", shadow, re.MULTILINE), "Generic image must lock the root password")
@@ -190,6 +194,11 @@ def check(images):
         overlay = Path(__file__).resolve().parents[1] / "buildroot/board/agx/rootfs-overlay"
     else:
         packed_files.append("root/.ssh/authorized_keys")
+        if board == 'rpi4':
+            marker = subprocess.check_output([str(debugfs), '-R', 'stat /etc/agx/setup-enabled',
+                                              str(images / 'rootfs.ext4')], stderr=subprocess.DEVNULL)
+            require(not marker.startswith(b'Inode:'),
+                    'Packed Pi 4 SSH setup image enables browser setup')
     if board == 'rpi4':
         require('dtoverlay=vc4-kms-v3d' in config.splitlines(), 'Missing Pi 4 graphics overlay')
         for driver in ('CONFIG_DRM_VC4', 'CONFIG_DRM_V3D'):

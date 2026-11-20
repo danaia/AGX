@@ -52,8 +52,13 @@ else
         echo "Expected an OpenSSH public key, not a private key or certificate." >&2
         exit 1
     fi
-    install -d -m 700 "$ROOT/.cache/local-overlay/root/.ssh"
-    install -m 600 "$PUBLIC_KEY" "$ROOT/.cache/local-overlay/root/.ssh/authorized_keys"
+    local_overlay="$ROOT/.cache/local-overlay"
+    if [[ $BOARD == rpi4 ]]; then
+        local_overlay="$OUTPUT/.ssh-overlay"
+        build_options+=("BR2_ROOTFS_OVERLAY=$ROOT/buildroot/board/agx/rootfs-overlay $FIRMWARE_DIR/rootfs-overlay $local_overlay")
+    fi
+    install -d -m 700 "$local_overlay/root/.ssh"
+    install -m 600 "$PUBLIC_KEY" "$local_overlay/root/.ssh/authorized_keys"
 fi
 brmake() {
     make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "${build_options[@]}" "$@"

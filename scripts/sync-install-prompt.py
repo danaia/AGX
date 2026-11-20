@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 T1 = (ROOT / "docs/install-prompts/1-card.tmpl").read_text().rstrip("\n")
 T2 = (ROOT / "docs/install-prompts/2-connect.tmpl").read_text().rstrip("\n")
+T2_PI4 = (ROOT / "docs/install-prompts/2-connect-rpi4.tmpl").read_text().rstrip("\n")
 boards = json.loads((ROOT / "scripts/boards.json").read_text())["boards"]
 
 ASK = """STEP 0 - ASK WHAT ANGI IS GOING ON
@@ -123,6 +124,9 @@ def for_target(b):
     elif bid == "rpizero2w":
         handoff = steps(*PI_STEPS, "Connect a USB-C DATA cable (not charge-only) from the Pi Zero 2 W's data port to this "
                         "computer. This also powers it.", PI_WAIT)
+    elif bid == "rpi4":
+        handoff = steps(*(t.replace("the Pi", f"the {name}") for t in PI_STEPS),
+                        "Connect a USB-C data cable to this computer and power on the Pi. For direct Ethernet, connect the Ethernet cable and use the Pi's own power supply.", PI_WAIT)
     else:
         handoff = steps(*(t.replace("the Pi", f"the {name}") for t in PI_STEPS),
                         "Connect it to this computer with an Ethernet cable (then use the Pi's own power supply) or a "
@@ -130,6 +134,8 @@ def for_target(b):
     step0 = PICK.format(name=name, id=bid)
     p1 = render(T1, dict(WHAT=f"The target is my {name}.", MEDIA=("SD card or USB drive" if desktop else "microSD card"),
                          MEDIA_UP=media.upper(), ATTACHED=attached, STEP0=step0, HANDOFF=handoff))
+    if bid == "rpi4":
+        return p1, render(T2_PI4, dict(STEP0=step0))
     link = LINK_DESKTOP if desktop else LINK_ZERO if bid == "rpizero2w" else LINK_USBC_ETH
     p2 = render(T2, dict(WHAT=f"The target is my {name}. The card from part 1 is in it and it is connected to this computer.",
                          STEP0=step0, LINK=link, FIND=FIND_DESKTOP if desktop else FIND_PI,

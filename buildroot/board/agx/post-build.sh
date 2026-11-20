@@ -25,6 +25,9 @@ if [ -n "${BASE_DIR:-}" ] && [ -f "$BASE_DIR/.generic-iso" ]; then
     rm -f -- "$TARGET_DIR/etc/init.d/S50avahi-daemon" "$TARGET_DIR/etc/agx/setup-claimed"
 else
     rm -f -- "$TARGET_DIR/etc/agx/setup-enabled"
+    if [ -f "$TARGET_DIR/root/.ssh/authorized_keys" ]; then
+        chmod 0600 "$TARGET_DIR/root/.ssh/authorized_keys"
+    fi
 fi
 
 install -D -m 0644 "$BR2_EXTERNAL_AGX_PATH/../brand/logo-ascii.md" "$TARGET_DIR/usr/share/agx/logo.ascii"

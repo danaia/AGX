@@ -8,6 +8,9 @@ prepare configure dependencies build:
 	./scripts/build.sh $@
 check-image:
 	python3 scripts/check-image.py "$(OUT)/images"
+ifeq ($(BOARD),rpi4)
+	cd "$(OUT)/images" && sha256sum sdcard.img > sdcard.img.sha256
+endif
 
 .PHONY: iso
 iso:
@@ -17,7 +20,7 @@ iso:
 # `make flash-sd DEVICE=/dev/sdX`; it asks you to type the device path to confirm.
 .PHONY: flash-sd
 flash-sd: check-image
-	./scripts/flash-sd.sh --board "$(BOARD)" --device "$(DEVICE)"
+	./scripts/flash-sd.sh --board "$(BOARD)" --image "$(OUT)/images/sdcard.img" --device "$(DEVICE)"
 
 .PHONY: tui-test tui-build deploy-tui
 tui-test:

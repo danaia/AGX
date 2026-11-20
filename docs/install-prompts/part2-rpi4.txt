@@ -1,66 +1,45 @@
-INSTALL ANGI, PART 2: get my ANGI system ready. The target is my Pi 4 / 400. The card from part 1 is in it and it is connected to this computer.
-Explain each step in one short, plain sentence. Do the terminal work yourself and
-guide me through it: before each step say what you are about to do and what I will
-see, tell me exactly when I need to do something physical, and wait for me. Ask me
-only for passwords, approvals, or something physical.
-
-Repository: https://github.com/danaia/ANGI.git (use the checkout from part 1 if
-there is one; otherwise clone it).
+INSTALL ANGI, PART 2: finish provisioning my Pi 4 / 400 over SSH.
+Use the checkout and SSH key from part 1. Explain each step in one short sentence.
+Do the terminal work and wait whenever I need to plug in a cable or type a password.
 
 STEP 0 - TARGET
 I am installing ANGI on: Pi 4 / 400 (BOARD=rpi4). Do not ask me which one.
 Run scripts/detect-board.py --require rpi4. If it reports that there is no image for it,
 stop and tell me so in plain words.
 
-STEP 1 - SET UP THE LINK
-Ask me if I am using USB-C or Ethernet, if I did not say.
-USB-C: data cable to the Pi's USB-C port. Pi 10.77.0.2, me 10.77.0.1. Create or reuse the
-NetworkManager profile agx-direct (MAC 02:77:00:00:00:01).
-ETHERNET: RJ45 cable and the Pi's own power supply. Pi 10.78.0.2, me 10.78.0.1. Create or
-reuse agx-ethernet on my wired port that is NOT carrying my internet; if that is my only
-wired port, stop and ask.
-Both: no gateway, ipv4.never-default yes, IPv6 off, autoconnect yes. Do not touch my
-internet connection.
+STEP 1 - CONNECT OVER USB-C
+Use the direct USB-C data cable by default. Use direct Ethernet and the Pi's own
+power supply if I chose Ethernet. For USB, reuse or create the NetworkManager
+profile agx-direct for MAC 02:77:00:00:00:01. Use workstation 10.77.0.1/24 and
+Pi 10.77.0.2. For Ethernet, reuse or create agx-ethernet on the dedicated wired
+port, with workstation 10.78.0.1/24 and Pi 10.78.0.2. Set no gateway,
+ipv4.never-default yes, and ipv6.method disabled. Keep the workstation's internet
+connection in place.
+Check the route and source address before connecting. If the Pi fails to appear,
+check the cable, power, activity LED and card seating with me.
 
-STEP 2 - FIND IT
-Wait up to 2 minutes for it to boot. For USB, look for a new network adapter (usually
-enx...) and bring up agx-direct; for Ethernet bring up agx-ethernet. Confirm the route and
-ping it. If it does not appear, go through: data cable (not charge-only)? powered, with the
-red LED on and the green LED blinking? another USB port or the Pi's own supply? card fully
-seated? Fix what you can and tell me what to check.
+STEP 2 - VERIFY SSH AND OPEN THE TUI
+Use root@PI_ADDRESS with the private key matching the public key used in part 1.
+Use a separate per-device SSH host alias or known_hosts file. On a new install,
+show me the fingerprint observed over the direct cable and ask me to approve it.
+Use strict SSH host-key checking for subsequent connections. If a trusted key
+changed unexpectedly, stop and resolve the device identity with me.
+Read /proc/device-tree/model and run agx status --json over that trusted connection.
+Confirm it is a Pi 4 or 400, then open a workstation terminal with ssh -t ... agx tui.
 
-STEP 3 - CONNECT SAFELY
-Connect as root@ADDRESS with my private key. This is a new system, so show me the
-SSH fingerprint before trusting it, and ask me before replacing any old saved key
-for that address. Run agx status --json to confirm it is ANGI, and run
-scripts/detect-board.py --identify root@ADDRESS to confirm it is the target I chose.
-If it is a different one, stop and tell me.
+STEP 3 - CREATE THE ADMINISTRATOR AND JOIN WI-FI
+In Profile (1), let me set the hostname and create my administrator account.
+In Network (4), let me set the two-letter Wi-Fi country, scan, and use Connect & save.
+Use manual entry for a hidden network. Let me type passwords in the TUI.
+Keep the direct SSH connection available while Wi-Fi is being configured.
+Use agx wifi status --json to check the Wi-Fi address and agx wifi check for DNS
+and HTTPS. If Wi-Fi fails, keep the account and direct access ready so we can
+retry. Report what is still pending.
+Verify that the named administrator can reconnect. Report the current Wi-Fi address.
 
-STEP 4 - JOIN WI-FI (REQUIRED: the most important step)
-ANGI must be on Wi-Fi so it can reach the web. Do not call the install done until this
-works. The cable only carries this setup; Wi-Fi carries the internet.
-1. Ask me for my Wi-Fi network name, its security (WPA2 is the usual one) and my
-   two-letter country code, if I have not given them. Never ask me to paste the
-   password into this chat and never put it in a command line or a log.
-2. On the system run: agx wifi country CODE, then agx wifi scan --json, and confirm my
-   network is listed. If it is not, tell me and help me fix it (distance, band, name).
-3. Run ssh -t ... agx wifi connect "NETWORK" --security wpa2 (add --hidden for a hidden
-   network). It asks for the password with the screen echo off: tell me to type it
-   there. (Or open agx tui and use the Network tab, key 4.)
-4. Verify: agx wifi status --json shows it connected with an IP address, and
-   agx wifi check shows DNS and HTTPS work. Show me the result.
-5. If it fails, diagnose: wrong password, wrong country code, a band the hardware does
-   not support, or a captive-portal network (those are not supported). Try again with me.
-6. Offer to reboot it (F10 in agx tui) and confirm it joins Wi-Fi again by itself.
-
-STEP 5 - GET THE REST OF THE SYSTEM READY
-Open agx tui in an interactive SSH terminal if you can (otherwise give me one exact
-command, with the key path). Walk me through, one at a time, waiting for me:
-1. Explain keys 1-7, ?, F9, F10 and q.
-2. Profile tab: set up my account and password login.
-3. Services and Logs: run agx services --json and show me everything is healthy.
-
-STEP 6 - FINISH
-Tell me how to shut down safely (F9) and how to reconnect later (over the cable, or over
-Wi-Fi at the address shown in Network). Report what you checked, confirm Wi-Fi is
-connected, and say what is still unresolved.
+STEP 4 - OPEN THE DESKTOP
+Open a local OpenSSH tunnel from a free workstation loopback port to the Pi's
+127.0.0.1:5900 over the trusted direct connection. Verify an RFB greeting, then
+open Remmina against that local port with Remmina's built-in SSH tunnel disabled.
+Let me sign in to ANGI with the administrator account. Check agx services --json.
+Tell me how to reconnect over the cable or Wi-Fi and how to shut down safely.

@@ -1,7 +1,8 @@
-# Install ANGI headless from the Pi 4 / 400 ISO
+# Install ANGI headless from an existing Pi 4 / 400 ISO
 
 Use this prompt with an agent on the Linux computer connected to the card reader.
 Provide the generic `angi-rpi4.iso` and its matching release `.sha256` file.
+For the primary build-and-write workflow, see the [Pi 4 / 400 provisioning guide](../pi4-provisioning.md).
 
 ```text
 Install ANGI headless on my Raspberry Pi 4 or 400 using the generic release ISO.

@@ -33,7 +33,11 @@ sha256sum output/images/sdcard.img
 
 Targets live in `scripts/boards.json` (`rpi5` ready; `rpi4` experimental; `rpizero2w`, `arm-desktop`, `x86-desktop` planned). `make build BOARD=rpi4` uses `buildroot/configs/agx_rpi4_defconfig` and `output-rpi4/`. It includes the BCM2711 kernel and firmware, the ANGI desktop, VNC through SSH, and the WPE-based ANGI Web browser. `agx-init` starts the serial login on `ttyAMA10` (Pi 5) or `ttyS0` (Pi 4), whichever exists. `scripts/detect-board.py` reports the host, probes USB (only the Zero 2 W boot ROM, `0a5c:2764`, is visible with an empty card slot), reads a running Pi's model over SSH, and `--require ID` exits 3 for boards without an image. `make build` stamps `output/images/board.txt`; `flash-sd.sh --board ID` refuses a board with no image or a stamp that does not match.
 
-### Pi 4 / 400 hybrid ISO
+### Pi 4 / 400 provisioning
+
+Follow the [Pi 4 / 400 provisioning guide](pi4-provisioning.md) to build and verify `sdcard.img`, write it with the workstation SSH public key, and provision the administrator and Wi-Fi in the TUI over the direct link.
+
+### Pi 4 / 400 hybrid ISO alternative
 
 Build the release in a separate output directory with `AGX_GENERIC_ISO=1 AGX_BUILD_OUTPUT=/absolute/output-rpi4-iso make build BOARD=rpi4`. Run `AGX_BUILD_OUTPUT=/absolute/output-rpi4-iso make iso BOARD=rpi4` with `xorriso` installed or set `XORRISO` to a built copy. Distribute `images/angi-rpi4.iso` and `images/angi-rpi4.iso.sha256` together. The ISO 9660 image contains the FAT boot partition at MBR slot 1 and the ext4 root partition at slot 2. The release check requires empty SSH key directories and default Wi-Fi settings.
 

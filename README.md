@@ -81,7 +81,7 @@ You paste **one prompt** into that chat. The agent runs the whole install and gu
 3. **Move the card** when the agent tells you to: into the Pi, then connect it with Ethernet or USB-C.
 4. **Paste the second prompt the agent gives you.** When the build and the card are finished, the agent hands you a short second prompt for a new chat. It connects to the Pi, **joins it to your Wi-Fi** (the most important step), and gets the whole system ready.
 
-There is no ISO and no installer: the agent writes the finished system straight onto the card.
+For Pi 4 / 400, the primary workflow writes `sdcard.img` with your SSH public key. On first boot, the agent connects over USB-C and opens the ANGI TUI for account and Wi-Fi setup. See the [Pi 4 / 400 provisioning guide](docs/pi4-provisioning.md).
 
 > **The card goes in your computer first, never in the Pi.** The Pi stays off, with an empty card slot, until the agent tells you the card is finished.
 >
@@ -128,8 +128,8 @@ INSTALL ANGI: build it and put it on an SD card, on this computer. I will tell y
 Explain each step in one short, plain sentence. Do the terminal work yourself and
 guide me through it: before each step say what you are about to do and what I will
 see, tell me exactly when I need to do something physical, and wait for me. Ask me
-only for passwords, approvals, or something physical. There is no ISO and no
-installer: you will write the finished system straight onto my SD card or USB drive.
+only for passwords, approvals, or something physical. Write the built sdcard.img
+straight onto my SD card or USB drive.
 
 THE PLAN (tell me this in your first message, in plain words)
   1) You check this computer and build ANGI. This is the long part: about 1 to 3 hours
@@ -170,7 +170,8 @@ Clone the repository (or reuse a checkout without overwriting my changes). Use
 ~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
 overwriting any key. As my normal user run make configure, make dependencies,
 make build and make check-image, each with BOARD=<my board>. Fix errors and
-resume. Go on only when the image passes the check.
+resume. Go on only when the image passes the check. For BOARD=rpi4, also verify
+sdcard.img.sha256 in the selected build's images directory.
 
 WATCH THE BUILD. THIS IS REQUIRED.
 - Before you start make build, say: "The build takes a long time, about <your
@@ -193,7 +194,8 @@ computer for this step. If it is not attached here, stop and ask me to attach it
    ask me which. Never use a disk that holds this computer's system.
 2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
    exact path, like "erase /dev/sdb". Anything else means no.
-3. Then run scripts/flash-sd.sh --board BOARD --device PATH --confirm-erase PATH.
+3. Then run scripts/flash-sd.sh --board BOARD --image IMAGE --device PATH --confirm-erase PATH.
+   IMAGE is the sdcard.img from the build that passed the check.
    It wipes the old partitions, writes the image, checks every byte, and ejects.
    Wait for the command to finish successfully before saying the SD card or USB drive is ready.
    If it refuses, verification fails, or ejection fails, tell me. Do not try
