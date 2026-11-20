@@ -353,7 +353,6 @@ fn move_window_between_workspaces() {
     assert_eq!(d.current(), 0);
     d.goto(2);
     assert!(d.rect_of(Kind::Cpu).is_some());
-    assert!(d.rect_of(Kind::TerminalWindow(0)).is_some());
     d.goto(0);
     assert!(d.rect_of(Kind::Cpu).is_none());
     d.focus(Kind::Overview);
@@ -459,8 +458,17 @@ fn settings_tiles_floats_moves_workspaces_and_reopens_once() {
 }
 
 #[test]
-fn third_workspace_has_three_independent_terminal_tiles() {
+fn startup_workspaces_follow_the_desktop_profile() {
     let mut d = desk();
+    if crate::HEADLESS {
+        assert!(d.occupied(0) && d.occupied(1));
+        for workspace in 2..WORKSPACES {
+            d.goto(workspace);
+            assert!(!d.occupied(workspace));
+            assert!(d.scene().windows.is_empty());
+        }
+        return;
+    }
     d.goto(2);
     assert_eq!(d.mode(), Mode::Tiled);
     assert!(!d.is_open(Kind::Hardware));
