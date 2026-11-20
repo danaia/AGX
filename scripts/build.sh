@@ -9,7 +9,13 @@ VERSION=2026.08.1
 SHA256=34fb7bea8a213ffde39cc02e61703391560f26e0850f03138c722d0b09880f2b
 ARCHIVE="$ROOT/.cache/downloads/buildroot-$VERSION.tar.xz"
 SOURCE="$ROOT/.cache/src/buildroot-$VERSION"
-OUTPUT="$ROOT/output"
+BOARD=${BOARD:-rpi5}
+board_field() { python3 -I "$ROOT/scripts/detect-board.py" --field "$BOARD" "$1"; }
+python3 -I "$ROOT/scripts/detect-board.py" --require "$BOARD" >/dev/null || {
+    python3 -I "$ROOT/scripts/detect-board.py" --require "$BOARD" >&2; exit 3; }
+DEFCONFIG=$(board_field defconfig)
+OUTPUT="$ROOT/$(board_field output)"
+FIRMWARE_DIR="$ROOT/$(board_field firmware_dir)"
 ACTION=${1:-build}
 case "$ACTION" in
     prepare|configure|build|dependencies) ;;
@@ -42,7 +48,7 @@ brmake() {
     make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "$@"
 }
 if [[ "$ACTION" == configure || ! -f "$OUTPUT/.config" ]]; then
-    brmake agx_rpi5_defconfig
+    brmake "$DEFCONFIG"
 fi
 case "$ACTION" in
     configure) ;;
@@ -56,10 +62,12 @@ case "$ACTION" in
             brmake "BR2_JLEVEL=${JOBS:-8}" agx-rebuild
         fi
         # Buildroot does not otherwise recopy changed external firmware configuration.
-        if ! cmp -s "$ROOT/buildroot/board/agx/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||
-           ! cmp -s "$ROOT/buildroot/board/agx/cmdline.txt" "$OUTPUT/images/rpi-firmware/cmdline.txt"; then
+        if ! cmp -s "$FIRMWARE_DIR/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||
+           ! cmp -s "$FIRMWARE_DIR/cmdline.txt" "$OUTPUT/images/rpi-firmware/cmdline.txt"; then
             brmake "BR2_JLEVEL=${JOBS:-8}" rpi-firmware-rebuild
         fi
         brmake "BR2_JLEVEL=${JOBS:-8}" all
+        # Record which board this image is for; scripts/flash-sd.sh checks it.
+        echo "$BOARD" > "$OUTPUT/images/board.txt"
         ;;
 esac

@@ -36,6 +36,8 @@ Some feature/service files remain large and are candidates for later focused pas
 
 `scripts/trace-gui.py` owns workstation-side diagnostic collection, bounded log storage, SSH reconnection, and collector cleanup. It reads the Pi's existing logs and process state without changing GUI or system configuration.
 
+`scripts/flash-sd.sh` owns workstation-side card identification, erase confirmation, and the locked write, read-back and eject sequence. `scripts/check-image.py` validates the image before the card is touched.
+
 `agx-init/src/device_events.rs` owns desktop device permissions and the kernel-to-libudev-zero input lifecycle relay. Its `bin/agx-display-devices.rs` entry point only starts that service. The existing supervised `agx-display-access` wrapper executes it when installed, retaining the permission-only fallback for older images. Device arrival notifications are forwarded after group access is ready; keystroke data never enters this relay.
 
 ## Validation

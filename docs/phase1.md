@@ -27,6 +27,14 @@ make check-image
 sha256sum output/images/sdcard.img
 ```
 
+## Clean install: format and write the card
+
+`scripts/flash-sd.sh` is the supported way to erase a card and write `output/images/sdcard.img`. `--list` shows candidate cards and changes nothing. `--device /dev/sdX` shows the card (path, size, model, serial, partitions) and requires typing the path to confirm. A coding agent passes `--confirm-erase /dev/sdX` only after the person has approved that exact card. The script refuses partitions, disks holding system mounts or the root filesystem, non-removable disks, drives over 256 GiB (`--max-gib` overrides) and cards smaller than the image. It rechecks the card's identity and holds a whole-disk lock from unmount through eject. It leaves the new partition table unpublished during read-back so the desktop cannot auto-mount the new filesystems and change them. The script flushes the write, compares every byte, and reports success after ejection. `make flash-sd DEVICE=/dev/sdX` wraps it.
+
+Targets live in `scripts/boards.json` (`rpi5` ready; `rpi4` experimental; `rpizero2w`, `arm-desktop`, `x86-desktop` planned). `make build BOARD=rpi4` uses `buildroot/configs/agx_rpi4_defconfig` and `output-rpi4/`: BCM2711 kernel and DTBs, `start4.elf`/`fixup4.dat` firmware, mini-UART console `ttyS0`, headless (no Mesa/desktop/web). `agx-init` starts the serial login on `ttyAMA10` (Pi 5) or `ttyS0` (Pi 4), whichever exists. `scripts/detect-board.py` reports the host, probes USB (only the Zero 2 W boot ROM, `0a5c:2764`, is visible with an empty card slot), reads a running Pi's model over SSH, and `--require ID` exits 3 for boards without an image. `make build` stamps `output/images/board.txt`; `flash-sd.sh --board ID` refuses a board with no image or a stamp that does not match.
+
+The image configures both links: USB-C gadget `usb0` at `10.77.0.2/24` (workstation `10.77.0.1/24`, profile `agx-direct`) and RJ45 `eth0` at `10.78.0.2/24` (workstation `10.78.0.1/24`, profile `agx-ethernet`). Neither has a gateway; Wi-Fi carries the Pi's internet access. Use the Pi's own power supply with the Ethernet cable.
+
 ## Test with the 32 GB card and SSH over USB
 
 Use a data-capable cable from the workstation's USB-A port to the Pi 5's USB-C port. The Pi presents a USB Ethernet device after AGX boots. The Pi uses `usb0` at `10.77.0.2/24`; the workstation uses `10.77.0.1/24`. No router, Wi-Fi setup, or Internet sharing is required.

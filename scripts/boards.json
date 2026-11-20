@@ -1,0 +1,154 @@
+{
+  "_comment": "Registry of ANGI install targets. status: 'ready' = builds and boots on hardware; 'experimental' = builds, not yet verified on hardware (installers must say so); 'planned' = no image yet, installers must stop and never substitute another board's image.",
+  "boards": [
+    {
+      "id": "rpi5",
+      "name": "Raspberry Pi 5",
+      "arch": "aarch64",
+      "status": "ready",
+      "defconfig": "agx_rpi5_defconfig",
+      "medium": "microSD card",
+      "dt_model": "Raspberry Pi 5|Raspberry Pi 500",
+      "usb_boot_ids": [],
+      "links": {
+        "usb-c": {
+          "pi": "10.77.0.2",
+          "host": "10.77.0.1",
+          "profile": "agx-direct"
+        },
+        "ethernet": {
+          "pi": "10.78.0.2",
+          "host": "10.78.0.1",
+          "profile": "agx-ethernet"
+        }
+      },
+      "how_to_tell": "Two micro-HDMI ports, a USB-C power port, a power button, a fan connector, and a full-size Ethernet port. 'Raspberry Pi 5' is printed on the board.",
+      "output": "output",
+      "firmware_dir": "buildroot/board/agx",
+      "dtbs": [
+        "bcm2712-rpi-5-b",
+        "bcm2712d0-rpi-5-b"
+      ],
+      "serial": "ttyAMA10",
+      "wifi_fw": "brcmfmac43455-sdio.raspberrypi,5-model-b.bin",
+      "marketing": {
+        "short": "Pi 5",
+        "tagline": "The fastest Pi, with the full desktop.",
+        "media": "microSD card",
+        "card": "A microSD card of 16 GB or more (32 GB tested). Your agent formats it for you; everything on it is erased.",
+        "reader": "Put the card in a card reader on your computer. Leave the Pi off with its card slot empty.",
+        "connect": "Your agent tells you when to put the finished card in the Pi and connect an Ethernet cable or a USB-C data cable."
+      }
+    },
+    {
+      "id": "rpi4",
+      "name": "Raspberry Pi 4 / 400 / CM4",
+      "arch": "aarch64",
+      "status": "experimental",
+      "medium": "microSD card",
+      "dt_model": "Raspberry Pi 4|Raspberry Pi 400|Raspberry Pi Compute Module 4",
+      "usb_boot_ids": [],
+      "links": {
+        "usb-c": {
+          "pi": "10.77.0.2",
+          "host": "10.77.0.1",
+          "profile": "agx-direct"
+        },
+        "ethernet": {
+          "pi": "10.78.0.2",
+          "host": "10.78.0.1",
+          "profile": "agx-ethernet"
+        }
+      },
+      "how_to_tell": "Two micro-HDMI ports, a USB-C power port, no power button, and a full-size Ethernet port. 'Raspberry Pi 4' is printed on the board.",
+      "defconfig": "agx_rpi4_defconfig",
+      "output": "output-rpi4",
+      "firmware_dir": "buildroot/board/agx/rpi4",
+      "dtbs": [
+        "bcm2711-rpi-4-b",
+        "bcm2711-rpi-400"
+      ],
+      "serial": "ttyS0",
+      "wifi_fw": "brcmfmac43455-sdio.raspberrypi,4-model-b.bin",
+      "note": "Headless image (SSH, TUI, Wi-Fi, Bluetooth, agent). Builds from agx_rpi4_defconfig; not yet booted on hardware. No desktop yet.",
+      "marketing": {
+        "short": "Pi 4 / 400",
+        "tagline": "The everyday favourite.",
+        "media": "microSD card",
+        "card": "A microSD card of 16 GB or more (32 GB works well). Your agent formats it for you; everything on it is erased.",
+        "reader": "Put the card in a card reader on your computer. Leave the Pi off with its card slot empty.",
+        "connect": "Your agent tells you when to put the finished card in the Pi, power it with a 5 V / 3 A supply, and connect an Ethernet cable or a USB-C data cable."
+      }
+    },
+    {
+      "id": "rpizero2w",
+      "name": "Raspberry Pi Zero 2 W",
+      "arch": "aarch64",
+      "status": "planned",
+      "base_buildroot_defconfig": "raspberrypizero2w_defconfig",
+      "medium": "microSD card",
+      "dt_model": "Raspberry Pi Zero 2",
+      "usb_boot_ids": [
+        "0a5c:2764"
+      ],
+      "links": {
+        "usb-c": {
+          "pi": "10.77.0.2",
+          "host": "10.77.0.1",
+          "profile": "agx-direct"
+        }
+      },
+      "how_to_tell": "Tiny board, one mini-HDMI port, no Ethernet port, 'Zero 2 W' printed on it.",
+      "marketing": {
+        "short": "Pi Zero 2 W",
+        "tagline": "Tiny, quiet and always on.",
+        "media": "microSD card",
+        "card": "A microSD card of 16 GB or more. Your agent formats it for you; everything on it is erased.",
+        "reader": "Put the card in a card reader on your computer. Leave the Pi off and empty.",
+        "connect": "Your agent tells you when to put the finished card in the Pi and connect a USB-C data cable to your computer. The Zero 2 W has no Ethernet jack, so it reaches the web over Wi-Fi."
+      }
+    },
+    {
+      "id": "arm-desktop",
+      "name": "ARM desktop or laptop (UEFI)",
+      "arch": "aarch64",
+      "status": "planned",
+      "medium": "internal disk or USB stick (installer, not a card write)",
+      "dt_model": "",
+      "usb_boot_ids": [],
+      "links": {
+        "ethernet": null
+      },
+      "how_to_tell": "A normal computer with a UEFI/BIOS that is not x86 (for example Ampere, Apple-silicon VMs, Snapdragon X).",
+      "marketing": {
+        "short": "ARM computer",
+        "tagline": "Laptops and desktops on ARM.",
+        "media": "SD card or USB drive",
+        "card": "An SD card or USB drive of 16 GB or more. Your agent formats it for you; everything on it is erased.",
+        "reader": "Plug the drive or card reader into the computer you are working on, not the one ANGI is going on.",
+        "connect": "Your agent tells you when to plug the finished drive into your ARM computer and start it from that drive."
+      }
+    },
+    {
+      "id": "x86-desktop",
+      "name": "x86-64 desktop or laptop (UEFI)",
+      "arch": "x86_64",
+      "status": "planned",
+      "medium": "internal disk or USB stick (installer, not a card write)",
+      "dt_model": "",
+      "usb_boot_ids": [],
+      "links": {
+        "ethernet": null
+      },
+      "how_to_tell": "A normal Intel or AMD computer.",
+      "marketing": {
+        "short": "Intel / AMD computer",
+        "tagline": "Any x86-64 desktop or laptop.",
+        "media": "SD card or USB drive",
+        "card": "An SD card or USB drive of 16 GB or more. Your agent formats it for you; everything on it is erased.",
+        "reader": "Plug the drive or card reader into the computer you are working on, not the one ANGI is going on.",
+        "connect": "Your agent tells you when to plug the finished drive into your Intel or AMD computer and start it from that drive."
+      }
+    }
+  ]
+}

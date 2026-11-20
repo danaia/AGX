@@ -1,8 +1,19 @@
+# BOARD selects the target (see scripts/detect-board.py --list): make build BOARD=rpi4
+BOARD ?= rpi5
+OUT := $(shell python3 -I scripts/detect-board.py --field $(BOARD) output 2>/dev/null || echo output)
+export BOARD
+
 .PHONY: prepare configure dependencies build check-image
 prepare configure dependencies build:
 	./scripts/build.sh $@
 check-image:
-	python3 scripts/check-image.py output/images
+	python3 scripts/check-image.py $(OUT)/images
+
+# Erase and write a microSD card. Run `scripts/flash-sd.sh --list`, then
+# `make flash-sd DEVICE=/dev/sdX`; it asks you to type the device path to confirm.
+.PHONY: flash-sd
+flash-sd: check-image
+	./scripts/flash-sd.sh --board "$(BOARD)" --device "$(DEVICE)"
 
 .PHONY: tui-test tui-build deploy-tui
 tui-test:

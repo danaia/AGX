@@ -1,0 +1,13 @@
+# Pi 4 / 400 boot a 64-bit Image. start4.elf and fixup4.dat come from the rpi-firmware package.
+start_file=start4.elf
+fixup_file=fixup4.dat
+kernel=Image
+arm_64bit=1
+disable_splash=1
+disable_overscan=1
+# The mini UART carries the serial console (ttyS0); Bluetooth keeps the PL011 UART.
+enable_uart=1
+# USB-C presents an Ethernet gadget to the attached Linux workstation.
+dtoverlay=dwc2,dr_mode=peripheral
+# Bluetooth through the kernel driver.
+dtparam=krnbt=on

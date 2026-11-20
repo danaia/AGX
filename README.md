@@ -56,7 +56,7 @@ Honesty matters here, because "not a distribution" does not mean "from nothing."
 
 | Working on a real Pi 5 | Planned |
 | --- | --- |
-| Bootable image built from source; SSH over USB and Wi-Fi | An ANGI agent that runs on the Pi, signs in with a ChatGPT subscription, and uses permission-controlled tools (Phase 6) |
+| Bootable image built from source; SSH over USB-C, Ethernet and Wi-Fi | An ANGI agent that runs on the Pi, signs in with a ChatGPT subscription, and uses permission-controlled tools (Phase 6) |
 | Rust init, service supervision, logs, confirmed reboot and shutdown | Herdr orchestration of several agents across machines |
 | `agent angi`: three communicating OpenCode agents in Herdr, native Pi builds, and an administrator development skill | Native-host configuration for complete Buildroot image rebuilds |
 | Terminal dashboard and `agx` CLI with JSON output | A reproducible `v0.1.0` release image, with measured boot time and resource use (Phase 7) |
@@ -72,123 +72,204 @@ and subscription sign-in workflow remain separate roadmap work. The
 
 ## Get started with one prompt
 
-**Connect the Pi. Insert a microSD card into your computer. Give your coding agent the prompt below.**
+> **You need an AI agent that can run commands on your computer to do this install.** Any agent harness or IDE works: **Codex**, **Claude Code** (terminal or VS Code), **Cursor** (agent mode), **OpenCode**, **Hermes**, or any other that can run terminal commands. Open it on the computer you are installing from, then paste the prompt into its chat. A website chat such as ChatGPT in a browser tab cannot do it: it cannot run commands, build ANGI or write your card.
 
-Your agent downloads the code, installs the build tools, builds ANGI OS, writes the card, and sets up the USB connection. You move the finished card into the Pi, and the agent checks that ANGI is running.
+You paste **one prompt** into that chat. The agent runs the whole install and guides you through it; you only plug things in and move the card.
 
-ANGI is in early development. The instructions below use the tested **Arch Linux + NetworkManager + Raspberry Pi 5** setup. The prompt is for a coding agent with terminal access on your computer, such as Codex. It guides the agent through the repository's build tools; there is no separate one-click installer yet.
+1. **Paste the prompt (on your computer).** The agent builds ANGI and writes it onto an SD card that is in a card reader on your computer. The card is formatted there, never in the Pi.
+2. **Wait while it builds.** The first build takes about 1 to 3 hours. The agent stays with it, keeps checking its progress, tells you how it is going and waits until the build has finished.
+3. **Move the card** when the agent tells you to: into the Pi, then connect it with Ethernet or USB-C.
+4. **Paste the second prompt the agent gives you.** When the build and the card are finished, the agent hands you a short second prompt for a new chat. It connects to the Pi, **joins it to your Wi-Fi** (the most important step), and gets the whole system ready.
 
-### 1. Plug everything in
+There is no ISO and no installer: the agent writes the finished system straight onto the card.
 
-You need:
+> **The card goes in your computer first, never in the Pi.** The Pi stays off, with an empty card slot, until the agent tells you the card is finished.
+>
+> **This erases the SD card.** Everything on it is deleted. Use a card you do not need.
 
-- A **Raspberry Pi 5**.
-- A **USB-A to USB-C data cable**. A charge-only cable will not work.
-- A **microSD card you can erase**. A 32 GB card has been tested.
-- A **card reader** connected to your computer.
-- An **Arch Linux computer using NetworkManager**, with internet access and a coding agent that can run terminal commands.
+ANGI is in early development. This guide is tested on **Arch Linux + NetworkManager**, with an agent that can run terminal commands (Codex, Claude Code, Cursor, OpenCode, Hermes or any other harness or IDE).
 
-Connect the Pi to your computer, and put the microSD card in the computer's card reader:
+| Your computer | What the agent prepares | How you connect (before the second prompt) |
+| --- | --- | --- |
+| **Raspberry Pi 5** | A microSD card | Ethernet or USB-C |
+| **Raspberry Pi 4 / 400** | A microSD card | Ethernet or USB-C |
+| **Raspberry Pi Zero 2 W** | A microSD card | USB-C |
+| **ARM computer** (UEFI) | An SD card or USB drive you start from | Its network or screen |
+| **Intel / AMD computer** (x86-64) | An SD card or USB drive you start from | Its network or screen |
+
+Your agent asks which computer you have and builds the image for it (`make build BOARD=rpi4`). It **never writes another computer's image**, and if it cannot build something that will boot your computer it tells you plainly instead of making a card that will not.
+
+### Step 1: Gather your parts
+
+- [ ] Your Raspberry Pi (Zero 2 W, 4, 400 or 5), or an ARM or Intel/AMD computer. **Take the card out of the Pi first**: it cannot format its own card.
+- [ ] **USB-A to USB-C data cable** (a charge-only cable will not work), *or* an Ethernet cable and the Pi's own power supply
+- [ ] A microSD card you can erase (32 GB tested). A card that is already in the Pi is fine; take it out.
+- [ ] A card reader plugged into your computer. The computer must see the card to format it; the Pi cannot do this for you.
+- [ ] A computer running Arch Linux with internet
+- [ ] An AI agent that can run commands, open on that computer. Any harness or IDE works: Codex, Claude Code, Cursor, OpenCode, Hermes and others
+- [ ] Your **Wi-Fi network name, password and two-letter country code**: ANGI must join Wi-Fi during setup
+
+You do not need a monitor or keyboard for the Pi.
+
+### Step 2: Put the card in your computer
 
 ```text
-YOUR COMPUTER
-    │
-    ├── USB-A ── data cable ── USB-C on the Raspberry Pi 5
-    │
-    └── Card reader ── microSD card to install ANGI OS onto
+Computer ── card reader ── SD card      (formatted here, by the agent)
+Pi: off, card slot empty, not connected yet
 ```
 
-Use one ANGI Pi at a time. Leave its card slot empty for now. You do not need a monitor, keyboard, or Wi-Fi connection for the Pi.
+Put the SD card in a card reader and plug the reader into your computer. Check that your computer sees it. Unplug other USB drives so the right one is easy to spot. If the card is inside the Pi now, take it out: the Pi cannot format its own card.
 
-**Everything on the selected microSD card will be erased.** Disconnect other removable drives to make the card easier to identify.
+### Step 3: Paste the prompt into your agent (build ANGI and put it on the card)
 
-### 2. Give your agent this prompt
-
-Open your coding agent on your computer. Copy and paste this entire prompt:
-
+<!-- prompt1:start -->
 ```text
-Set up ANGI OS on my Raspberry Pi 5 for me.
+INSTALL ANGI: build it and put it on an SD card, on this computer. I will tell you which computer ANGI is for.
+Explain each step in one short, plain sentence. Do the terminal work yourself and
+guide me through it: before each step say what you are about to do and what I will
+see, tell me exactly when I need to do something physical, and wait for me. Ask me
+only for passwords, approvals, or something physical. There is no ISO and no
+installer: you will write the finished system straight onto my SD card or USB drive.
 
-The Pi is connected to this computer with a USB-A to USB-C data cable.
-The microSD card to erase and flash is in this computer's card reader.
+THE PLAN (tell me this in your first message, in plain words)
+  1) You check this computer and build ANGI. This is the long part: about 1 to 3 hours
+     for a first build, depending on this computer's CPU and internet speed. Give me
+     your own estimate once you have checked this computer.
+  2) You stay with the build the whole time, keep checking its progress, and tell me
+     how it is going. I can leave it running.
+  3) When the build has finished, you write it to my SD card or USB drive (I confirm the erase).
+  4) Then you tell me exactly what to do with the SD card or USB drive and the target, and you give me
+     a SECOND prompt to paste into a new chat. That second prompt is only given to me
+     once the build and the SD card or USB drive are both finished. I do not have it yet.
+
 Repository: https://github.com/danaia/ANGI.git
 
-Carry out the setup, including downloads, dependency installation, building,
-USB networking, flashing, and verification. Keep explanations short and simple.
-Do the terminal work yourself. Ask me only for information you cannot determine,
-credentials or permissions you need, or physical actions I must perform.
+STEP 0 - ASK WHAT ANGI IS GOING ON
+If I have not already said, ask me this and wait for the answer:
+  1) Raspberry Pi Zero 2 W        (rpizero2w)
+  2) Raspberry Pi 4 or 400        (rpi4)
+  3) Raspberry Pi 5               (rpi5)
+  4) ARM desktop or laptop        (arm-desktop)
+  5) Intel/AMD desktop or laptop  (x86-desktop)
+  6) Not sure - help me tell
+If I answer 6, run scripts/detect-board.py --list and --host and show me the "how to
+tell" lines (for a Pi, ask me to read the name printed on the board). Then run
+scripts/detect-board.py --require BOARD and follow what it reports. If it says a
+target has no image yet or has not been tried on hardware, tell me plainly and
+continue only if I agree. Never write another target's image to my drive, and never
+wipe this computer's disks or any disk I did not choose.
 
-1. Inspect this computer's OS, available disk space, memory, network manager,
-   and attached storage. Use the tested Arch Linux + NetworkManager workflow.
-   If this computer needs a different workflow, explain what is needed before
-   making system changes. Install the necessary host tools, including base-devel,
-   git, curl, bc, wget, cpio, unzip, rsync, python, openssh, and xz.
+STEP 1 - CHECK THIS COMPUTER
+Check the OS, free disk space (need 20 GB), memory and NetworkManager, and that
+my microSD card (or SD card or USB drive) is attached to THIS computer, in a card reader. Install missing tools: base-devel git curl bc wget cpio unzip rsync
+python openssh xz util-linux. If this is not Arch + NetworkManager, tell me what is
+different before changing anything.
 
-2. Clone the repository into a suitable user-owned directory, or use an existing
-   checkout without overwriting local changes. Read its README, build scripts,
-   and docs/phase1.md for the current build and boot instructions.
+STEP 2 - GET AND BUILD ANGI
+Clone the repository (or reuse a checkout without overwriting my changes). Use
+~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
+overwriting any key. As my normal user run make configure, make dependencies,
+make build and make check-image, each with BOARD=<my board>. Fix errors and
+resume. Go on only when the image passes the check.
 
-3. Reuse an appropriate SSH key on this computer. If none exists, create an
-   Ed25519 key without overwriting any existing key. Keep the private key here.
-   Set SSH_PUBLIC_KEY to the matching public key for every build command.
+WATCH THE BUILD. THIS IS REQUIRED.
+- Before you start make build, say: "The build takes a long time, about <your
+  estimate>. I will keep watching it and checking its progress until it is finished."
+- Run the build so you can watch it (in the background, writing to a log file), and
+  look at the log every few minutes. Do not start it and walk away, and do not wait
+  silently.
+- Each time you check, tell me in one or two short lines: which stage it is on, whether
+  it is still moving, and about how much time is left.
+- If it stops, errors or looks stuck, tell me, find the cause and fix it, and resume.
+- Do not assume it worked. Wait until the build has actually finished and
+  make check-image has passed, then tell me clearly: "The build is complete." Do not
+  start step 3 before that.
 
-4. Run make configure, make dependencies, make build, and make check-image as
-   my normal user. Choose JOBS to suit this computer. Download the required
-   toolchains through the build scripts. Resolve errors and resume the build.
-   Continue only when output/images/sdcard.img passes validation.
+STEP 3 - ERASE AND FORMAT THE CARD ON THIS COMPUTER (needs my OK)
+The SD card or USB drive must be attached to THIS computer. Never ask me to put it in the target
+computer for this step. If it is not attached here, stop and ask me to attach it.
+1. Run scripts/flash-sd.sh --list and show me the SD card or USB drive: path, size, model,
+   serial, and what is on it. If there are several or I might not recognize it,
+   ask me which. Never use a disk that holds this computer's system.
+2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
+   exact path, like "erase /dev/sdb". Anything else means no.
+3. Then run scripts/flash-sd.sh --board BOARD --device PATH --confirm-erase PATH.
+   It wipes the old partitions, writes the image, checks every byte, and ejects.
+   Wait for the command to finish successfully before saying the SD card or USB drive is ready.
+   If it refuses, verification fails, or ejection fails, tell me. Do not try
+   another disk. If a retry succeeds, tell me which attempt succeeded and have
+   me close any terminal still showing the earlier failure.
 
-5. Create or reuse the agx-direct NetworkManager profile for the USB adapter
-   with MAC 02:77:00:00:00:01. Use 10.77.0.1/24 on this computer, no gateway,
-   ipv4.never-default yes, IPv6 disabled, and autoconnect enabled. Preserve my
-   normal internet connection. The Pi will use 10.77.0.2.
-
-6. Identify the microSD card by its device path, model, capacity, transport,
-   and mount points. Show me which card you identified. I authorize erasing
-   and flashing that card. If its identity is ambiguous, ask me which device
-   to use. Never write to a system disk or another unrelated drive.
-   Recheck the device identity immediately before writing. Unmount its
-   partitions, write sdcard.img to the whole card, flush writes, and verify
-   the written bytes against the image. Safely eject the card when complete.
-
-7. Tell me when the card is ready. Ask me to disconnect power from the Pi,
-   move the card from the reader into the Pi, and reconnect the USB cable.
-   Wait for me to say the card is in before continuing.
-
-8. Wait for the Pi to boot, activate agx-direct if needed, and connect as
-   root@10.77.0.2 using the matching SSH private key. Handle the first host-key
-   trust prompt for this directly connected Pi. If a saved host key conflicts,
-   verify the device before replacing that entry. Check the board identity
-   and run agx status --json. Diagnose connection problems if needed.
-
-9. Open agx tui in an interactive SSH terminal if your tools support it.
-   Otherwise give me one exact command, with the correct key path, to open
-   it myself. Explain the 1-7, ?, F9, F10, and q keys and how to shut down safely.
-   Report what you actually verified and anything still unresolved.
+STEP 4 - TELL ME WHAT TO DO NEXT, THEN GIVE ME THE SECOND PROMPT
+Tell me the SD card or USB drive is ready and what happened ("built, written, every byte checked").
+Then give me these steps as a short numbered list, one physical action per line:
+  1) Power off the target (a desktop: shut it down).
+  2) Take the finished card out of the card reader on this computer.
+  3) Put it in the target: push a microSD card into the Pi's slot, gold contacts toward the board, until it seats. A desktop: plug the drive in.
+  4) Connect it to this computer by Ethernet or USB-C data cable (desktops: no cable), then power it on.
+  5) Wait up to 2 minutes for the first start. A Pi shows a red light, then a blinking green one.
+Remind me to have my Wi-Fi network name, its password and my two-letter country
+code ready, because the second part joins ANGI to Wi-Fi, which is the most important
+step.
+Right after the list, print the SECOND PROMPT for me: read the file docs/install-prompts/part2-BOARD.txt
+from the checkout (BOARD is my board), and show its full text exactly as it is, in one
+code block I can copy. Tell me to open a NEW chat with my agent and paste it there. Say
+clearly that the first part is finished. Do not run the second part yourself and do not
+continue past this step.
 ```
+<!-- prompt1:end -->
 
-Your agent may need your computer password or approval to install packages and write the card. Enter passwords through your computer's secure prompt. The first build downloads the tools and operating system sources, so allow time and keep your computer online.
+Your agent may ask for your computer password. Type it in the secure prompt. The first build downloads a lot and takes about 1 to 3 hours. Your agent watches it for you and reports progress; you can leave it running.
 
-### 3. Move the card when your agent asks
+### Step 4: Confirm the erase
 
-Once the agent says the card is written and verified:
-
-1. Unplug the Pi's USB cable so the Pi is powered off.
-2. Take the microSD card out of your computer's reader.
-3. Put it into the Pi's microSD slot.
-4. Reconnect the USB cable.
-5. Tell your agent: **“The card is in and the Pi is connected. Continue.”**
+Your agent shows you a card like this and **stops and waits**:
 
 ```text
-Before:  Computer ── card reader ── microSD
-                                      │
-                                move the card
-                                      ↓
-After:   Computer ── USB cable ── Pi [microSD]
+/dev/sdb   29.1 GiB   SD32G   (partitions: boot, root)
+EVERYTHING on this card will be erased. Type: erase /dev/sdb
 ```
 
-The agent will check the connection and help open the ANGI dashboard.
+Check that the size and name match your card, then type the path. If it is not your card, say **no**. You can also run this yourself:
 
-### 4. Use ANGI
+```sh
+scripts/flash-sd.sh --list                  # shows cards, changes nothing
+make flash-sd BOARD=rpi5 DEVICE=/dev/sdb    # asks you to type the path first
+```
+
+### Step 5: Move the card into the Pi and connect it
+
+When the build is done and the card is written, your agent tells you what to do. This is the first time the card goes into the Pi:
+
+1. Power off the Pi.
+2. Take the card out of the reader and push it into the Pi's slot.
+3. Connect the Pi to your computer with an **Ethernet cable** or a **USB-C data cable** (Pi Zero 2 W: USB-C only). Desktops: plug the drive in and start from it.
+4. Power the Pi on.
+
+```text
+Before:  Computer ── card reader ── SD card
+After:   Computer ── Ethernet or USB-C ── Pi [SD card]
+```
+
+### Step 6: Paste the second prompt into a new chat (join Wi-Fi and get the system ready)
+
+> **ANGI must be on Wi-Fi.** The cable only carries the setup; Wi-Fi is how ANGI reaches the web. Have your **Wi-Fi network name, password and two-letter country code** ready. The second prompt does not finish until `agx wifi check` shows ANGI can reach the web. You type the password privately, with the screen echo off, never into the chat. (The Pi Zero 2 W supports 2.4 GHz networks only.)
+
+Your agent prints this second prompt for you at the end of step 5, so you do not need to copy it from here. The text for each computer is in [docs/install-prompts/](docs/install-prompts/) (`part2-rpi5.txt`, `part2-rpi4.txt` and so on).
+
+Within about two minutes the Pi shows up on your computer. Your agent connects, joins it to Wi-Fi with you and confirms it is online, then sets up your account and checks every service. If it does not show up:
+
+| What you see | Try this |
+| --- | --- |
+| Nothing appears on your computer | Use a **data** cable. Charge-only cables only power the Pi. |
+| The Pi keeps restarting or disconnecting | A USB-A port may not give enough power. Try a USB 3 port, or power the Pi with its own supply and use Ethernet. |
+| No lights on the Pi | Check power. Red = power; green blinking = reading the card. |
+| Green light never blinks | Push the card in all the way, or run the install again. |
+| SSH says the host key changed | Expected after a reinstall. Your agent will ask before replacing the old key. |
+| Wi-Fi will not connect | Check the password and the two-letter country code. A Pi Zero 2 W needs a 2.4 GHz network. Captive-portal networks (a login page) are not supported. |
+| Writing the card fails | Try another card or reader. Never retry on a different disk without checking it. |
+
+### Step 7: Use ANGI
 
 In the dashboard:
 

@@ -1,5 +1,6 @@
 /.cache/
 /output/
+/output-*/
 __pycache__/
 *.pyc
 /target/

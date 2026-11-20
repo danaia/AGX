@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Get started — ANGI</title>
-<meta name="description" content="Every step of the one-prompt ANGI install on a Raspberry Pi 5, over a USB-C Ethernet link, to a live, extensible system.">
+<meta name="description" content="Every step of the one-prompt ANGI install: your agent builds ANGI and prepares the SD card on your computer, then hands you what to do next.">
 <meta name="theme-color" content="#050505">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="site.css">
@@ -61,6 +61,49 @@
     <radialGradient id="hotg"><stop offset="0" stop-color="#FF6A1A" stop-opacity=".55"/><stop offset="1" stop-color="#FF6A1A" stop-opacity="0"/></radialGradient>
   </defs>
 
+  <!-- install targets: line-art board and computer icons -->
+  <symbol id="t-zero" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="22" width="104" height="40" rx="6"/>
+    <circle cx="16" cy="30" r="2"/><circle cx="104" cy="30" r="2"/><circle cx="16" cy="54" r="2"/><circle cx="104" cy="54" r="2"/>
+    <rect x="46" y="32" width="22" height="20" rx="2" style="stroke:#FF8A3D"/>
+    <path d="M24 40h12M24 46h12"/>
+    <path d="M30 62v6h14v-6M62 62v5h9v-5M80 62v5h9v-5"/>
+    <path d="M112 36h4v16h-4"/>
+    <path d="M40 22v-6h22v6"/>
+  </symbol>
+  <symbol id="t-pi4" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="108" height="64" rx="6"/>
+    <path d="M26 12h40" stroke-dasharray="2 4"/>
+    <rect x="44" y="28" width="24" height="24" rx="2" style="stroke:#FF8A3D"/>
+    <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
+    <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5M56 72v-5h8v5"/>
+    <rect x="14" y="30" width="14" height="14" rx="2"/>
+    <circle cx="14" cy="14" r="2"/><circle cx="90" cy="14" r="2"/><circle cx="14" cy="64" r="2"/><circle cx="90" cy="64" r="2"/>
+  </symbol>
+  <symbol id="t-pi5" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="108" height="64" rx="6"/>
+    <path d="M26 12h40" stroke-dasharray="2 4"/>
+    <rect x="40" y="26" width="30" height="28" rx="3" style="stroke:#FF8A3D"/><path d="M47 33h16v14H47z" style="stroke:#FF8A3D"/>
+    <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
+    <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5"/>
+    <circle cx="62" cy="67" r="3"/><circle cx="82" cy="20" r="3"/>
+    <rect x="14" y="30" width="14" height="14" rx="2"/>
+    <circle cx="14" cy="14" r="2"/><circle cx="90" cy="14" r="2"/><circle cx="14" cy="64" r="2"/><circle cx="90" cy="64" r="2"/>
+  </symbol>
+  <symbol id="t-arm" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="22" y="10" width="76" height="48" rx="4"/>
+    <path d="M10 66h100l-6 6H16z"/>
+    <rect x="50" y="24" width="20" height="20" rx="2" style="stroke:#FF8A3D"/>
+    <path d="M55 20v4M60 20v4M65 20v4M55 44v4M60 44v4M65 44v4M46 29h4M46 34h4M46 39h4M70 29h4M70 34h4M70 39h4" style="stroke:#FF8A3D"/>
+  </symbol>
+  <symbol id="t-x86" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="38" height="64" rx="4"/>
+    <path d="M16 18h22M16 26h22"/><circle cx="27" cy="58" r="4" style="stroke:#FF8A3D"/>
+    <rect x="58" y="14" width="54" height="36" rx="3"/>
+    <path d="M85 50v10M72 62h26"/>
+    <path d="M70 26l8 8m0-8l-8 8M84 34h14" style="stroke:#FF8A3D"/>
+  </symbol>
+
   <!-- brand-bug.svg -->
   <symbol id="bug" viewBox="0 0 231 218"><path fill="url(#bugg)" d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/></symbol>
 
@@ -106,8 +149,8 @@
     <a href="index.html" aria-label="ANGI home"><svg class="bug"><use href="#bug"/></svg></a>
     <div class="eyebrow">Get started</div>
     <h1><span class="grad">From a blank card to a</span><br><span class="gradO">live, extensible system.</span></h1>
-    <p class="sub" style="margin-bottom:0">Every step of the one-prompt install on a Raspberry Pi 5. A direct Ethernet link over USB-C carries the install and live updates, and Wi-Fi carries the web. No ISO, no installer.</p>
-    <div class="time"><span>One prompt</span><span>USB-C Ethernet</span><span>Wi-Fi for the web</span><span>Early development</span></div>
+    <p class="sub" style="margin-bottom:0">Your coding agent runs the whole install and guides you through it. You paste one prompt. Your agent builds ANGI, watches the build and keeps you posted, and puts it on an SD card on your computer. It then tells you how to move the card into the Pi, and gives you a short second prompt to get the system ready. No ISO, no installer.</p>
+    <div class="time"><span>One prompt</span><span>Card first</span><span>Ethernet or USB-C</span><span>Wi-Fi, verified</span><span>No ISO</span></div>
   </div>
 </header>
 
@@ -115,101 +158,190 @@
 <div class="wrap">
 <div class="tl">
 
-  <div class="gstep reveal">
+  <div class="gstep reveal" id="pick">
     <div class="num">00</div>
+    <h2><span class="grad">Pick your computer</span></h2>
+    <p>Your agent starts by asking what ANGI is going on. Here is what happens for each answer.</p>
+    <div class="targets" style="margin-bottom:20px">
+  <a class="tcard reveal" href="#pick-zero"><svg class="tico" role="img" aria-label="Pi Zero 2 W"><use href="#t-zero"/></svg><h3>Pi Zero 2 W</h3><p>Tiny and quiet. Needs its own image.</p></a>
+  <a class="tcard reveal" href="#pick-pi4"><svg class="tico" role="img" aria-label="Pi 4 / 400"><use href="#t-pi4"/></svg><h3>Pi 4 / 400</h3><p>Headless image: SSH, dashboard, Wi-Fi, agent.</p></a>
+  <a class="tcard reveal" href="#pick-pi5"><svg class="tico" role="img" aria-label="Pi 5"><use href="#t-pi5"/></svg><h3>Pi 5</h3><p>Tested on hardware, with the desktop.</p></a>
+  <a class="tcard reveal" href="#pick-arm"><svg class="tico" role="img" aria-label="ARM desktop"><use href="#t-arm"/></svg><h3>ARM desktop</h3><p>UEFI laptop or desktop. Installs from a USB stick.</p></a>
+  <a class="tcard reveal" href="#pick-x86"><svg class="tico" role="img" aria-label="x86-64 desktop"><use href="#t-x86"/></svg><h3>x86-64 desktop</h3><p>Intel or AMD computer. Installs from a USB stick.</p></a>
+</div>
+    <div class="stuck">
+      <div class="box" id="pick-zero"><span class="tag">Pi Zero 2 W</span><h4>USB-C, Wi-Fi for the web</h4><p>Your agent connects over a USB-C data cable. There is no Ethernet jack, so the Pi reaches the web over Wi-Fi.</p></div>
+      <div class="box" id="pick-pi4"><span class="tag">Pi 4 / 400</span><h4>Ethernet or USB-C</h4><p>Your agent connects over an Ethernet cable or a USB-C data cable. Use a 5 V / 3 A power supply.</p></div>
+      <div class="box" id="pick-pi5"><span class="tag">Pi 5</span><h4>Ethernet or USB-C</h4><p>Your agent connects over an Ethernet cable or a USB-C data cable, then you can open the desktop.</p></div>
+      <div class="box" id="pick-arm"><span class="tag">ARM computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your ARM computer from it.</p></div>
+      <div class="box" id="pick-x86"><span class="tag">Intel / AMD computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your Intel or AMD computer from it.</p></div>
+    </div>  </div>
+
+  <div class="gstep reveal">
+    <div class="num">01</div>
     <h2><span class="grad">What you need</span></h2>
-    <p>Gather these before you start. You do not need a monitor, a keyboard or a Wi-Fi connection for the Pi.</p>
+    <p>Gather these before you start. You do not need a monitor or a keyboard for the Pi, but ANGI must join Wi-Fi, so have your network details ready.</p>
+    <div class="box"><h4>You need an AI agent that can run commands</h4><p>The install runs inside a chat with a coding agent on your computer. <b>Any agent harness or IDE works</b>: <b class="or">Codex</b>, <b class="or">Claude Code</b> (terminal or VS Code), <b class="or">Cursor</b> (agent mode), <b class="or">OpenCode</b>, <b class="or">Hermes</b>, or any other that can run terminal commands. Open it on the computer you are installing from, then paste the prompt into its chat. A chat in a browser tab, such as ChatGPT or claude.ai, cannot do it: it cannot run commands, build ANGI or write your card.</p></div>
     <ul class="l">
-      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>Raspberry Pi 5</b>.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>USB-A to USB-C data cable</b>. A charge-only cable will not work.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>An <b>AI agent that can run commands</b>, open on your computer. Any harness or IDE works: <b class="or">Codex</b>, <b class="or">Claude Code</b>, <b class="or">Cursor</b>, <b class="or">OpenCode</b>, <b class="or">Hermes</b> and others.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Your <b>Raspberry Pi</b> (Zero 2 W, 4, 400 or 5), or an <b>ARM</b> or <b>Intel/AMD</b> computer. See step 00.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>One cable to your computer</b>: an <b>RJ45 Ethernet</b> cable (the Pi on its own power supply), or a <b>USB-A to USB-C data cable</b>. A charge-only cable will not work.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>A <b>microSD card you can erase</b>. A 32 GB card has been tested.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>A <b>card reader</b> connected to your computer.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>An <b>Arch Linux computer using NetworkManager</b>, with internet access and a coding agent that can run terminal commands, such as Codex or Claude Code. This is the tested setup.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>An <b>Arch Linux computer using NetworkManager</b>, with internet access. This is the tested setup.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Your <b>Wi-Fi network name, password and two-letter country code</b>. ANGI joins Wi-Fi during setup.</span></li>
     </ul>
   </div>
 
   <div class="gstep reveal">
-    <div class="num">01</div>
-    <h2><span class="grad">Plug everything in</span></h2>
-    <p>Connect the Pi to your computer with the data cable, and put the microSD card in your computer's card reader. Use one ANGI Pi at a time and leave its card slot empty for now.</p>
+    <div class="num">02</div>
+    <h2><span class="grad">Put the card in your computer</span></h2>
+    <p>Put the SD card in a card reader on your computer. The Pi stays off with an empty card slot and is not connected yet. If the card is in the Pi now, take it out: the Pi cannot format its own card.</p>
     <div class="code"><pre>YOUR COMPUTER
     │
-    ├── USB-A ── data cable ── USB-C on the Raspberry Pi 5
-    │
-    └── Card reader ── microSD card to install ANGI onto</pre></div>
-    <div class="box"><h4>Everything on the selected card will be erased.</h4><p>Disconnect other removable drives to make the card easier to identify.</p></div>
-  </div>
+    └── Card reader ── SD card   (formatted here, by your agent)
 
-  <div class="gstep reveal">
-    <div class="num">02</div>
-    <h2><span class="grad">Give your agent the prompt</span></h2>
-    <p>Open your coding agent on your computer and paste the entire prompt. It fetches ANGI from GitHub, installs the build tools, builds the image with your SSH key, writes the card and sets up the USB-C Ethernet link.</p>
-    <div class="code long"><span class="cap">The install prompt</span><button class="cp" data-target="prompt">Copy</button><pre id="prompt">Install ANGI OS on my Raspberry Pi 5 over USB-C. Do the whole install from this one prompt.
-
-Setup
-- The Pi is connected to this computer with a USB-A to USB-C data cable.
-- The microSD card to erase and flash is in this computer&#x27;s card reader.
-- Source: https://github.com/danaia/ANGI.git
-
-Rules
-- Do the terminal work yourself and keep explanations short.
-- Ask me only for what you cannot determine: passwords, approvals, or a physical action.
-- Never write to a system disk or any drive I have not approved. Show me the card you identified and recheck it right before writing.
-
-Steps
-1. Inspect this computer: OS, disk space, memory, network manager and attached storage. Use the tested Arch Linux + NetworkManager workflow. If mine differs, tell me what is needed before changing anything.
-2. Clone the repository from GitHub, or reuse an existing checkout without overwriting local changes. Read README.md and docs/phase1.md and follow them.
-3. Reuse or create an Ed25519 SSH key without overwriting any existing key. Pass its public key as SSH_PUBLIC_KEY to every build command.
-4. Install the build tools, then run make configure, make dependencies, make build and make check-image. Continue only when output/images/sdcard.img passes validation.
-5. Create or reuse the agx-direct NetworkManager profile for the USB-C Ethernet link: MAC 02:77:00:00:00:01, 10.77.0.1/24 on this computer, no gateway, IPv6 off. Leave my internet connection untouched. The Pi will be 10.77.0.2.
-6. Flash sdcard.img to the card I approved, verify the written bytes against the image, then eject it. I authorize erasing that card once you have shown it to me.
-7. Ask me to move the card into the Pi and reconnect the cable. Wait for my go-ahead.
-8. Connect as root@10.77.0.2, check the board identity and run agx status --json.
-9. Open agx tui and explain its keys. Then offer to set up the Pi&#x27;s Wi-Fi from the Network tab so the Pi can reach the web. The cable carries the install and live updates; Wi-Fi carries the internet.
-
-Report what you verified and anything still unresolved.</pre></div>
-    <p style="font-size:15px">Your agent may need your computer password or approval to install packages and write the card. Enter passwords through your computer's secure prompt. The first build downloads toolchains and sources, so allow time and stay online.</p>
+THE PI: off, card slot empty, not connected yet</pre></div>
+    <div class="box"><h4>Everything on the selected card will be erased.</h4><p>That includes its partition table and any earlier install. Your agent shows you the card's path, size, model and contents and waits for you to type its path before it erases anything. Disconnect other removable drives to make the card easier to identify.</p></div>
   </div>
 
   <div class="gstep reveal">
     <div class="num">03</div>
-    <h2><span class="grad">What your agent does</span></h2>
-    <p>You can read along. This is what the prompt asks for, in order.</p>
+    <h2><span class="grad">The prompt: build ANGI and put it on the card</span></h2>
+    <p>Open your coding agent on your computer and paste the entire prompt. It asks which computer ANGI is for and builds the image with your SSH key. The build takes about 1 to 3 hours: your agent tells you that up front, stays with it, checks its progress every few minutes and waits until it has finished. Then it shows you the card, waits for you to confirm the erase, and formats and writes the card and checks every byte. It ends by telling you exactly what to do with the card, and gives you the second prompt.</p>
+    <div class="code long"><span class="cap">The prompt</span><button class="cp" data-target="prompt1">Copy</button><pre id="prompt1" data-prompt="1">INSTALL ANGI: build it and put it on an SD card, on this computer. I will tell you which computer ANGI is for.
+Explain each step in one short, plain sentence. Do the terminal work yourself and
+guide me through it: before each step say what you are about to do and what I will
+see, tell me exactly when I need to do something physical, and wait for me. Ask me
+only for passwords, approvals, or something physical. There is no ISO and no
+installer: you will write the finished system straight onto my SD card or USB drive.
+
+THE PLAN (tell me this in your first message, in plain words)
+  1) You check this computer and build ANGI. This is the long part: about 1 to 3 hours
+     for a first build, depending on this computer&#x27;s CPU and internet speed. Give me
+     your own estimate once you have checked this computer.
+  2) You stay with the build the whole time, keep checking its progress, and tell me
+     how it is going. I can leave it running.
+  3) When the build has finished, you write it to my SD card or USB drive (I confirm the erase).
+  4) Then you tell me exactly what to do with the SD card or USB drive and the target, and you give me
+     a SECOND prompt to paste into a new chat. That second prompt is only given to me
+     once the build and the SD card or USB drive are both finished. I do not have it yet.
+
+Repository: https://github.com/danaia/ANGI.git
+
+STEP 0 - ASK WHAT ANGI IS GOING ON
+If I have not already said, ask me this and wait for the answer:
+  1) Raspberry Pi Zero 2 W        (rpizero2w)
+  2) Raspberry Pi 4 or 400        (rpi4)
+  3) Raspberry Pi 5               (rpi5)
+  4) ARM desktop or laptop        (arm-desktop)
+  5) Intel/AMD desktop or laptop  (x86-desktop)
+  6) Not sure - help me tell
+If I answer 6, run scripts/detect-board.py --list and --host and show me the &quot;how to
+tell&quot; lines (for a Pi, ask me to read the name printed on the board). Then run
+scripts/detect-board.py --require BOARD and follow what it reports. If it says a
+target has no image yet or has not been tried on hardware, tell me plainly and
+continue only if I agree. Never write another target&#x27;s image to my drive, and never
+wipe this computer&#x27;s disks or any disk I did not choose.
+
+STEP 1 - CHECK THIS COMPUTER
+Check the OS, free disk space (need 20 GB), memory and NetworkManager, and that
+my microSD card (or SD card or USB drive) is attached to THIS computer, in a card reader. Install missing tools: base-devel git curl bc wget cpio unzip rsync
+python openssh xz util-linux. If this is not Arch + NetworkManager, tell me what is
+different before changing anything.
+
+STEP 2 - GET AND BUILD ANGI
+Clone the repository (or reuse a checkout without overwriting my changes). Use
+~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
+overwriting any key. As my normal user run make configure, make dependencies,
+make build and make check-image, each with BOARD=&lt;my board&gt;. Fix errors and
+resume. Go on only when the image passes the check.
+
+WATCH THE BUILD. THIS IS REQUIRED.
+- Before you start make build, say: &quot;The build takes a long time, about &lt;your
+  estimate&gt;. I will keep watching it and checking its progress until it is finished.&quot;
+- Run the build so you can watch it (in the background, writing to a log file), and
+  look at the log every few minutes. Do not start it and walk away, and do not wait
+  silently.
+- Each time you check, tell me in one or two short lines: which stage it is on, whether
+  it is still moving, and about how much time is left.
+- If it stops, errors or looks stuck, tell me, find the cause and fix it, and resume.
+- Do not assume it worked. Wait until the build has actually finished and
+  make check-image has passed, then tell me clearly: &quot;The build is complete.&quot; Do not
+  start step 3 before that.
+
+STEP 3 - ERASE AND FORMAT THE CARD ON THIS COMPUTER (needs my OK)
+The SD card or USB drive must be attached to THIS computer. Never ask me to put it in the target
+computer for this step. If it is not attached here, stop and ask me to attach it.
+1. Run scripts/flash-sd.sh --list and show me the SD card or USB drive: path, size, model,
+   serial, and what is on it. If there are several or I might not recognize it,
+   ask me which. Never use a disk that holds this computer&#x27;s system.
+2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
+   exact path, like &quot;erase /dev/sdb&quot;. Anything else means no.
+3. Then run scripts/flash-sd.sh --board BOARD --device PATH --confirm-erase PATH.
+   It wipes the old partitions, writes the image, checks every byte, and ejects.
+   Wait for the command to finish successfully before saying the SD card or USB drive is ready.
+   If it refuses, verification fails, or ejection fails, tell me. Do not try
+   another disk. If a retry succeeds, tell me which attempt succeeded and have
+   me close any terminal still showing the earlier failure.
+
+STEP 4 - TELL ME WHAT TO DO NEXT, THEN GIVE ME THE SECOND PROMPT
+Tell me the SD card or USB drive is ready and what happened (&quot;built, written, every byte checked&quot;).
+Then give me these steps as a short numbered list, one physical action per line:
+  1) Power off the target (a desktop: shut it down).
+  2) Take the finished card out of the card reader on this computer.
+  3) Put it in the target: push a microSD card into the Pi&#x27;s slot, gold contacts toward the board, until it seats. A desktop: plug the drive in.
+  4) Connect it to this computer by Ethernet or USB-C data cable (desktops: no cable), then power it on.
+  5) Wait up to 2 minutes for the first start. A Pi shows a red light, then a blinking green one.
+Remind me to have my Wi-Fi network name, its password and my two-letter country
+code ready, because the second part joins ANGI to Wi-Fi, which is the most important
+step.
+Right after the list, print the SECOND PROMPT for me: read the file docs/install-prompts/part2-BOARD.txt
+from the checkout (BOARD is my board), and show its full text exactly as it is, in one
+code block I can copy. Tell me to open a NEW chat with my agent and paste it there. Say
+clearly that the first part is finished. Do not run the second part yourself and do not
+continue past this step.</pre></div>
+    <p style="font-size:15px">Your agent may need your computer password or approval to install packages and write the card. Enter passwords through your computer's secure prompt. The first build downloads toolchains and sources and takes about 1 to 3 hours, so allow time and stay online. You can leave it running; your agent reports progress.</p>
+  </div>
+
+  <div class="gstep reveal">
+    <div class="num">04</div>
+    <h2><span class="grad">What the prompt does</span></h2>
+    <p>You can read along. This is what it asks for, in order.</p>
     <ul class="l">
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Inspects your computer</b>: OS, disk space, memory, network manager and attached storage.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Clones the repository</b> and reads the build docs, without overwriting local changes.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Reuses or creates an Ed25519 SSH key</b>. The private key never leaves your computer.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>, and continues only when <span class="mono">output/images/sdcard.img</span> passes validation.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span><b>Prepares the USB link</b>: an <span class="mono">agx-direct</span> NetworkManager profile that leaves your normal internet connection alone.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span><b>Writes the card</b>. It shows you which card it identified, rechecks it right before writing, flushes, verifies the written bytes against the image, then ejects it.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Formats the card, after you confirm</b>. It lists the card with <span class="mono">scripts/flash-sd.sh --list</span> and waits for you to reply with its exact path. Then it rechecks the card, wipes the old partition table, writes the image, verifies every byte and ejects it.</span></li>
     </ul>
     <div class="box"><h4>One raw image, not an installer</h4><p>The card receives a single disk image. There is no ISO to boot, no installer to click through and no setup wizard. The same image is what the Pi runs.</p></div>
   </div>
 
   <div class="gstep reveal">
-    <div class="num">04</div>
-    <h2><span class="grad">Move the card when asked</span></h2>
-    <p>This is the only physical step. Once your agent says the card is written and verified:</p>
+    <div class="num">05</div>
+    <h2><span class="grad">Move the card, then connect</span></h2>
+    <p>When the build is done and the card is written, your agent tells you what to do. This is the only physical step, and the first time the card goes into the Pi.</p>
     <ul class="l">
-      <li><svg class="i"><use href="#i-check"/></svg><span>Unplug the Pi's USB cable so it is powered off.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>Take the microSD card out of your computer's reader and put it into the Pi's microSD slot.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>Reconnect the USB cable.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>Tell your agent: <b>“The card is in and the Pi is connected. Continue.”</b></span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Power off the Pi.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Take the card out of your computer's reader and put it into the Pi's card slot.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Connect the Pi to your computer with an <b>Ethernet cable</b> or a <b>USB-C data cable</b> (Pi Zero 2 W: USB-C only). On a desktop, plug the drive in and start from it.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>Power the Pi on, then open a <b>new chat</b> and paste the second prompt your agent gives you.</span></li>
     </ul>
-    <div class="code"><pre>Before:  Computer ── card reader ── microSD
-                                      │
-                                move the card
-                                      ↓
-After:   Computer ── USB cable ── Pi [microSD]</pre></div>
+    <div class="code"><pre>Before:  Computer ── card reader ── SD card
+After:   Computer ── Ethernet or USB-C ── Pi [SD card]</pre></div>
   </div>
 
   <div class="gstep reveal">
-    <div class="num">05</div>
-    <h2><span class="grad">Connect over the cable</span></h2>
-    <p>Your computer and the Pi talk over a direct Ethernet link. It carries the install and every live update, and it needs no router. Your agent handles this step; these are the settings it uses.</p>
+    <div class="num">06</div>
+    <h2><span class="grad">The second prompt: get the system ready</span></h2>
+    <p>Your agent gives you this second prompt when the build and the card are finished, so you do not need it yet. Paste it into a new chat. It sets up the link to the Pi and connects safely. Then it does the most important step: <b>it joins ANGI to your Wi-Fi</b> and confirms the Pi can reach the web. After that it sets up your account and checks every service.</p>
+    <div class="box"><h4>ANGI must be on Wi-Fi</h4><p>The cable only carries this setup; Wi-Fi is how ANGI reaches the web. Have your <b>Wi-Fi network name, password and two-letter country code</b> ready. You type the password privately, with the screen echo off, never into the chat. The agent does not finish until <span class="mono">agx wifi check</span> passes. A Pi Zero 2 W needs a 2.4 GHz network.</p></div>
+    <h3 style="margin:34px 0 12px;font-size:20px">The connection settings your agent uses</h3>
+    <p>Your computer and the Pi talk over a direct cable with no router. These are the settings your agent uses.</p>
     <div class="three">
-      <div class="box"><span class="tag">USB-C Ethernet</span><h4>Pi at 10.77.0.2</h4><p>The Pi appears as an Ethernet device on the USB-C cable. Your computer uses 10.77.0.1/24 with no gateway. This is the install path.</p></div>
-      <div class="box"><span class="tag">RJ45 Ethernet</span><h4>Pi at 10.78.0.2</h4><p>A direct RJ45 cable between the two computers, with yours at 10.78.0.1/24 and the Pi on <span class="mono">eth0</span>. Also no router.</p></div>
+      <div class="box"><span class="tag">USB-C Ethernet</span><h4>Pi at 10.77.0.2</h4><p>The Pi appears as an Ethernet device on the USB-C cable. Your computer uses 10.77.0.1/24 with no gateway. Profile: <span class="mono">agx-direct</span>.</p></div>
+      <div class="box"><span class="tag">RJ45 Ethernet</span><h4>Pi at 10.78.0.2</h4><p>A direct RJ45 cable between the two computers, with yours at 10.78.0.1/24 and the Pi on <span class="mono">eth0</span>. No router. Profile: <span class="mono">agx-ethernet</span>. Power the Pi from its own supply.</p></div>
       <div class="box"><span class="tag">Wi-Fi</span><h4>The web</h4><p>The cable has no gateway, so it does not share your internet. The Pi reaches the web over Wi-Fi, which you set up from its dashboard.</p></div>
     </div>
     <div class="code"><span class="cap">One-time network profile on your computer (USB-C)</span><button class="cp" data-target="nm">Copy</button><pre id="nm">nmcli connection add type ethernet ifname '*' con-name agx-direct \
@@ -218,13 +350,14 @@ After:   Computer ── USB cable ── Pi [microSD]</pre></div>
   ipv6.method disabled connection.autoconnect yes</pre></div>
     <div class="code"><span class="cap">Check the link and sign in</span><button class="cp" data-target="ssh">Copy</button><pre id="ssh">nmcli device status
 ping -c 3 10.77.0.2
-ssh -i ~/.ssh/id_ed25519 root@10.77.0.2
+ssh -i ~/.ssh/id_ed25519 root@10.77.0.2   # USB-C
+# or: ssh -i ~/.ssh/id_ed25519 root@10.78.0.2   (Ethernet)
 agx status --json</pre></div>
     <p style="font-size:15px">The first connection asks you to trust the Pi's new host key. Reflashing produces new host keys, so check the fingerprint before removing an old entry with <span class="mono">ssh-keygen -R 10.77.0.2</span>.</p>
   </div>
 
   <div class="gstep reveal">
-    <div class="num">06</div>
+    <div class="num">07</div>
     <h2><span class="grad">Use ANGI</span></h2>
     <p>Your agent opens the terminal dashboard with <span class="mono or">agx tui</span>, or gives you the exact command to open it yourself.</p>
     <div class="keys"><kbd>1</kbd><span>Profile</span><kbd>2</kbd><span>Overview</span><kbd>3</kbd><span>Hardware</span><kbd>4</kbd><span>Network</span><kbd>5</kbd><span>System</span><kbd>6</kbd><span>Services</span><kbd>7</kbd><span>Logs</span></div>
@@ -233,7 +366,7 @@ agx status --json</pre></div>
   </div>
 
   <div class="gstep reveal">
-    <div class="num">07</div>
+    <div class="num">08</div>
     <h2><span class="grad">Extend it, live</span></h2>
     <p>From here, nothing needs a reflash. Build and install new software through the same cable. Run <span class="mono or">agent angi</span> on the Pi to describe something to build, or change the code on your computer and deploy it.</p>
     <div class="code"><span class="cap">Deploy from your computer, over the Ethernet link</span><button class="cp" data-target="dep">Copy</button><pre id="dep">make deploy-tui      # terminal dashboard

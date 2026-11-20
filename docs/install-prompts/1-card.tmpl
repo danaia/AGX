@@ -1,0 +1,74 @@
+INSTALL ANGI: build it and put it on an SD card, on this computer. {{WHAT}}
+Explain each step in one short, plain sentence. Do the terminal work yourself and
+guide me through it: before each step say what you are about to do and what I will
+see, tell me exactly when I need to do something physical, and wait for me. Ask me
+only for passwords, approvals, or something physical. There is no ISO and no
+installer: you will write the finished system straight onto my {{MEDIA}}.
+
+THE PLAN (tell me this in your first message, in plain words)
+  1) You check this computer and build ANGI. This is the long part: about 1 to 3 hours
+     for a first build, depending on this computer's CPU and internet speed. Give me
+     your own estimate once you have checked this computer.
+  2) You stay with the build the whole time, keep checking its progress, and tell me
+     how it is going. I can leave it running.
+  3) When the build has finished, you write it to my {{MEDIA}} (I confirm the erase).
+  4) Then you tell me exactly what to do with the {{MEDIA}} and the target, and you give me
+     a SECOND prompt to paste into a new chat. That second prompt is only given to me
+     once the build and the {{MEDIA}} are both finished. I do not have it yet.
+
+Repository: https://github.com/danaia/ANGI.git
+
+{{STEP0}}
+STEP 1 - CHECK THIS COMPUTER
+Check the OS, free disk space (need 20 GB), memory and NetworkManager, and that
+{{ATTACHED}}. Install missing tools: base-devel git curl bc wget cpio unzip rsync
+python openssh xz util-linux. If this is not Arch + NetworkManager, tell me what is
+different before changing anything.
+
+STEP 2 - GET AND BUILD ANGI
+Clone the repository (or reuse a checkout without overwriting my changes). Use
+~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
+overwriting any key. As my normal user run make configure, make dependencies,
+make build and make check-image, each with BOARD=<my board>. Fix errors and
+resume. Go on only when the image passes the check.
+
+WATCH THE BUILD. THIS IS REQUIRED.
+- Before you start make build, say: "The build takes a long time, about <your
+  estimate>. I will keep watching it and checking its progress until it is finished."
+- Run the build so you can watch it (in the background, writing to a log file), and
+  look at the log every few minutes. Do not start it and walk away, and do not wait
+  silently.
+- Each time you check, tell me in one or two short lines: which stage it is on, whether
+  it is still moving, and about how much time is left.
+- If it stops, errors or looks stuck, tell me, find the cause and fix it, and resume.
+- Do not assume it worked. Wait until the build has actually finished and
+  make check-image has passed, then tell me clearly: "The build is complete." Do not
+  start step 3 before that.
+
+STEP 3 - ERASE AND FORMAT THE {{MEDIA_UP}} ON THIS COMPUTER (needs my OK)
+The {{MEDIA}} must be attached to THIS computer. Never ask me to put it in the target
+computer for this step. If it is not attached here, stop and ask me to attach it.
+1. Run scripts/flash-sd.sh --list and show me the {{MEDIA}}: path, size, model,
+   serial, and what is on it. If there are several or I might not recognize it,
+   ask me which. Never use a disk that holds this computer's system.
+2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
+   exact path, like "erase /dev/sdb". Anything else means no.
+3. Then run scripts/flash-sd.sh --board BOARD --device PATH --confirm-erase PATH.
+   It wipes the old partitions, writes the image, checks every byte, and ejects.
+   Wait for the command to finish successfully before saying the {{MEDIA}} is ready.
+   If it refuses, verification fails, or ejection fails, tell me. Do not try
+   another disk. If a retry succeeds, tell me which attempt succeeded and have
+   me close any terminal still showing the earlier failure.
+
+STEP 4 - TELL ME WHAT TO DO NEXT, THEN GIVE ME THE SECOND PROMPT
+Tell me the {{MEDIA}} is ready and what happened ("built, written, every byte checked").
+Then give me these steps as a short numbered list, one physical action per line:
+{{HANDOFF}}
+Remind me to have my Wi-Fi network name, its password and my two-letter country
+code ready, because the second part joins ANGI to Wi-Fi, which is the most important
+step.
+Right after the list, print the SECOND PROMPT for me: read the file docs/install-prompts/part2-BOARD.txt
+from the checkout (BOARD is my board), and show its full text exactly as it is, in one
+code block I can copy. Tell me to open a NEW chat with my agent and paste it there. Say
+clearly that the first part is finished. Do not run the second part yourself and do not
+continue past this step.

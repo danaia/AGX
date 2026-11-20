@@ -94,6 +94,8 @@ fn attach_graphical_console() -> io::Result<()> {
     }
     Ok(())
 }
+/// Serial login devices in preference order (Pi 5 debug UART, then the Pi 4 mini UART).
+const SERIAL_CONSOLES: [&str; 2] = ["ttyAMA10", "ttyS0"];
 pub fn definitions(pid1: bool) -> Vec<Definition> {
     let mut services = Vec::new();
     if pid1 {
@@ -112,14 +114,20 @@ pub fn definitions(pid1: bool) -> Vec<Definition> {
                 false,
             ),
             console_definition(std::path::Path::new("/usr/bin/agx-gui").is_file()),
-            Definition::new(
+        ]);
+        // The serial login follows the board: the Pi 5 debug UART or the Pi 4 mini UART.
+        if let Some(tty) = SERIAL_CONSOLES
+            .iter()
+            .find(|tty| std::path::Path::new("/dev").join(tty).exists())
+        {
+            services.push(Definition::new(
                 "serial-console",
                 "/sbin/getty",
-                &["-L", "ttyAMA10", "115200", "vt100"],
+                &["-L", tty, "115200", "vt100"],
                 false,
-            ),
-            Definition::new("cron", "/usr/sbin/crond", &["-f"], true),
-        ]);
+            ));
+        }
+        services.push(Definition::new("cron", "/usr/sbin/crond", &["-f"], true));
         // Only images that ship the script (the desktop) run this service.
         if std::path::Path::new(DISPLAY_ACCESS).is_file() {
             services.push(display_access());

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Pi 5 image artifacts without mounting or accessing block devices."""
+"""Validate Pi 4/Pi 5 image artifacts (board from images/board.txt) without mounting or accessing block devices."""
 import hashlib
 from pathlib import Path
 import re
@@ -23,14 +23,27 @@ def digest_region(stream, length):
     return digest.digest()
 
 
+PROFILES = {
+    "rpi5": {"dtbs": ["bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb"], "serial": "ttyAMA10",
+             "wifi_fw": "brcmfmac43455-sdio.raspberrypi,5-model-b.bin", "label": "Pi 5", "extra_boot": []},
+    "rpi4": {"dtbs": ["bcm2711-rpi-4-b.dtb", "bcm2711-rpi-400.dtb"], "serial": "ttyS0",
+             "wifi_fw": "brcmfmac43455-sdio.raspberrypi,4-model-b.bin", "label": "Pi 4",
+             "extra_boot": ["start4.elf", "fixup4.dat"]},
+}
+
+
 def check(images):
-    for name in ("Image", "bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb",
-                 "boot.vfat", "rootfs.ext4", "sdcard.img"):
+    stamp = images / "board.txt"
+    board = stamp.read_text().strip() if stamp.is_file() else "rpi5"
+    require(board in PROFILES, f"Unknown board stamp: {board}")
+    profile = PROFILES[board]
+    dtbs, serial, label = profile["dtbs"], profile["serial"], profile["label"]
+    for name in ("Image", *dtbs, "boot.vfat", "rootfs.ext4", "sdcard.img"):
         require((images / name).is_file(), f"Missing artifact: {name}")
     with (images / "Image").open("rb") as kernel:
         kernel.seek(56)
         require(kernel.read(4) == b"ARM\x64", "Invalid ARM64 kernel header")
-    for name in ("bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb"):
+    for name in dtbs:
         with (images / name).open("rb") as dtb:
             require(dtb.read(4) == b"\xd0\x0d\xfe\xed", f"Invalid DTB: {name}")
     with (images / "rootfs.ext4").open("rb") as rootfs:
@@ -57,8 +70,7 @@ def check(images):
                 require(digest_region(image, size) == digest_region(source, size),
                         f"Partition contents differ: {name}")
     mtype = images.parent / "host/bin/mtype"
-    for name in ("Image", "bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb",
-                 "config.txt", "cmdline.txt", "overlays/dwc2.dtbo"):
+    for name in ("Image", *dtbs, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo", *profile["extra_boot"]):
         subprocess.run([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"],
                        stdout=subprocess.DEVNULL, check=True)
     for name in ("config.txt", "cmdline.txt"):
@@ -69,13 +81,13 @@ def check(images):
     require("kernel=Image" in config, "Firmware does not select Image")
     require("dtoverlay=dwc2,dr_mode=peripheral" in config, "Missing USB device overlay")
     cmdline = (images / "rpi-firmware/cmdline.txt").read_text()
-    for token in ("root=/dev/mmcblk0p2", "rootwait", "init=/usr/sbin/agx-init", "logo.nologo", "console=ttyAMA10,115200",
+    for token in ("root=/dev/mmcblk0p2", "rootwait", "init=/usr/sbin/agx-init", "logo.nologo", f"console={serial},115200",
                   "g_ether.host_addr=02:77:00:00:00:01", "g_ether.dev_addr=02:77:00:00:00:02"):
         require(token in cmdline.split(), f"Missing boot argument: {token}")
     require("console=tty1" not in cmdline.split(), "Kernel messages must not overwrite the HDMI login")
     require("disable_splash=1" in config, "Firmware splash must be disabled")
     inittab = (images.parent / "target/etc/inittab").read_text()
-    for tty in ("tty1::respawn:", "ttyAMA10::respawn:"):
+    for tty in ("tty1::respawn:", f"{serial}::respawn:"):
         require(tty in inittab, f"Missing login console: {tty}")
     target = images.parent / "target"
     require((target / "usr/sbin/dropbear").is_file(), "Missing SSH server")
@@ -84,6 +96,8 @@ def check(images):
     interfaces = (target / "etc/network/interfaces").read_text()
     require("auto usb0" in interfaces and "address 10.77.0.2" in interfaces,
             "Missing USB Ethernet address")
+    require("auto eth0" in interfaces and "address 10.78.0.2" in interfaces,
+            "Missing RJ45 Ethernet address")
     kernel_config = next((images.parent / "build").glob("linux-*/.config")).read_text()
     for option in ("CONFIG_USB_GADGET=y", "CONFIG_USB_DWC2=y", "CONFIG_USB_DWC2_PERIPHERAL=y", "CONFIG_USB_ETH=y"):
         require(option in kernel_config.splitlines(), f"Missing built-in kernel option: {option}")
@@ -130,11 +144,11 @@ def check(images):
             require(packed == binary, f'Packed {name} differs from the build output')
         require('/usr/sbin/agx-init --supervise' in inittab, 'BusyBox recovery must start the Rust supervisor')
         for name in ('usr/sbin/wpa_supplicant', 'usr/sbin/iw', 'usr/bin/curl', 'etc/ssl/certs/ca-certificates.crt',
-                     'lib/firmware/regulatory.db', 'lib/firmware/brcm/brcmfmac43455-sdio.raspberrypi,5-model-b.bin'):
+                     'lib/firmware/regulatory.db', 'lib/firmware/brcm/' + profile['wifi_fw']):
             require((target / name).exists(), f'Missing Wi-Fi prerequisite: {name}')
         print('PASS: ARM64 AGX/TUI/network executables, startup and Wi-Fi prerequisites')
-    print("PASS: ARM64 kernel, Pi 5 DTBs, boot files, consoles, SSH setup and disk partitions")
-    print("Hardware boot remains unverified until tested on a Raspberry Pi 5.")
+    print(f"PASS: ARM64 kernel, {label} DTBs, boot files, consoles, SSH setup and disk partitions")
+    print(f"Hardware boot remains unverified until tested on a Raspberry {label}.")
 
 
 if __name__ == "__main__":
