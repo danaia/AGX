@@ -10,6 +10,7 @@ use std::{
     },
     path::Path,
     sync::Mutex,
+    time::{SystemTime, UNIX_EPOCH},
 };
 use zeroize::Zeroizing;
 const GROUP: &str = "agx-admin";
@@ -167,8 +168,8 @@ pub fn authenticate(username: &str, password: &str) -> io::Result<()> {
         .ok_or_else(denied)?
         .split(':')
         .collect();
-    let today = (std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let today = (SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .map_err(|_| denied())?
         .as_secs()
         / 86400) as i64;
@@ -259,6 +260,24 @@ mod login_tests {
             );
         }
     }
+    #[test]
+    fn provisioning_before_clock_sync_does_not_force_a_password_reset() {
+        use std::time::Duration;
+
+        for (clock, expected) in [
+            (UNIX_EPOCH, ""),
+            (UNIX_EPOCH + Duration::from_secs(3600), ""),
+            (UNIX_EPOCH + Duration::from_secs(20000 * 86400), "20000"),
+        ] {
+            let change = password_change_day(clock);
+            assert_eq!(change, expected);
+            let record = format!("user:$6$salt$hash:{change}:0:99999:7:::");
+            assert!(shadow_allows_login(
+                &record.split(':').collect::<Vec<_>>(),
+                20000
+            ));
+        }
+    }
 }
 pub fn save(save: Save) -> io::Result<String> {
     validate(&save).map_err(io::Error::other)?;
@@ -334,7 +353,7 @@ pub fn save(save: Save) -> io::Result<String> {
             }
             if let Some(hash) = &hashed {
                 fields[1] = hash.to_string();
-                fields[2] = days().to_string();
+                fields[2] = password_change_day(SystemTime::now());
             }
             new_shadow.push_str(&fields.join(":"));
         } else if fields.first().map(String::as_str) == Some("root")
@@ -356,7 +375,7 @@ pub fn save(save: Save) -> io::Result<String> {
             "{}:{}:{}:0:99999:7:::\n",
             save.username,
             hash.as_str(),
-            days()
+            password_change_day(SystemTime::now())
         ));
     }
     // Shadow first: a newly exposed passwd entry can never have a blank password.
@@ -378,12 +397,14 @@ pub fn save(save: Save) -> io::Result<String> {
         save.hostname
     ))
 }
-fn days() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        / 86400
+fn password_change_day(now: SystemTime) -> String {
+    let day = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() / 86400;
+    // An unset date permits login before clock sync. Shadow reserves zero for a forced reset.
+    if day == 0 {
+        String::new()
+    } else {
+        day.to_string()
+    }
 }
 fn apply_hostname(host: &str) -> io::Result<()> {
     atomic(

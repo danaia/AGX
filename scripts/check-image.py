@@ -154,6 +154,10 @@ def check(images, board):
             require("Type: directory" in metadata, "Packed SSH host-key directory must be on the SD root filesystem")
     for name in ("etc/inittab", "etc/network/interfaces", "etc/default/dropbear", "etc/issue", "etc/profile.d/agx-welcome.sh", "etc/init.d/S12agx-data", "usr/share/agx/logo.ascii", "root/.ssh/authorized_keys"):
         require(packed_file(name) == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
+    if zero:
+        wifi_module_options = packed_file("etc/modprobe.d/angi-zero-wifi.conf")
+        require(b"options brcmfmac feature_disable=0x2000" in wifi_module_options.splitlines(),
+                "Zero 2 W must handle the WPA2 handshake in wpa_supplicant")
     if 'BR2_PACKAGE_E2FSPROGS=y' in (images.parent / '.config').read_text().splitlines():
         require((target / 'sbin/mke2fs').is_file() and not (target / 'sbin/mke2fs').is_symlink(),
                 'Real e2fsprogs mke2fs is required for ext4 data volumes')
