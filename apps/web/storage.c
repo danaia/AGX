@@ -1,4 +1,4 @@
-/* Browser state belongs on NVMe, separate from the public runtime and SD home. */
+/* Keep browser state private, using the data volume when available. */
 #include "host.h"
 #include <glib/gstdio.h>
 #include <errno.h>
@@ -20,20 +20,19 @@ static gboolean private_directory(const char *path)
 gboolean web_storage_setup(WebHost *host, char **data_dir, char **cache_dir, char **shader_dir, char **store_dir)
 {
     struct stat volume, root, owner;
+    gboolean volume_exists = !stat("/var/lib/agx-data", &volume);
+    gboolean appliance = volume_exists && !stat("/", &root) && volume.st_dev != root.st_dev;
+#if !defined(AGX_WEB_SD_STORAGE)
 #ifdef AGX_WEB_APPLIANCE
-    if (stat("/var/lib/agx-data", &volume)) {
+    if (!appliance) {
+#else
+    if (volume_exists && !appliance) {
+#endif
         web_error(host, "Web needs the NVMe data volume. Mount it and sign in again.");
         return FALSE;
     }
-    gboolean appliance = TRUE;
-#else
-    gboolean appliance = !stat("/var/lib/agx-data", &volume);
 #endif
     if (appliance) {
-        if (stat("/", &root) || volume.st_dev == root.st_dev) {
-            web_error(host, "Web needs the NVMe data volume. Mount it and sign in again.");
-            return FALSE;
-        }
         g_autofree char *user = g_strdup_printf("/var/lib/agx-data/agx-web-users/%lu", (unsigned long)geteuid());
         if (lstat(user, &owner) || !S_ISDIR(owner.st_mode) || owner.st_uid != geteuid()
             || owner.st_dev != volume.st_dev || (owner.st_mode & 0077)) {

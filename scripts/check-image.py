@@ -51,6 +51,8 @@ def check(images):
     if board == 'rpi4':
         require(desktop and 'BR2_PACKAGE_AGX_WEB=y' in build_config,
                 'Pi 4 / 400 requires the ANGI desktop and browser')
+        require('BR2_PACKAGE_AGX_WEB_SD_STORAGE=y' in build_config,
+                'Pi 4 / 400 requires browser storage on the system card')
     dtbs, serial, label = profile["dtbs"], profile["serial"], profile["label"]
     disk_image = images / "sdcard.img"
     for name in ("Image", *dtbs, "boot.vfat", "rootfs.ext4", "sdcard.img"):

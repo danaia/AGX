@@ -20,6 +20,8 @@ Local `.html`/`.htm` pages (from `open FILE` in a terminal) are loaded by the ho
 
 After sign-in, ANGI prepares the Web host in the background. Google loads when Web first becomes visible on workspace 4. WebKit uses its browser cache model for repeat visits. **+** opens another tab and **×** closes the active tab. **Ctrl+T**, **Ctrl+W**, and **Ctrl+Tab** open, close, and switch tabs. Each tab keeps its own page and history. **Alt+Left/Right** navigates history; the page viewport follows the content area rather than stretching a fixed-resolution image.
 
+On Pi 4 / 400, Web uses the signed-in account’s XDG data and cache directories when the system runs from microSD alone. Downloads use the account’s `~/Downloads` folder. A mounted data volume takes precedence and uses the same private per-account storage as on Pi 5.
+
 The appliance bubblewrap patch retains its existing safe-open fallback when the external toolchain lacks the `openat2` syscall definition, even with a recent target kernel. It does not disable sandboxing.
 
 Build with `scripts/build-web.sh` (`WEBKIT_BUILD_JOBS=3` by default to bound build memory). It builds the engine, native dependencies and `.cache/agx-web/agx-web`. The engine runtime is much larger than the embedding host. `make deploy-web` builds the GUI and engine, installs the runtime on NVMe, and restarts the GUI to expose the launcher entry. Sign in again afterward. This leaves the running appliance’s small SD root intact. New full images use a 512 MiB root partition to include the selected browser package. Never replace `/lib`, `/lib64`, libc or the active loader when installing the runtime on a running appliance.

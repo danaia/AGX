@@ -259,6 +259,22 @@ mod login_tests {
             );
         }
     }
+
+    #[test]
+    fn a_password_set_before_clock_sync_is_usable_after_sync() {
+        use std::time::{Duration, UNIX_EPOCH};
+
+        let changed_on = password_change_day(UNIX_EPOCH + Duration::from_secs(30));
+        let record = format!("user:$6$salt$hash:{changed_on}:0:99999:7:::");
+        assert!(shadow_allows_login(
+            &record.split(':').collect::<Vec<_>>(),
+            20000
+        ));
+        assert_eq!(
+            password_change_day(UNIX_EPOCH + Duration::from_secs(20000 * 86400)),
+            "20000"
+        );
+    }
 }
 pub fn save(save: Save) -> io::Result<String> {
     save_account(save, false, None)
@@ -280,6 +296,7 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
     } else {
         None
     };
+    let changed_on = password_change_day(std::time::SystemTime::now());
     let _lock = Lock::acquire()?;
     if initial && !status()?.accounts.is_empty() {
         return Err(err("This ANGI system already has an administrator"));
@@ -340,7 +357,7 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
             }
             if let Some(hash) = &hashed {
                 fields[1] = hash.to_string();
-                fields[2] = days().to_string();
+                fields[2] = changed_on.clone();
             }
             new_shadow.push_str(&fields.join(":"));
         } else if fields.first().map(String::as_str) == Some("root")
@@ -362,7 +379,7 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
             "{}:{}:{}:0:99999:7:::\n",
             save.username,
             hash.as_str(),
-            days()
+            changed_on
         ));
     }
     let home = Path::new(&home);
@@ -429,12 +446,19 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
         save.hostname
     ))
 }
-fn days() -> u64 {
-    std::time::SystemTime::now()
+fn password_change_day(now: std::time::SystemTime) -> String {
+    let day = now
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
-        / 86400
+        / 86400;
+    // An unsynchronized clock has no usable date. Shadow reserves zero to
+    // require a password change at next login.
+    if day == 0 {
+        String::new()
+    } else {
+        day.to_string()
+    }
 }
 fn apply_hostname(host: &str) -> io::Result<()> {
     atomic(

@@ -11,3 +11,9 @@ config BR2_PACKAGE_AGX_WEB
 	help
 	  Lightweight WPEPlatform embedding host for the ANGI desktop.
 	  Launched on demand by the GUI's Web app.
+
+config BR2_PACKAGE_AGX_WEB_SD_STORAGE
+	bool "Allow browser storage on the system card"
+	depends on BR2_PACKAGE_AGX_WEB
+	help
+	  Use private per-account storage when no separate data volume is mounted.

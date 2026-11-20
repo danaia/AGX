@@ -6,8 +6,12 @@ AGX_WEB_SITE = $(BR2_EXTERNAL_AGX_PATH)/../apps/web
 AGX_WEB_SITE_METHOD = local
 AGX_WEB_DEPENDENCIES = agx-webkit dejavu
 
+ifeq ($(BR2_PACKAGE_AGX_WEB_SD_STORAGE),y)
+AGX_WEB_CFLAGS = -DAGX_WEB_SD_STORAGE=1
+endif
+
 define AGX_WEB_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) -std=gnu11 -DAGX_WEB_APPLIANCE=1 -Wall -Wextra \
+	$(TARGET_CC) $(TARGET_CFLAGS) $(AGX_WEB_CFLAGS) -std=gnu11 -DAGX_WEB_APPLIANCE=1 -Wall -Wextra \
 		$(@D)/host.c $(@D)/tabs.c $(@D)/platform.c $(@D)/protocol.c $(@D)/dialogs.c $(@D)/downloads.c $(@D)/storage.c $(@D)/gpu.c \
 		`$(PKG_CONFIG_HOST_BINARY) --cflags --libs wpe-webkit-2.0 libdrm` \
 		$(TARGET_LDFLAGS) -o $(@D)/agx-web
