@@ -39,7 +39,7 @@ The power icon at the right of the GUI header opens a session dropdown: **Log ou
 
 From the HDMI TUI, **F8** returns directly to the GUI. The same action is available as **Back to GUI** in Profile and **[GUI F8]** in the footer beside shutdown and reboot. Save or discard Profile edits before switching. Both directions run through one authenticated CLI session; repeated switching does not create nested launchers. SSH/serial TUI sessions display the shortcut disabled and stay in their terminal rather than opening the Pi's graphical display.
 
-The Pi 4 / 400 image ships with the GUI and desktop runtime libraries. For a development deployment on Pi 5, `make deploy-gui` installs the GUI, CLI, init and device-access helper and saves the original binaries in `/root/agx-gui-backup`. Override `AGX_SSH_HOST` and `AGX_SSH_KEY` when needed. Reboot to activate the new init process.
+The Pi 4 / 400 and Pi 5 images ship with the GUI and desktop runtime libraries. For an incremental development deployment on Pi 5, `make deploy-gui` installs the GUI, CLI, init and device-access helper and saves the original binaries in `/root/agx-gui-backup`. Override `AGX_SSH_HOST` and `AGX_SSH_KEY` when needed. Reboot to activate the new init process.
 
 Use [direct Ethernet](pi-ethernet.md) for development access and deployment. As a recovery alternative, the development Pi was reachable over Wi-Fi at `192.168.1.184` (DHCP; checked November 16, 2026). Its SSH host key matches the recorded USB address. To deploy over this connection:
 
@@ -101,7 +101,7 @@ The first GPU deployment mistakenly linked `/lib/libgcc_s.so.1` to NVMe, creatin
 
 ## Remote access (VNC)
 
-`agx-gui` can serve its own screen over VNC, so a viewer such as Remmina can see and drive the desktop and the login screen without a monitor on the Pi. The Pi 4 / 400 image includes the desktop and ANGI Web and sets `AGX_GUI_VNC=on` at build time. On other images, set it in `/etc/agx/gui.env` on the Pi and reboot to enable it, or export it when running a preview. The greeter passes this setting to the signed-in session. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`; `off` or unset disables it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
+`agx-gui` can serve its own screen over VNC so a viewer can display the login screen and desktop without a monitor on the Pi. The Pi 4 / 400 and Pi 5 images include the desktop and ANGI Web and set `AGX_GUI_VNC=on` at build time. On other images, set it in `/etc/agx/gui.env` on the Pi and reboot to enable it, or export it when running a preview. The greeter passes this setting to the signed-in session. Accepted values are `on` (127.0.0.1, port 5900), a port number, or a loopback `address:port`. Set `off` to disable it. The log in `/run/agx/gui.log` shows `vnc listening on ...` when it started.
 
 For Pi 4 / 400, the [provisioning guide](pi4-provisioning.md#open-the-desktop) shows how to open VNC over the direct SSH connection after creating the administrator. For a browser-provisioned ISO, use the administrator’s SSH login and verify the host fingerprint shown during browser setup.
 

@@ -25,7 +25,8 @@ show me the fingerprint observed over the direct cable and ask me to approve it.
 Use strict SSH host-key checking for subsequent connections. If a trusted key
 changed unexpectedly, stop and resolve the device identity with me.
 Read /proc/device-tree/model and run agx status --json over that trusted connection.
-Confirm it is a Pi 4 or 400, then open a workstation terminal with ssh -t ... agx tui.
+Confirm the hardware matches Pi 4 / 400, then open a workstation terminal with
+ssh -t ... agx tui.
 
 STEP 3 - CREATE THE ADMINISTRATOR AND JOIN WI-FI
 In Profile (1), let me set the hostname and create my administrator account.

@@ -9,3 +9,5 @@ dtoverlay=dwc2,dr_mode=peripheral
 dtoverlay=vc4-kms-v3d
 # Bluetooth through the kernel driver: enables the controller node on the Pi 5 UART.
 dtparam=krnbt=on
+# Enable the external PCIe connector for NVMe data storage.
+dtparam=pciex1

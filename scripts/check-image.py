@@ -47,13 +47,10 @@ def check(images):
     require(board in PROFILES, f"Unknown board stamp: {board}")
     profile = PROFILES[board]
     build_config = (images.parent / '.config').read_text().splitlines()
-    desktop = 'BR2_PACKAGE_AGX_GUI=y' in build_config
-    if board == 'rpi4':
-        require(desktop and 'BR2_PACKAGE_AGX_WEB=y' in build_config,
-                'Pi 4 / 400 requires the ANGI desktop and browser')
-        require('BR2_PACKAGE_AGX_WEB_SD_STORAGE=y' in build_config,
-                'Pi 4 / 400 requires browser storage on the system card')
     dtbs, serial, label = profile["dtbs"], profile["serial"], profile["label"]
+    for option in ('BR2_PACKAGE_AGX_GUI=y', 'BR2_PACKAGE_AGX_WEB=y',
+                   'BR2_PACKAGE_AGX_WEB_SD_STORAGE=y'):
+        require(option in build_config, f'{label} desktop image requires {option}')
     disk_image = images / "sdcard.img"
     for name in ("Image", *dtbs, "boot.vfat", "rootfs.ext4", "sdcard.img"):
         require((images / name).is_file(), f"Missing artifact: {name}")
@@ -88,8 +85,8 @@ def check(images):
                         f"Partition contents differ: {name}")
     mtype = images.parent / "host/bin/mtype"
     boot_files = ["Image", *dtbs, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo", *profile["extra_boot"]]
-    if board == 'rpi4':
-        boot_files.extend(('overlays/overlay_map.dtb', 'overlays/vc4-kms-v3d-pi4.dtbo'))
+    overlay_board = 'pi4' if board == 'rpi4' else 'pi5'
+    boot_files.extend(('overlays/overlay_map.dtb', f'overlays/vc4-kms-v3d-{overlay_board}.dtbo'))
     for name in boot_files:
         subprocess.run([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"],
                        stdout=subprocess.DEVNULL, check=True)
@@ -119,6 +116,10 @@ def check(images):
     require("auto eth0" in interfaces and "address 10.78.0.2" in interfaces,
             "Missing RJ45 Ethernet address")
     kernel_config = next((images.parent / "build").glob("linux-*/.config")).read_text()
+    if board == 'rpi5':
+        require('dtparam=pciex1' in config.splitlines(), 'Pi 5 PCIe connector is disabled')
+        for option in ('CONFIG_PCIE_BRCMSTB=y', 'CONFIG_BLK_DEV_NVME=y'):
+            require(option in kernel_config.splitlines(), f'Missing Pi 5 NVMe support: {option}')
     for option in ("CONFIG_USB_GADGET=y", "CONFIG_USB_DWC2=y", "CONFIG_USB_DWC2_PERIPHERAL=y", "CONFIG_USB_ETH=y"):
         require(option in kernel_config.splitlines(), f"Missing built-in kernel option: {option}")
     require("# CONFIG_BLK_DEV_RAM is not set" in kernel_config.splitlines(),
@@ -144,9 +145,8 @@ def check(images):
             require((target / name).is_file(), f"Missing browser setup prerequisite: {name}")
     else:
         require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
-        if board == 'rpi4':
-            require(not (target / 'etc/agx/setup-enabled').exists(),
-                    'The Pi 4 SSH setup image must start with browser setup disabled')
+        require(not (target / 'etc/agx/setup-enabled').exists(),
+                'The SSH setup image must start with browser setup disabled')
     debugfs = images.parent / "host/sbin/debugfs"
 
     def read_packed(name):
@@ -173,12 +173,11 @@ def check(images):
                 f"Incorrect packed SSH permissions: {name}")
         require(re.search(r"User:\s+0\s+Group:\s+0\b", metadata),
                 f"Incorrect packed SSH ownership: {name}")
-    if generic or board == 'rpi4':
-        for directory in (("root/.ssh", "etc/dropbear") if generic else ("etc/dropbear",)):
-            entries = subprocess.check_output([str(debugfs), "-R", f"ls -p /{directory}", str(images / "rootfs.ext4")],
-                                              stderr=subprocess.DEVNULL, text=True)
-            names = {line.split("/")[5] for line in entries.splitlines() if line.startswith("/")}
-            require(names == {".", ".."}, f"Image contains unexpected SSH files in /{directory}")
+    for directory in (("root/.ssh", "etc/dropbear") if generic else ("etc/dropbear",)):
+        entries = subprocess.check_output([str(debugfs), "-R", f"ls -p /{directory}", str(images / "rootfs.ext4")],
+                                          stderr=subprocess.DEVNULL, text=True)
+        names = {line.split("/")[5] for line in entries.splitlines() if line.startswith("/")}
+        require(names == {".", ".."}, f"Image contains unexpected SSH files in /{directory}")
     if generic:
         shadow = subprocess.check_output([str(debugfs), "-R", "cat /etc/shadow", str(images / "rootfs.ext4")],
                                          stderr=subprocess.DEVNULL)
@@ -194,33 +193,35 @@ def check(images):
         overlay = Path(__file__).resolve().parents[1] / "buildroot/board/agx/rootfs-overlay"
     else:
         packed_files.append("root/.ssh/authorized_keys")
-        if board == 'rpi4':
-            marker = subprocess.check_output([str(debugfs), '-R', 'stat /etc/agx/setup-enabled',
-                                              str(images / 'rootfs.ext4')], stderr=subprocess.DEVNULL)
-            require(not marker.startswith(b'Inode:'),
-                    'Packed Pi 4 SSH setup image enables browser setup')
+        marker = subprocess.check_output([str(debugfs), '-R', 'stat /etc/agx/setup-enabled',
+                                          str(images / 'rootfs.ext4')], stderr=subprocess.DEVNULL)
+        require(not marker.startswith(b'Inode:'), 'Packed SSH setup image enables browser setup')
+    require('dtoverlay=vc4-kms-v3d' in config.splitlines(), f'Missing {label} graphics overlay')
+    for driver in ('CONFIG_DRM_VC4', 'CONFIG_DRM_V3D'):
+        require(any(f'{driver}={kind}' in kernel_config.splitlines() for kind in ('y', 'm')),
+                f'Missing {label} graphics driver: {driver}')
+    for option in ('CONFIG_USER_NS=y', 'CONFIG_SECCOMP_FILTER=y'):
+        require(option in kernel_config.splitlines(), f'Missing browser sandbox option: {option}')
+    packed_files.append('etc/agx/gui.env')
     if board == 'rpi4':
-        require('dtoverlay=vc4-kms-v3d' in config.splitlines(), 'Missing Pi 4 graphics overlay')
-        for driver in ('CONFIG_DRM_VC4', 'CONFIG_DRM_V3D'):
-            require(any(f'{driver}={kind}' in kernel_config.splitlines() for kind in ('y', 'm')),
-                    f'Missing Pi 4 graphics driver: {driver}')
-        for option in ('CONFIG_USER_NS=y', 'CONFIG_SECCOMP_FILTER=y'):
-            require(option in kernel_config.splitlines(), f'Missing browser sandbox option: {option}')
-        packed_files.extend(('etc/agx/gui.env', 'etc/modules-load.d/desktop.conf'))
-        require('AGX_GUI_VNC=on' in (target / 'etc/agx/gui.env').read_text().splitlines(),
-                'Pi 4 / 400 must enable loopback VNC')
-        require((target / 'usr/bin/open').readlink() == Path('agx-gui'), 'Missing desktop open command')
-        check_arm64_files(target, read_packed, (
-            'usr/bin/agx-gui', 'usr/lib/gbm/dri_gbm.so', 'usr/libexec/agx-web',
-            'usr/libexec/wpe-webkit-2.0/WPEWebProcess', 'usr/bin/bwrap', 'usr/bin/xdg-dbus-proxy',
-        ))
+        packed_files.append('etc/modules-load.d/desktop.conf')
+    else:
+        packed_files.append('etc/modules-load.d/agx-display.conf')
+    require('AGX_GUI_VNC=on' in (target / 'etc/agx/gui.env').read_text().splitlines(),
+            f'{label} must enable loopback VNC')
+    require((target / 'usr/bin/open').readlink() == Path('agx-gui'), 'Missing desktop open command')
+    check_arm64_files(target, read_packed, (
+        'usr/bin/agx-gui', 'usr/lib/gbm/dri_gbm.so', 'usr/libexec/agx-web',
+        'usr/libexec/wpe-webkit-2.0/WPEWebProcess', 'usr/bin/bwrap', 'usr/bin/xdg-dbus-proxy',
+    ))
     for name in packed_files:
         packed = read_packed(name)
         require(packed == (target / name).read_bytes(), f"Packed root filesystem differs: {name}")
         if name in generic_defaults:
             require(packed == (overlay / name).read_bytes(), f"Generic image contains unexpected network settings: {name}")
-    if board == 'rpi4':
-        print('PASS: Pi 4 graphics, ANGI desktop, loopback VNC configuration and browser')
+    print(f'PASS: {label} graphics, ANGI desktop, loopback VNC configuration and browser')
+    if board == 'rpi5':
+        print('PASS: Pi 5 PCIe and NVMe kernel support, data-volume mount script')
     if 'BR2_PACKAGE_E2FSPROGS=y' in build_config:
         require((target / 'sbin/mke2fs').is_file() and not (target / 'sbin/mke2fs').is_symlink(),
                 'Real e2fsprogs mke2fs is required for ext4 data volumes')

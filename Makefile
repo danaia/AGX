@@ -8,9 +8,7 @@ prepare configure dependencies build:
 	./scripts/build.sh $@
 check-image:
 	python3 scripts/check-image.py "$(OUT)/images"
-ifeq ($(BOARD),rpi4)
 	cd "$(OUT)/images" && sha256sum sdcard.img > sdcard.img.sha256
-endif
 
 .PHONY: iso
 iso:

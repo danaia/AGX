@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 T1 = (ROOT / "docs/install-prompts/1-card.tmpl").read_text().rstrip("\n")
 T2 = (ROOT / "docs/install-prompts/2-connect.tmpl").read_text().rstrip("\n")
-T2_PI4 = (ROOT / "docs/install-prompts/2-connect-rpi4.tmpl").read_text().rstrip("\n")
+T2_PI = (ROOT / "docs/install-prompts/2-connect-pi.tmpl").read_text().rstrip("\n")
 boards = json.loads((ROOT / "scripts/boards.json").read_text())["boards"]
 
 ASK = """STEP 0 - ASK WHAT ANGI IS GOING ON
@@ -88,7 +88,6 @@ seated? Fix what you can and tell me what to check."""
 FIND_DESKTOP = """Wait for it to start from the drive. Help me find its address (ask me, or check my router
 or the screen) and confirm I can reach it. If it does not start, help me find the boot menu
 key and choose the drive."""
-EXTRA_PI5 = "4. If a monitor is attached, offer to open the desktop (agx desktop).\n"
 WIFI_ZERO = "\nThe Pi Zero 2 W only supports 2.4 GHz Wi-Fi, so help me use a 2.4 GHz network."
 
 
@@ -124,7 +123,7 @@ def for_target(b):
     elif bid == "rpizero2w":
         handoff = steps(*PI_STEPS, "Connect a USB-C DATA cable (not charge-only) from the Pi Zero 2 W's data port to this "
                         "computer. This also powers it.", PI_WAIT)
-    elif bid == "rpi4":
+    elif bid in ("rpi4", "rpi5"):
         handoff = steps(*(t.replace("the Pi", f"the {name}") for t in PI_STEPS),
                         "Connect a USB-C data cable to this computer and power on the Pi. For direct Ethernet, connect the Ethernet cable and use the Pi's own power supply.", PI_WAIT)
     else:
@@ -134,12 +133,12 @@ def for_target(b):
     step0 = PICK.format(name=name, id=bid)
     p1 = render(T1, dict(WHAT=f"The target is my {name}.", MEDIA=("SD card or USB drive" if desktop else "microSD card"),
                          MEDIA_UP=media.upper(), ATTACHED=attached, STEP0=step0, HANDOFF=handoff))
-    if bid == "rpi4":
-        return p1, render(T2_PI4, dict(STEP0=step0))
+    if bid in ("rpi4", "rpi5"):
+        return p1, render(T2_PI, dict(STEP0=step0, TARGET=name))
     link = LINK_DESKTOP if desktop else LINK_ZERO if bid == "rpizero2w" else LINK_USBC_ETH
     p2 = render(T2, dict(WHAT=f"The target is my {name}. The card from part 1 is in it and it is connected to this computer.",
                          STEP0=step0, LINK=link, FIND=FIND_DESKTOP if desktop else FIND_PI,
-                         EXTRA=EXTRA_PI5 if bid == "rpi5" else "",
+                         EXTRA="",
                          WIFI_NOTE=WIFI_ZERO if bid == "rpizero2w" else ""))
     return p1, p2
 
@@ -161,6 +160,13 @@ gs = ROOT / "website/get-started.html"
 for i, g in ((1, g1),):
     sub_block(gs, rf'(<pre\b[^>]*\bdata-prompt="{i}"[^>]*>).*?(</pre>)',
               lambda m, g=g: m.group(1) + html.escape(g, quote=True) + m.group(2))
+download_rows = []
+for board in boards:
+    name = html.escape(board["marketing"]["short"])
+    medium = "USB drive" if board["id"].endswith("-desktop") else "microSD card"
+    download_rows.append(f'        <tr><th scope="row">{name}</th><td>{medium}</td><td>Coming soon</td></tr>')
+sub_block(gs, r'(<tbody id="image-targets">).*?(</tbody>)',
+          lambda m: m.group(1) + "\n" + "\n".join(download_rows) + "\n      " + m.group(2))
 
 OUT = ROOT / "docs/install-prompts"
 targets = []

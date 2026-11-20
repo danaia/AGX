@@ -37,6 +37,12 @@ Targets live in `scripts/boards.json` (`rpi5` ready; `rpi4` experimental; `rpize
 
 Follow the [Pi 4 / 400 provisioning guide](pi4-provisioning.md) to build and verify `sdcard.img`, write it with the workstation SSH public key, and provision the administrator and Wi-Fi in the TUI over the direct link.
 
+### Pi 5 desktop SD image
+
+Run the same build and provisioning sequence with `BOARD=rpi5`. `make check-image BOARD=rpi5` produces `output/images/sdcard.img.sha256`. Verify it before writing the card. The image includes the desktop, loopback VNC, and ANGI Web. After booting it, use [the Pi 5 SSH setup prompt](install-prompts/part2-rpi5.txt).
+
+The Pi 5 boots from microSD and can mount a separate NVMe data partition. Its firmware enables external PCIe for NVMe adapters. Identify the ext4 partition you intend to use with `blkid` on the Pi. Save its filesystem UUID in `/etc/agx/data-volume.uuid` as root and reboot. Verify with `mountpoint /var/lib/agx-data` and `df /var/lib/agx-data`. ANGI mounts only a configured UUID and uses the volume for browser and agent data. On a microSD-only system, Web keeps its data in the signed-in account’s home. [Raspberry Pi PCIe documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html)
+
 ### Pi 4 / 400 hybrid ISO alternative
 
 Build the release in a separate output directory with `AGX_GENERIC_ISO=1 AGX_BUILD_OUTPUT=/absolute/output-rpi4-iso make build BOARD=rpi4`. Run `AGX_BUILD_OUTPUT=/absolute/output-rpi4-iso make iso BOARD=rpi4` with `xorriso` installed or set `XORRISO` to a built copy. Distribute `images/angi-rpi4.iso` and `images/angi-rpi4.iso.sha256` together. The ISO 9660 image contains the FAT boot partition at MBR slot 1 and the ext4 root partition at slot 2. The release check requires empty SSH key directories and default Wi-Fi settings.

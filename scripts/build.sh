@@ -52,11 +52,8 @@ else
         echo "Expected an OpenSSH public key, not a private key or certificate." >&2
         exit 1
     fi
-    local_overlay="$ROOT/.cache/local-overlay"
-    if [[ $BOARD == rpi4 ]]; then
-        local_overlay="$OUTPUT/.ssh-overlay"
-        build_options+=("BR2_ROOTFS_OVERLAY=$ROOT/buildroot/board/agx/rootfs-overlay $FIRMWARE_DIR/rootfs-overlay $local_overlay")
-    fi
+    local_overlay="$OUTPUT/.ssh-overlay"
+    build_options+=("BR2_ROOTFS_OVERLAY=$ROOT/buildroot/board/agx/rootfs-overlay $ROOT/buildroot/board/agx/$BOARD/rootfs-overlay $local_overlay")
     install -d -m 700 "$local_overlay/root/.ssh"
     install -m 600 "$PUBLIC_KEY" "$local_overlay/root/.ssh/authorized_keys"
 fi
@@ -83,6 +80,9 @@ case "$ACTION" in
             if ((${#stage_options[@]})); then
                 brmake "BR2_JLEVEL=${JOBS:-8}" agx-gui-rebuild
             fi
+        fi
+        if grep -q '^BR2_PACKAGE_AGX_WEB=y$' "$OUTPUT/.config"; then
+            brmake "BR2_JLEVEL=${JOBS:-8}" agx-web-rebuild
         fi
         # Buildroot does not otherwise recopy changed external firmware configuration.
         if ! cmp -s "$FIRMWARE_DIR/config.txt" "$OUTPUT/images/rpi-firmware/config.txt" ||

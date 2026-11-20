@@ -136,6 +136,7 @@
     <a href="index.html" aria-label="ANGI home"><svg class="mark"><use href="#mark"/></svg></a>
     <div class="links">
       <a href="index.html">Home</a>
+      <a href="#downloads">Downloads</a>
       <a href="#stuck">If you get stuck</a>
       <a class="btn ghost sm" href="https://github.com/danaia/ANGI">GitHub</a>
     </div>
@@ -148,14 +149,29 @@
     <div class="eyebrow">Get started</div>
     <h1><span class="grad">From a blank card to a</span><br><span class="gradO">live, extensible system.</span></h1>
     <p class="sub">Your coding agent builds ANGI and verifies the SD card on your computer. When the card is ready, it hands you a second prompt to connect to the Pi and finish setup.</p>
-    <div class="cta"><a class="btn primary" href="#pi4-workflow">See the Pi 4 workflow <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+    <div class="cta"><a class="btn primary" href="#pi4-workflow">See the Raspberry Pi workflow <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="btn ghost" href="#downloads">Image downloads</a></div>
   </div>
 </header>
 
 <section style="padding-top:60px">
 <div class="wrap">
-<div class="tl">
 
+  <section class="guide image-downloads" id="downloads" aria-labelledby="downloads-title">
+    <h2 id="downloads-title"><span class="grad">Image downloads</span></h2>
+    <p>Public image and checksum links will appear here when downloads are available.</p>
+    <table>
+      <thead><tr><th scope="col">Target</th><th scope="col">Boot media</th><th scope="col">Download</th></tr></thead>
+      <tbody id="image-targets">
+        <tr><th scope="row">Pi 5</th><td>microSD card</td><td>Coming soon</td></tr>
+        <tr><th scope="row">Pi 4 / 400</th><td>microSD card</td><td>Coming soon</td></tr>
+        <tr><th scope="row">Pi Zero 2 W</th><td>microSD card</td><td>Coming soon</td></tr>
+        <tr><th scope="row">ARM computer</th><td>USB drive</td><td>Coming soon</td></tr>
+        <tr><th scope="row">Intel / AMD computer</th><td>USB drive</td><td>Coming soon</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+<div class="tl">
   <div class="gstep reveal" id="pick">
     <div class="num">00</div>
     <h2><span class="grad">Pick your computer</span></h2>
@@ -163,20 +179,20 @@
     <div class="targets" style="margin-bottom:20px">
   <a class="tcard reveal" href="#pick-zero"><svg class="tico" role="img" aria-label="Pi Zero 2 W"><use href="#t-zero"/></svg><h3>Pi Zero 2 W</h3><p>Tiny and quiet. Needs its own image.</p></a>
   <a class="tcard reveal" href="#pi4-workflow"><svg class="tico" role="img" aria-label="Pi 4 / 400"><use href="#t-pi4"/></svg><h3>Pi 4 / 400</h3><p>Set up over SSH and open the desktop over VNC.</p></a>
-  <a class="tcard reveal" href="#pick-pi5"><svg class="tico" role="img" aria-label="Pi 5"><use href="#t-pi5"/></svg><h3>Pi 5</h3><p>Tested on hardware, with the desktop.</p></a>
+  <a class="tcard reveal" href="#pi4-workflow"><svg class="tico" role="img" aria-label="Pi 5"><use href="#t-pi5"/></svg><h3>Pi 5</h3><p>SSH setup, VNC, and optional NVMe storage.</p></a>
   <a class="tcard reveal" href="#pick-arm"><svg class="tico" role="img" aria-label="ARM desktop"><use href="#t-arm"/></svg><h3>ARM desktop</h3><p>UEFI laptop or desktop. Installs from a USB stick.</p></a>
   <a class="tcard reveal" href="#pick-x86"><svg class="tico" role="img" aria-label="x86-64 desktop"><use href="#t-x86"/></svg><h3>x86-64 desktop</h3><p>Intel or AMD computer. Installs from a USB stick.</p></a>
 </div>
     <div class="stuck">
       <div class="box" id="pick-zero"><span class="tag">Pi Zero 2 W</span><h4>USB-C, Wi-Fi for the web</h4><p>Your agent connects over a USB-C data cable. There is no Ethernet jack, so the Pi reaches the web over Wi-Fi.</p></div>
       <div class="box" id="pick-pi4"><span class="tag">Pi 4 / 400</span><h4>USB-C first</h4><p>Use a USB-C data cable for SSH setup. Direct Ethernet with the Pi’s own power supply is the fallback.</p></div>
-      <div class="box" id="pick-pi5"><span class="tag">Pi 5</span><h4>Ethernet or USB-C</h4><p>Your agent connects over an Ethernet cable or a USB-C data cable, then you can open the desktop.</p></div>
+      <div class="box" id="pick-pi5"><span class="tag">Pi 5</span><h4>USB-C first</h4><p>Boot ANGI from microSD and set it up over SSH. An NVMe drive can be added for data.</p></div>
       <div class="box" id="pick-arm"><span class="tag">ARM computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your ARM computer from it.</p></div>
       <div class="box" id="pick-x86"><span class="tag">Intel / AMD computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your Intel or AMD computer from it.</p></div>
     </div>  </div>
 
   <div class="guide pi4-workflow reveal" id="pi4-workflow">
-    <h2><span class="grad">Pi 4 / 400 setup over SSH</span></h2>
+    <h2><span class="grad">Pi 4 / 400 and Pi 5 setup over SSH</span></h2>
     <p class="workflow-intro">Tested from an erased card on a Raspberry Pi 4 Model B, including Wi-Fi reconnection after reboot and an HTTPS page in ANGI Web.</p>
     <ol class="gsteps">
       <li><span class="n" aria-hidden="true">1</span><div><h3>Build and verify the card</h3><p>Your agent builds <code>sdcard.img</code> with your SSH public key and checks its SHA-256. It identifies the card and waits for your exact erase approval. It then writes, verifies every byte, and ejects the card.</p></div></li>
@@ -184,7 +200,10 @@
       <li><span class="n" aria-hidden="true">3</span><div><h3>Create the administrator and join Wi-Fi</h3><p>In the ANGI terminal dashboard, use <b>Profile</b> (<kbd>1</kbd>) to create your account, then <b>Network</b> (<kbd>4</kbd>) to set the country, scan, and connect. Type passwords in the terminal. The direct cable stays available if Wi-Fi needs another try.</p></div></li>
       <li><span class="n" aria-hidden="true">4</span><div><h3>Open the desktop over VNC</h3><p>Your agent verifies Wi-Fi and opens an SSH tunnel. Connect a VNC viewer for your operating system to the local tunnel port and sign in with your new administrator account. Open ANGI Web to test an HTTPS page.</p></div></li>
     </ol>
-    <a class="btn primary" href="index.html#install-rpi4">Get the Pi 4 install prompt <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    <div class="workflow-actions">
+      <a class="btn primary" href="index.html#install-rpi4">Pi 4 / 400 install prompt</a>
+      <a class="btn ghost" href="index.html#install-rpi5">Pi 5 install prompt</a>
+    </div>
   </div>
 
   <div class="gstep reveal">
@@ -267,7 +286,7 @@ Clone the repository (or reuse a checkout without overwriting my changes). Use
 ~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
 overwriting any key. As my normal user run make configure, make dependencies,
 make build and make check-image, each with BOARD=&lt;my board&gt;. Fix errors and
-resume. Go on only when the image passes the check. For BOARD=rpi4, also verify
+resume. Go on only when the image passes the check. For Pi 4 or Pi 5, also verify
 sdcard.img.sha256 in the selected build&#x27;s images directory.
 
 WATCH THE BUILD. THIS IS REQUIRED.
@@ -327,7 +346,7 @@ continue past this step.</pre></div>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Inspects your computer</b>: OS, disk space, memory, network manager and attached storage.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Clones the repository</b> and reads the build docs, without overwriting local changes.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Reuses or creates an Ed25519 SSH key</b>. The private key never leaves your computer.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>. For Pi 4, it also verifies the checksum of <code>output-rpi4/images/sdcard.img</code>.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>. For Pi 4 and Pi 5, it also verifies the checksum of the built <code>sdcard.img</code>.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Formats the card, after you confirm</b>. It lists the card with <span class="mono">scripts/flash-sd.sh --list</span> and waits for you to reply with its exact path. Then it rechecks the card, wipes the old partition table, writes the image, verifies every byte and ejects it.</span></li>
     </ul>
   </div>
@@ -349,7 +368,7 @@ After:   Computer ── Ethernet or USB-C ── Pi [SD card]</pre></div>
   <div class="gstep reveal">
     <div class="num">06</div>
     <h2><span class="grad">The second prompt: get the system ready</span></h2>
-    <p>Paste the second prompt into a new chat after the card is ready. It guides you through a trusted SSH connection, account setup, and Wi-Fi. On Pi 4, create your account in the terminal dashboard before joining Wi-Fi.</p>
+    <p>Paste the second prompt into a new chat after the card is ready. It guides you through a trusted SSH connection, account setup, and Wi-Fi. On Pi 4 and Pi 5, create your account in the terminal dashboard before joining Wi-Fi.</p>
     <div class="box"><h4>Have your Wi-Fi details ready</h4><p>Bring your Wi-Fi network name, password, and two-letter country code. Enter the password in the terminal when prompted. The agent checks that ANGI can reach the web. A Pi Zero 2 W needs a 2.4 GHz network.</p></div>
     <h3 style="margin:34px 0 12px;font-size:20px">The connection settings your agent uses</h3>
     <p>On Windows, macOS, or Linux, configure the dedicated network adapter in your host’s network settings. Use the address below for that adapter, leave its gateway blank, and keep your existing internet connection in place.</p>

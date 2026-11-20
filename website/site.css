@@ -302,7 +302,14 @@ button.tcard{font:inherit;text-align:left;border:0;cursor:pointer;color:inherit}
 .pi4-workflow .workflow-intro{color:var(--w2);margin-bottom:25px}
 .pi4-workflow .gsteps h3{font-size:17px;margin:3px 0 6px;letter-spacing:normal}
 .pi4-workflow .gsteps p{overflow-wrap:anywhere}
-.pi4-workflow>.btn{margin-top:24px}
+.workflow-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.image-downloads{margin:0 auto 30px}
+.image-downloads h2{margin-bottom:12px;font-size:clamp(24px,3.4vw,34px)}
+.image-downloads p{color:var(--w2);margin-bottom:18px}
+.image-downloads table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
+.image-downloads th,.image-downloads td{padding:10px 8px;border-bottom:1px solid var(--w5)}
+.image-downloads td{color:var(--w2)}
+.image-downloads td:last-child{white-space:nowrap}
 .gsteps a:not(.btn){color:var(--o0);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:600px){.pi4-workflow{margin-left:0}}
 
