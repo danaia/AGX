@@ -62,26 +62,26 @@ LINK_GENERIC = """Ask which link I use, if I did not say:
   USB-C (any Pi): USB-C data cable. Pi 10.77.0.2, me 10.77.0.1.
   ETHERNET (Pi 4 / Pi 5): RJ45 cable and the Pi's own power supply. Pi 10.78.0.2, me 10.78.0.1.
   DESKTOP (ARM or Intel/AMD): no cable. Help me find it on my network or use its screen.
-USB-C: create or reuse the NetworkManager profile agx-direct (MAC
-02:77:00:00:00:01). ETHERNET: create or reuse agx-ethernet on my wired port that is NOT
-carrying my internet; if that is my only wired port, stop and ask. Both: no gateway,
-ipv4.never-default yes, IPv6 off, autoconnect yes. Do not touch my internet connection."""
+Use my host's network settings on the dedicated adapter. For USB, identify the
+adapter by MAC 02:77:00:00:00:01. For Ethernet, use a spare wired port. For both,
+use a /24 prefix and leave the gateway blank. Keep my existing internet route.
+On Linux with NetworkManager, reuse agx-direct for USB or agx-ethernet for RJ45."""
 LINK_USBC_ETH = """Ask me if I am using USB-C or Ethernet, if I did not say.
-USB-C: data cable to the Pi's USB-C port. Pi 10.77.0.2, me 10.77.0.1. Create or reuse the
-NetworkManager profile agx-direct (MAC 02:77:00:00:00:01).
+USB-C: data cable to the Pi's USB-C port. Pi 10.77.0.2, me 10.77.0.1/24.
+Identify the USB Ethernet adapter by MAC 02:77:00:00:00:01.
 ETHERNET: RJ45 cable and the Pi's own power supply. Pi 10.78.0.2, me 10.78.0.1. Create or
-reuse agx-ethernet on my wired port that is NOT carrying my internet; if that is my only
-wired port, stop and ask.
-Both: no gateway, ipv4.never-default yes, IPv6 off, autoconnect yes. Do not touch my
-internet connection."""
+reuse a dedicated wired connection with a /24 prefix. If that port carries my
+internet, stop and ask. Configure the dedicated adapter in the host's network
+settings, leave its gateway blank, and keep my internet route in place. On Linux
+with NetworkManager, reuse agx-direct or agx-ethernet if present."""
 LINK_ZERO = """The Pi Zero 2 W has no Ethernet jack. I use a USB-C data cable.
-Pi 10.77.0.2, me 10.77.0.1. Create or reuse the NetworkManager profile agx-direct (MAC
-02:77:00:00:00:01): no gateway, ipv4.never-default yes, IPv6 off, autoconnect yes. Do not
-touch my internet connection."""
+Pi 10.77.0.2, me 10.77.0.1/24. Use the host's network settings to configure the
+dedicated USB adapter (MAC 02:77:00:00:00:01). Leave its gateway blank and keep
+my internet route in place. On Linux with NetworkManager, reuse agx-direct if present."""
 LINK_DESKTOP = """There is no cable profile for this target. Ask me how it is reachable (it is on my network,
 or I have its screen and keyboard) and help me connect that way."""
-FIND_PI = """Wait up to 2 minutes for it to boot. For USB, look for a new network adapter (usually
-enx...) and bring up agx-direct; for Ethernet bring up agx-ethernet. Confirm the route and
+FIND_PI = """Wait up to 2 minutes for it to boot. For USB, look for a new Ethernet adapter. For
+direct Ethernet, check that the dedicated wired port has a link. Confirm the route and
 ping it. If it does not appear, go through: data cable (not charge-only)? powered, with the
 red LED on and the green LED blinking? another USB port or the Pi's own supply? card fully
 seated? Fix what you can and tell me what to check."""

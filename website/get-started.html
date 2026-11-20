@@ -14,8 +14,6 @@
   .page-hero .wrap{position:relative}
   .page-hero .bug{width:84px;margin-bottom:34px}
   .page-hero h1{font-size:clamp(36px,5.4vw,64px)}
-  .time{display:inline-flex;gap:10px;margin-top:30px;flex-wrap:wrap;justify-content:center}
-  .time span{padding:8px 16px;border-radius:999px;font-size:13px;color:var(--w2);background:rgba(255,255,255,.05);box-shadow:0 0 0 1px rgba(255,255,255,.07) inset}
 
   .tl{position:relative;max-width:860px;margin:0 auto;padding:30px 0 20px}
   .tl::before{content:"";position:absolute;left:23px;top:40px;bottom:40px;width:2px;background:linear-gradient(180deg,rgba(255,106,26,.9),rgba(255,106,26,.25) 45%,rgba(255,255,255,.08))}
@@ -149,8 +147,8 @@
     <a href="index.html" aria-label="ANGI home"><svg class="bug"><use href="#bug"/></svg></a>
     <div class="eyebrow">Get started</div>
     <h1><span class="grad">From a blank card to a</span><br><span class="gradO">live, extensible system.</span></h1>
-    <p class="sub" style="margin-bottom:0">Your coding agent runs the whole install and guides you through it. You paste one prompt. Your agent builds ANGI, watches the build and keeps you posted, and puts it on an SD card on your computer. It then tells you how to move the card into the Pi, and gives you a short second prompt to get the system ready. No ISO, no installer.</p>
-    <div class="time"><span>One prompt</span><span>Card first</span><span>Ethernet or USB-C</span><span>Wi-Fi, verified</span><span>No ISO</span></div>
+    <p class="sub">Your coding agent builds ANGI and verifies the SD card on your computer. When the card is ready, it hands you a second prompt to connect to the Pi and finish setup.</p>
+    <div class="cta"><a class="btn primary" href="#pi4-workflow">See the Pi 4 workflow <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
   </div>
 </header>
 
@@ -164,18 +162,30 @@
     <p>Your agent starts by asking what ANGI is going on. Here is what happens for each answer.</p>
     <div class="targets" style="margin-bottom:20px">
   <a class="tcard reveal" href="#pick-zero"><svg class="tico" role="img" aria-label="Pi Zero 2 W"><use href="#t-zero"/></svg><h3>Pi Zero 2 W</h3><p>Tiny and quiet. Needs its own image.</p></a>
-  <a class="tcard reveal" href="#pick-pi4"><svg class="tico" role="img" aria-label="Pi 4 / 400"><use href="#t-pi4"/></svg><h3>Pi 4 / 400</h3><p>Headless image: SSH, dashboard, Wi-Fi, agent.</p></a>
+  <a class="tcard reveal" href="#pi4-workflow"><svg class="tico" role="img" aria-label="Pi 4 / 400"><use href="#t-pi4"/></svg><h3>Pi 4 / 400</h3><p>Set up over SSH and open the desktop over VNC.</p></a>
   <a class="tcard reveal" href="#pick-pi5"><svg class="tico" role="img" aria-label="Pi 5"><use href="#t-pi5"/></svg><h3>Pi 5</h3><p>Tested on hardware, with the desktop.</p></a>
   <a class="tcard reveal" href="#pick-arm"><svg class="tico" role="img" aria-label="ARM desktop"><use href="#t-arm"/></svg><h3>ARM desktop</h3><p>UEFI laptop or desktop. Installs from a USB stick.</p></a>
   <a class="tcard reveal" href="#pick-x86"><svg class="tico" role="img" aria-label="x86-64 desktop"><use href="#t-x86"/></svg><h3>x86-64 desktop</h3><p>Intel or AMD computer. Installs from a USB stick.</p></a>
 </div>
     <div class="stuck">
       <div class="box" id="pick-zero"><span class="tag">Pi Zero 2 W</span><h4>USB-C, Wi-Fi for the web</h4><p>Your agent connects over a USB-C data cable. There is no Ethernet jack, so the Pi reaches the web over Wi-Fi.</p></div>
-      <div class="box" id="pick-pi4"><span class="tag">Pi 4 / 400</span><h4>Ethernet or USB-C</h4><p>Your agent connects over an Ethernet cable or a USB-C data cable. Use a 5 V / 3 A power supply.</p></div>
+      <div class="box" id="pick-pi4"><span class="tag">Pi 4 / 400</span><h4>USB-C first</h4><p>Use a USB-C data cable for SSH setup. Direct Ethernet with the Pi’s own power supply is the fallback.</p></div>
       <div class="box" id="pick-pi5"><span class="tag">Pi 5</span><h4>Ethernet or USB-C</h4><p>Your agent connects over an Ethernet cable or a USB-C data cable, then you can open the desktop.</p></div>
       <div class="box" id="pick-arm"><span class="tag">ARM computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your ARM computer from it.</p></div>
       <div class="box" id="pick-x86"><span class="tag">Intel / AMD computer</span><h4>Install to a drive</h4><p>Your agent prepares an SD card or USB drive. You start your Intel or AMD computer from it.</p></div>
     </div>  </div>
+
+  <div class="guide pi4-workflow reveal" id="pi4-workflow">
+    <h2><span class="grad">Pi 4 / 400 setup over SSH</span></h2>
+    <p class="workflow-intro">Tested from an erased card on a Raspberry Pi 4 Model B, including Wi-Fi reconnection after reboot and an HTTPS page in ANGI Web.</p>
+    <ol class="gsteps">
+      <li><span class="n" aria-hidden="true">1</span><div><h3>Build and verify the card</h3><p>Your agent builds <code>sdcard.img</code> with your SSH public key and checks its SHA-256. It identifies the card and waits for your exact erase approval. It then writes, verifies every byte, and ejects the card.</p></div></li>
+      <li><span class="n" aria-hidden="true">2</span><div><h3>Boot and connect over USB-C</h3><p>Move the card into the powered-off Pi, connect a USB-C data cable to your computer, and power it on. Paste the second prompt in a new chat. Your agent checks the new SSH fingerprint before connecting. Use direct Ethernet and the Pi’s power supply if you need the fallback.</p></div></li>
+      <li><span class="n" aria-hidden="true">3</span><div><h3>Create the administrator and join Wi-Fi</h3><p>In the ANGI terminal dashboard, use <b>Profile</b> (<kbd>1</kbd>) to create your account, then <b>Network</b> (<kbd>4</kbd>) to set the country, scan, and connect. Type passwords in the terminal. The direct cable stays available if Wi-Fi needs another try.</p></div></li>
+      <li><span class="n" aria-hidden="true">4</span><div><h3>Open the desktop over VNC</h3><p>Your agent verifies Wi-Fi and opens an SSH tunnel. Connect a VNC viewer for your operating system to the local tunnel port and sign in with your new administrator account. Open ANGI Web to test an HTTPS page.</p></div></li>
+    </ol>
+    <a class="btn primary" href="index.html#install-rpi4">Get the Pi 4 install prompt <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+  </div>
 
   <div class="gstep reveal">
     <div class="num">01</div>
@@ -185,10 +195,10 @@
     <ul class="l">
       <li><svg class="i"><use href="#i-check"/></svg><span>An <b>AI agent that can run commands</b>, open on your computer. Any harness or IDE works: <b class="or">Codex</b>, <b class="or">Claude Code</b>, <b class="or">Cursor</b>, <b class="or">OpenCode</b>, <b class="or">Hermes</b> and others.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>Your <b>Raspberry Pi</b> (Zero 2 W, 4, 400 or 5), or an <b>ARM</b> or <b>Intel/AMD</b> computer. See step 00.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span><b>One cable to your computer</b>: an <b>RJ45 Ethernet</b> cable (the Pi on its own power supply), or a <b>USB-A to USB-C data cable</b>. A charge-only cable will not work.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>A <b>USB data cable</b> that fits your computer and the Pi, or an <b>Ethernet cable</b> and a power supply if your Pi has an Ethernet port.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>A <b>microSD card you can erase</b>. A 32 GB card has been tested.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>A <b>card reader</b> connected to your computer.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span>An <b>Arch Linux computer using NetworkManager</b>, with internet access. This is the tested setup.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span>A computer with internet access. The build and card-writing tools run on <b>Linux</b>. On <b>Windows or macOS</b>, use a Linux environment with direct access to the card reader, or prepare the card on a separate Linux computer. Use your host’s network settings, SSH client, and VNC viewer for setup.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span>Your <b>Wi-Fi network name, password and two-letter country code</b>. ANGI joins Wi-Fi during setup.</span></li>
     </ul>
   </div>
@@ -202,7 +212,7 @@
     └── Card reader ── SD card   (formatted here, by your agent)
 
 THE PI: off, card slot empty, not connected yet</pre></div>
-    <div class="box"><h4>Everything on the selected card will be erased.</h4><p>That includes its partition table and any earlier install. Your agent shows you the card's path, size, model and contents and waits for you to type its path before it erases anything. Disconnect other removable drives to make the card easier to identify.</p></div>
+    <div class="box"><h4>Everything on the selected card will be erased</h4><p>Your agent shows the card’s device path, size, model, serial and contents. It waits for you to type the erase confirmation with the exact device path.</p></div>
   </div>
 
   <div class="gstep reveal">
@@ -245,10 +255,12 @@ continue only if I agree. Never write another target&#x27;s image to my drive, a
 wipe this computer&#x27;s disks or any disk I did not choose.
 
 STEP 1 - CHECK THIS COMPUTER
-Check the OS, free disk space (need 20 GB), memory and NetworkManager, and that
-my microSD card (or SD card or USB drive) is attached to THIS computer, in a card reader. Install missing tools: base-devel git curl bc wget cpio unzip rsync
-python openssh xz util-linux. If this is not Arch + NetworkManager, tell me what is
-different before changing anything.
+Check the host operating system, free disk space (need 20 GB), memory, and that
+my microSD card (or SD card or USB drive) is attached to THIS computer, in a card reader. The repository build and card writer use Linux. On macOS or Windows,
+use a Linux environment that can access the physical card reader, or a separate
+Linux computer. Confirm that access before proceeding. Check the build dependencies
+and use the Linux distribution&#x27;s package manager to install missing tools with approval.
+Use the host&#x27;s network settings for the direct link in part 2.
 
 STEP 2 - GET AND BUILD ANGI
 Clone the repository (or reuse a checkout without overwriting my changes). Use
@@ -278,7 +290,8 @@ computer for this step. If it is not attached here, stop and ask me to attach it
    serial, and what is on it. If there are several or I might not recognize it,
    ask me which. Never use a disk that holds this computer&#x27;s system.
 2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
-   exact path, like &quot;erase /dev/sdb&quot;. Anything else means no.
+   approval in the form &quot;erase DEVICE&quot;, using the exact whole-device path reported
+   by the Linux card writer. Anything else means no.
 3. Then run scripts/flash-sd.sh --board BOARD --image IMAGE --device PATH --confirm-erase PATH.
    IMAGE is the sdcard.img from the build that passed the check.
    It wipes the old partitions, writes the image, checks every byte, and ejects.
@@ -314,10 +327,9 @@ continue past this step.</pre></div>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Inspects your computer</b>: OS, disk space, memory, network manager and attached storage.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Clones the repository</b> and reads the build docs, without overwriting local changes.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Reuses or creates an Ed25519 SSH key</b>. The private key never leaves your computer.</span></li>
-      <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>, and continues only when <span class="mono">output/images/sdcard.img</span> passes validation.</span></li>
+      <li><svg class="i"><use href="#i-check"/></svg><span><b>Builds the image</b> with <span class="mono or">make configure</span>, <span class="mono or">make dependencies</span>, <span class="mono or">make build</span> and <span class="mono or">make check-image</span>. For Pi 4, it also verifies the checksum of <code>output-rpi4/images/sdcard.img</code>.</span></li>
       <li><svg class="i"><use href="#i-check"/></svg><span><b>Formats the card, after you confirm</b>. It lists the card with <span class="mono">scripts/flash-sd.sh --list</span> and waits for you to reply with its exact path. Then it rechecks the card, wipes the old partition table, writes the image, verifies every byte and ejects it.</span></li>
     </ul>
-    <div class="box"><h4>One raw image, not an installer</h4><p>The card receives a single disk image. There is no ISO to boot, no installer to click through and no setup wizard. The same image is what the Pi runs.</p></div>
   </div>
 
   <div class="gstep reveal">
@@ -337,25 +349,20 @@ After:   Computer ── Ethernet or USB-C ── Pi [SD card]</pre></div>
   <div class="gstep reveal">
     <div class="num">06</div>
     <h2><span class="grad">The second prompt: get the system ready</span></h2>
-    <p>Your agent gives you this second prompt when the build and the card are finished, so you do not need it yet. Paste it into a new chat. It sets up the link to the Pi and connects safely. Then it does the most important step: <b>it joins ANGI to your Wi-Fi</b> and confirms the Pi can reach the web. After that it sets up your account and checks every service.</p>
-    <div class="box"><h4>ANGI must be on Wi-Fi</h4><p>The cable only carries this setup; Wi-Fi is how ANGI reaches the web. Have your <b>Wi-Fi network name, password and two-letter country code</b> ready. You type the password privately, with the screen echo off, never into the chat. The agent does not finish until <span class="mono">agx wifi check</span> passes. A Pi Zero 2 W needs a 2.4 GHz network.</p></div>
+    <p>Paste the second prompt into a new chat after the card is ready. It guides you through a trusted SSH connection, account setup, and Wi-Fi. On Pi 4, create your account in the terminal dashboard before joining Wi-Fi.</p>
+    <div class="box"><h4>Have your Wi-Fi details ready</h4><p>Bring your Wi-Fi network name, password, and two-letter country code. Enter the password in the terminal when prompted. The agent checks that ANGI can reach the web. A Pi Zero 2 W needs a 2.4 GHz network.</p></div>
     <h3 style="margin:34px 0 12px;font-size:20px">The connection settings your agent uses</h3>
-    <p>Your computer and the Pi talk over a direct cable with no router. These are the settings your agent uses.</p>
+    <p>On Windows, macOS, or Linux, configure the dedicated network adapter in your host’s network settings. Use the address below for that adapter, leave its gateway blank, and keep your existing internet connection in place.</p>
     <div class="three">
-      <div class="box"><span class="tag">USB-C Ethernet</span><h4>Pi at 10.77.0.2</h4><p>The Pi appears as an Ethernet device on the USB-C cable. Your computer uses 10.77.0.1/24 with no gateway. Profile: <span class="mono">agx-direct</span>.</p></div>
-      <div class="box"><span class="tag">RJ45 Ethernet</span><h4>Pi at 10.78.0.2</h4><p>A direct RJ45 cable between the two computers, with yours at 10.78.0.1/24 and the Pi on <span class="mono">eth0</span>. No router. Profile: <span class="mono">agx-ethernet</span>. Power the Pi from its own supply.</p></div>
+      <div class="box"><span class="tag">USB-C Ethernet</span><h4>Pi at 10.77.0.2</h4><p>When the Pi appears as an Ethernet adapter over USB, give that adapter on your computer the address 10.77.0.1/24.</p></div>
+      <div class="box"><span class="tag">RJ45 Ethernet</span><h4>Pi at 10.78.0.2</h4><p>Connect a direct Ethernet cable and set your computer’s dedicated port to 10.78.0.1/24. Power the Pi from its own supply.</p></div>
       <div class="box"><span class="tag">Wi-Fi</span><h4>The web</h4><p>The cable has no gateway, so it does not share your internet. The Pi reaches the web over Wi-Fi, which you set up from its dashboard.</p></div>
     </div>
-    <div class="code"><span class="cap">One-time network profile on your computer (USB-C)</span><button class="cp" data-target="nm">Copy</button><pre id="nm">nmcli connection add type ethernet ifname '*' con-name agx-direct \
+    <div class="code"><span class="cap">Linux example using NetworkManager</span><button class="cp" data-target="nm">Copy</button><pre id="nm">nmcli connection add type ethernet ifname '*' con-name agx-direct \
   802-3-ethernet.mac-address 02:77:00:00:00:01 \
   ipv4.method manual ipv4.addresses 10.77.0.1/24 ipv4.never-default yes \
   ipv6.method disabled connection.autoconnect yes</pre></div>
-    <div class="code"><span class="cap">Check the link and sign in</span><button class="cp" data-target="ssh">Copy</button><pre id="ssh">nmcli device status
-ping -c 3 10.77.0.2
-ssh -i ~/.ssh/id_ed25519 root@10.77.0.2   # USB-C
-# or: ssh -i ~/.ssh/id_ed25519 root@10.78.0.2   (Ethernet)
-agx status --json</pre></div>
-    <p style="font-size:15px">The first connection asks you to trust the Pi's new host key. Reflashing produces new host keys, so check the fingerprint before removing an old entry with <span class="mono">ssh-keygen -R 10.77.0.2</span>.</p>
+    <p>Use your SSH client to connect to the Pi’s address with the key used to build the card. Check the host fingerprint before trusting it. If an existing fingerprint changes unexpectedly, verify the device’s identity before reconnecting.</p>
   </div>
 
   <div class="gstep reveal">

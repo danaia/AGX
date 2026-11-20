@@ -20,10 +20,12 @@ Repository: https://github.com/danaia/ANGI.git
 
 {{STEP0}}
 STEP 1 - CHECK THIS COMPUTER
-Check the OS, free disk space (need 20 GB), memory and NetworkManager, and that
-{{ATTACHED}}. Install missing tools: base-devel git curl bc wget cpio unzip rsync
-python openssh xz util-linux. If this is not Arch + NetworkManager, tell me what is
-different before changing anything.
+Check the host operating system, free disk space (need 20 GB), memory, and that
+{{ATTACHED}}. The repository build and card writer use Linux. On macOS or Windows,
+use a Linux environment that can access the physical card reader, or a separate
+Linux computer. Confirm that access before proceeding. Check the build dependencies
+and use the Linux distribution's package manager to install missing tools with approval.
+Use the host's network settings for the direct link in part 2.
 
 STEP 2 - GET AND BUILD ANGI
 Clone the repository (or reuse a checkout without overwriting my changes). Use
@@ -53,7 +55,8 @@ computer for this step. If it is not attached here, stop and ask me to attach it
    serial, and what is on it. If there are several or I might not recognize it,
    ask me which. Never use a disk that holds this computer's system.
 2. Say clearly that EVERYTHING on it will be erased. Wait for me to type the
-   exact path, like "erase /dev/sdb". Anything else means no.
+   approval in the form "erase DEVICE", using the exact whole-device path reported
+   by the Linux card writer. Anything else means no.
 3. Then run scripts/flash-sd.sh --board BOARD --image IMAGE --device PATH --confirm-erase PATH.
    IMAGE is the sdcard.img from the build that passed the check.
    It wipes the old partitions, writes the image, checks every byte, and ejects.

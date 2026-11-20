@@ -9,12 +9,12 @@ stop and tell me so in plain words.
 
 STEP 1 - CONNECT OVER USB-C
 Use the direct USB-C data cable by default. Use direct Ethernet and the Pi's own
-power supply if I chose Ethernet. For USB, reuse or create the NetworkManager
-profile agx-direct for MAC 02:77:00:00:00:01. Use workstation 10.77.0.1/24 and
-Pi 10.77.0.2. For Ethernet, reuse or create agx-ethernet on the dedicated wired
-port, with workstation 10.78.0.1/24 and Pi 10.78.0.2. Set no gateway,
-ipv4.never-default yes, and ipv6.method disabled. Keep the workstation's internet
-connection in place.
+power supply if I chose Ethernet. Use the host's network settings to configure
+only the dedicated adapter. For USB, match the Ethernet adapter with MAC
+02:77:00:00:00:01. Set the computer to 10.77.0.1/24 and reach the Pi at
+10.77.0.2. For Ethernet, use 10.78.0.1/24 and reach the Pi at 10.78.0.2. Leave
+the gateway blank and keep the existing internet route. On Linux with
+NetworkManager, reuse agx-direct or agx-ethernet if present.
 Check the route and source address before connecting. If the Pi fails to appear,
 check the cable, power, activity LED and card seating with me.
 
@@ -38,8 +38,9 @@ retry. Report what is still pending.
 Verify that the named administrator can reconnect. Report the current Wi-Fi address.
 
 STEP 4 - OPEN THE DESKTOP
-Open a local OpenSSH tunnel from a free workstation loopback port to the Pi's
+Open an SSH tunnel from a free workstation loopback port to the Pi's
 127.0.0.1:5900 over the trusted direct connection. Verify an RFB greeting, then
-open Remmina against that local port with Remmina's built-in SSH tunnel disabled.
+connect a VNC viewer for the host operating system to that local port. If the
+viewer offers its own SSH tunnel, leave it disabled while using this forward.
 Let me sign in to ANGI with the administrator account. Check agx services --json.
 Tell me how to reconnect over the cable or Wi-Fi and how to shut down safely.
