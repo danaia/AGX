@@ -2,20 +2,20 @@
 // the top of <body> so every page can reference symbols with <use href="#id">.
 document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <defs>
-    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9a9a9a"/></linearGradient>
-    <linearGradient id="bugg" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#d9d9d9"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient>
-    <linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#D9500B"/></linearGradient>
+    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#474747"/><stop offset="1" stop-color="#6e6e6e"/></linearGradient>
+    <linearGradient id="bugg" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dcdcdc"/></linearGradient>
+    <linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e6e6e"/><stop offset="1" stop-color="#474747"/></linearGradient>
     <linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2a"/><stop offset=".5" stop-color="#171717"/><stop offset="1" stop-color="#0e0e0e"/></linearGradient>
     <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8e8e8"/><stop offset=".5" stop-color="#8c8c8c"/><stop offset="1" stop-color="#3a3a3a"/></linearGradient>
     <linearGradient id="chip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#141414"/></linearGradient>
-    <radialGradient id="hotg"><stop offset="0" stop-color="#FF6A1A" stop-opacity=".55"/><stop offset="1" stop-color="#FF6A1A" stop-opacity="0"/></radialGradient>
+    <radialGradient id="hotg"><stop offset="0" stop-color="#6e6e6e" stop-opacity=".4"/><stop offset="1" stop-color="#6e6e6e" stop-opacity="0"/></radialGradient>
   </defs>
 
   <!-- install targets: line-art board and computer icons -->
   <symbol id="t-zero" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="8" y="22" width="104" height="40" rx="6"/>
     <circle cx="16" cy="30" r="2"/><circle cx="104" cy="30" r="2"/><circle cx="16" cy="54" r="2"/><circle cx="104" cy="54" r="2"/>
-    <rect x="46" y="32" width="22" height="20" rx="2" style="stroke:#FF8A3D"/>
+    <rect x="46" y="32" width="22" height="20" rx="2" style="stroke:#474747"/>
     <path d="M24 40h12M24 46h12"/>
     <path d="M30 62v6h14v-6M62 62v5h9v-5M80 62v5h9v-5"/>
     <path d="M112 36h4v16h-4"/>
@@ -24,7 +24,7 @@ document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style=
   <symbol id="t-pi4" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="6" y="8" width="108" height="64" rx="6"/>
     <path d="M26 12h40" stroke-dasharray="2 4"/>
-    <rect x="44" y="28" width="24" height="24" rx="2" style="stroke:#FF8A3D"/>
+    <rect x="44" y="28" width="24" height="24" rx="2" style="stroke:#474747"/>
     <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
     <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5M56 72v-5h8v5"/>
     <rect x="14" y="30" width="14" height="14" rx="2"/>
@@ -33,7 +33,7 @@ document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style=
   <symbol id="t-pi5" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="6" y="8" width="108" height="64" rx="6"/>
     <path d="M26 12h40" stroke-dasharray="2 4"/>
-    <rect x="40" y="26" width="30" height="28" rx="3" style="stroke:#FF8A3D"/><path d="M47 33h16v14H47z" style="stroke:#FF8A3D"/>
+    <rect x="40" y="26" width="30" height="28" rx="3" style="stroke:#474747"/><path d="M47 33h16v14H47z" style="stroke:#474747"/>
     <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
     <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5"/>
     <circle cx="62" cy="67" r="3"/><circle cx="82" cy="20" r="3"/>
@@ -43,19 +43,19 @@ document.body.insertAdjacentHTML('afterbegin', `<svg width="0" height="0" style=
   <symbol id="t-arm" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="22" y="10" width="76" height="48" rx="4"/>
     <path d="M10 66h100l-6 6H16z"/>
-    <rect x="50" y="24" width="20" height="20" rx="2" style="stroke:#FF8A3D"/>
-    <path d="M55 20v4M60 20v4M65 20v4M55 44v4M60 44v4M65 44v4M46 29h4M46 34h4M46 39h4M70 29h4M70 34h4M70 39h4" style="stroke:#FF8A3D"/>
+    <rect x="50" y="24" width="20" height="20" rx="2" style="stroke:#474747"/>
+    <path d="M55 20v4M60 20v4M65 20v4M55 44v4M60 44v4M65 44v4M46 29h4M46 34h4M46 39h4M70 29h4M70 34h4M70 39h4" style="stroke:#474747"/>
   </symbol>
   <symbol id="t-x86" viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="8" y="8" width="38" height="64" rx="4"/>
-    <path d="M16 18h22M16 26h22"/><circle cx="27" cy="58" r="4" style="stroke:#FF8A3D"/>
+    <path d="M16 18h22M16 26h22"/><circle cx="27" cy="58" r="4" style="stroke:#474747"/>
     <rect x="58" y="14" width="54" height="36" rx="3"/>
     <path d="M85 50v10M72 62h26"/>
-    <path d="M70 26l8 8m0-8l-8 8M84 34h14" style="stroke:#FF8A3D"/>
+    <path d="M70 26l8 8m0-8l-8 8M84 34h14" style="stroke:#474747"/>
   </symbol>
 
   <!-- brand-bug.svg -->
-  <symbol id="bug" viewBox="0 0 231 218"><path fill="url(#bugg)" d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/></symbol>
+  <symbol id="bug" viewBox="0 0 231 218"><path fill="currentColor" d="M94.4612 214.137C78.7418 223.442 57.4742 215.067 54.7002 198.318C33.4326 203.901 14.9391 187.152 19.5625 166.681C-0.780352 162.028 -5.40373 136.904 8.4664 122.016C-6.32841 107.128 -0.780352 82.0038 17.7132 74.5597C12.1651 54.0884 27.8846 35.4781 48.2275 36.4086C50.0768 15.0068 72.269 3.84061 89.8379 14.0763C101.859 -4.53402 127.75 -4.53402 139.77 13.1458C159.189 2.91009 180.456 15.0068 181.381 35.4781C203.573 34.5476 218.368 54.0884 212.82 74.5597C232.238 83.8648 236.861 106.197 222.991 122.946C236.861 139.696 228.539 162.028 210.046 168.542C214.669 189.013 194.326 205.762 174.908 198.318C170.285 215.067 150.866 222.511 131.448 214.137L127.75 189.943C145.318 180.638 157.339 159.236 159.189 136.904L160.113 110.85C160.113 100.614 150.866 95.031 136.996 95.9615C112.955 98.7531 94.4612 93.17 96.3106 75.4902C76.8924 80.1428 66.721 93.17 65.7963 109.919L68.5703 137.835C70.4197 160.167 82.4405 179.708 98.1599 189.943L94.4612 214.137Z"/></symbol>
 
   <!-- brand-mark-text.svg -->
   <symbol id="mark" viewBox="0 0 711 239" fill="url(#wg)">

@@ -34,10 +34,10 @@
         <div class="txt">
           <h3>${esc(img.short)}</h3>
           <p>${esc(img.blurb)}</p>
-          <div class="meta">${published(img) ? 'Ready to install' : 'Image coming soon'}</div>
+          <div class="meta">${statusTag(img)}</div>
         </div>
         <div class="acts">
-          <a class="btn primary sm" href="get-started.html#${img.id}">${icon('i-chat')} Install prompt</a>
+          <a class="btn sm" href="get-started.html#${img.id}">${icon('i-chat')} Install prompt</a>
         </div>
       </article>`).join('');
   });
@@ -58,7 +58,7 @@
           </dl>
         </div>
         <div class="acts">
-          <a class="btn primary" href="get-started.html#${img.id}">${icon('i-chat')} Install prompt</a>
+          <a class="btn" href="get-started.html#${img.id}">${icon('i-chat')} Install prompt</a>
           ${published(img) ? `<a class="btn ghost" href="${esc(imageUrl(img))}">${icon('i-download')} Image file</a>` : ''}
         </div>
       </article>`).join('');

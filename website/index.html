@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ANGI — The operating system that builds itself</title>
 <meta name="description" content="ANGI is a tiny, from-source operating system for AI coding agents. Paste one prompt and your coding agent downloads the image and writes your card. Code on the device or from your computer over USB-C or Ethernet.">
-<meta name="theme-color" content="#050505">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#ebebeb">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23ebebeb'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%236e6e6e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
 <script src="images.js"></script>
 </head>
@@ -15,7 +19,7 @@
 
 <nav id="nav" aria-label="Main">
   <div class="wrap">
-    <a href="index.html" aria-label="ANGI home"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg></a>
+    <a href="index.html" aria-label="ANGI home"><svg class="logo" aria-hidden="true"><use href="#bug"/></svg></a>
     <button class="menu" type="button" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
     <div class="links">
       <a href="get-started.html">Install</a>
@@ -29,14 +33,35 @@
 
 <main>
 <header class="hero">
-  <div class="wrap">
-    <svg class="bug" role="img" aria-label="ANGI"><use href="#bug"/></svg>
-    <div class="eyebrow">The OS for AI coding agents</div>
-    <h1><span class="grad">The operating system</span><br><span class="grad">that builds itself.</span><br></h1>
+  <div class="wrap hero-grid">
+    <div>
+    <h1><span class="grad">The operating system</span><br><span>that builds itself.</span><br></h1>
     <p class="sub">ANGI is a tiny operating system built from source, with no distro underneath. Paste one prompt and your coding agent downloads the ready-made image and writes to your card. Plug in a USB-C. That's it.</p>
     <div class="cta">
       <a class="btn primary" href="#images"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a>
       <a class="btn ghost" href="get-started.html">What to expect <svg class="i"><use href="#i-arrow"/></svg></a>
+    </div>
+    </div>
+    <div class="hero-art">
+      <!-- Pebble cover composition: one graphite slab bled off the top, a soft
+           pill of discs, an ink disc holding the ANGI mark, a rule pill. -->
+      <svg viewBox="0 0 480 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="ANGI">
+        <rect class="graphite" x="40" y="-40" width="160" height="384" rx="40"/>
+        <circle class="cut" cx="96" cy="304" r="6"/><circle class="cut" cx="120" cy="304" r="6"/><circle class="cut" cx="144" cy="304" r="6"/>
+        <rect class="soft-fill" x="216" y="120" width="112" height="224" rx="56"/>
+        <g class="dot">
+          <circle cx="248" cy="160" r="6"/><circle cx="272" cy="160" r="6"/><circle cx="296" cy="160" r="6"/>
+          <circle cx="248" cy="184" r="6"/><circle cx="272" cy="184" r="6"/><circle cx="296" cy="184" r="6"/>
+          <circle cx="248" cy="208" r="6"/><circle cx="272" cy="208" r="6"/><circle cx="296" cy="208" r="6"/>
+          <circle cx="248" cy="232" r="6"/><circle cx="272" cy="232" r="6"/><circle cx="296" cy="232" r="6"/>
+          <circle cx="248" cy="256" r="6"/><circle cx="272" cy="256" r="6"/><circle cx="296" cy="256" r="6"/>
+          <circle cx="248" cy="280" r="6"/><circle cx="272" cy="280" r="6"/><circle cx="296" cy="280" r="6"/>
+          <circle cx="248" cy="304" r="6"/><circle cx="272" cy="304" r="6"/><circle cx="296" cy="304" r="6"/>
+        </g>
+        <circle class="ink" cx="400" cy="160" r="64"/>
+        <use class="bug-on-ink" href="#bug" x="368" y="130" width="64" height="60"/>
+        <rect class="rule" x="344" y="304" width="112" height="40" rx="20"/>
+      </svg>
     </div>
   </div>
 </header>

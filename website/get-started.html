@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Get started — ANGI</title>
 <meta name="description" content="Install ANGI in a few steps: download the image for your system, write it, plug in, and finish setup in your browser.">
-<meta name="theme-color" content="#050505">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#ebebeb">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23ebebeb'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%236e6e6e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
 <script src="images.js"></script>
 <script src="prompts.js"></script>
@@ -16,7 +20,7 @@
 
 <nav id="nav" aria-label="Main">
   <div class="wrap">
-    <a href="index.html" aria-label="ANGI home"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg></a>
+    <a href="index.html" aria-label="ANGI home"><svg class="logo" aria-hidden="true"><use href="#bug"/></svg></a>
     <button class="menu" type="button" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
     <div class="links">
       <a href="get-started.html" aria-current="page">Install</a>
@@ -31,8 +35,7 @@
 <main>
 <header class="hero page-hero">
   <div class="wrap">
-    <div class="eyebrow">Install</div>
-    <h1><span class="grad">One prompt.</span><br><span class="grad">Your agent installs ANGI.</span></h1>
+    <h1><span class="grad">One prompt.</span><br><span>Your agent installs ANGI.</span></h1>
     <p class="sub">Pick your system and copy its prompt into your coding agent. It downloads the image, writes your card, and tells you when to move the card and plug in USB-C.</p>
   </div>
 </header>
@@ -54,7 +57,7 @@
       <div class="eyebrow">If something goes wrong</div>
       <h2 id="stuck-title"><span class="grad">Quick fixes.</span></h2>
     </div>
-    <div class="reveal">
+    <div class="faqs panel reveal">
       <details class="faq"><summary>My agent cannot run the prompt</summary><p>Use an agent that can run commands on your computer, such as Claude Code, Codex, Cursor's agent mode or OpenCode. A chat in a browser tab cannot download files or write a card.</p></details>
       <details class="faq"><summary>The agent cannot find my card</summary><p>Take the card out and put it back in, then ask the agent to look again. Tell it the card's size and your card reader's model if it still cannot tell which disk it is.</p></details>
       <details class="faq"><summary>angi.local does not open</summary><p>Wait a minute after plugging in, then try <a href="http://10.77.0.2">http://10.77.0.2</a>. Make sure the cable carries data, and that the Pi end is in the right port. Some computers take a moment to bring up the new network adapter.</p></details>
