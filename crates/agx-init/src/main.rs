@@ -75,6 +75,12 @@ fn bootstrap() -> io::Result<()> {
     ] {
         command(script, &["start"])?;
     }
+    let owner_setup = "/etc/init.d/S41agx-owner-key";
+    if std::path::Path::new(owner_setup).exists()
+        && let Err(error) = command(owner_setup, &["start"])
+    {
+        eprintln!("ANGI owner key setup: {error}");
+    }
     // Optional data storage must not prevent recovery if its drive is absent.
     if std::path::Path::new("/etc/init.d/S12agx-data").exists() {
         let _ = command("/etc/init.d/S12agx-data", &["start"]);

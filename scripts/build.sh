@@ -31,18 +31,24 @@ if [[ ! -d "$SOURCE" ]]; then
 fi
 [[ "$ACTION" == prepare ]] && exit 0
 # Keep workstation-specific public keys out of the tracked board overlay.
-PUBLIC_KEY=${SSH_PUBLIC_KEY:-"${HOME}/.ssh/id_ed25519.pub"}
-if [[ ! -f "$PUBLIC_KEY" ]]; then
-    echo "Set SSH_PUBLIC_KEY to an SSH public key file before configuring/building." >&2
-    exit 1
+KEY_OVERLAY="$ROOT/.cache/local-overlay"
+if [[ ${ANGI_PUBLIC_IMAGE:-0} == 1 ]]; then
+    [[ "$BOARD" == zero2w ]] || { echo "Public image setup requires BOARD=zero2w." >&2; exit 1; }
+    mkdir -p "$KEY_OVERLAY"
+else
+    PUBLIC_KEY=${SSH_PUBLIC_KEY:-"${HOME}/.ssh/id_ed25519.pub"}
+    if [[ ! -f "$PUBLIC_KEY" ]]; then
+        echo "Set SSH_PUBLIC_KEY to an SSH public key file before configuring/building." >&2
+        exit 1
+    fi
+    ssh-keygen -lf "$PUBLIC_KEY" >/dev/null
+    if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)[^ ]* ' "$PUBLIC_KEY"; then
+        echo "Expected an OpenSSH public key, not a private key or certificate." >&2
+        exit 1
+    fi
+    install -d -m 700 "$KEY_OVERLAY/root/.ssh"
+    install -m 600 "$PUBLIC_KEY" "$KEY_OVERLAY/root/.ssh/authorized_keys"
 fi
-ssh-keygen -lf "$PUBLIC_KEY" >/dev/null
-if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)[^ ]* ' "$PUBLIC_KEY"; then
-    echo "Expected an OpenSSH public key, not a private key or certificate." >&2
-    exit 1
-fi
-install -d -m 700 "$ROOT/.cache/local-overlay/root/.ssh"
-install -m 600 "$PUBLIC_KEY" "$ROOT/.cache/local-overlay/root/.ssh/authorized_keys"
 brmake() {
     make -C "$SOURCE" O="$OUTPUT" BR2_EXTERNAL="$ROOT/buildroot" "$@"
 }

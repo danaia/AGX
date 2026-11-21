@@ -6,6 +6,17 @@ prepare configure dependencies build:
 check-image:
 	python3 scripts/check-image.py --board $(BOARD)
 
+.PHONY: release-zero2w
+release-zero2w:
+	command -v zstd >/dev/null
+	ANGI_PUBLIC_IMAGE=1 ./scripts/build.sh build zero2w
+	python3 scripts/check-image.py --board zero2w --public
+	mkdir -p output/zero2w/release
+	cp --reflink=auto --sparse=always output/zero2w/images/sdcard.img output/zero2w/release/angi-zero-2w.img
+	zstd -T2 -3 --force output/zero2w/release/angi-zero-2w.img -o output/zero2w/release/angi-zero-2w.img.zst
+	zstd -t output/zero2w/release/angi-zero-2w.img.zst
+	cd output/zero2w/release && sha256sum angi-zero-2w.img.zst > angi-zero-2w.img.zst.sha256
+
 .PHONY: tui-test tui-build deploy-tui
 tui-test:
 	./scripts/cargo.sh test --workspace --locked

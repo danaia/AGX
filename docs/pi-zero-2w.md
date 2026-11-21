@@ -6,9 +6,28 @@ agent with OpenAI or an LM Studio server on the local network. Accounts, Wi-Fi,
 SSH host keys, projects, and the private agent store persist on the SD card.
 The image uses an 8 GiB root partition and requires a card of 16 GB or larger.
 
+## Public download
+
+Run `make release-zero2w` to build the public image and its SHA-256 checksum
+in `output/zero2w/release/`. Use Zstandard to decompress the download before
+flashing.
+
+```sh
+sha256sum -c angi-zero-2w.img.zst.sha256
+zstd -d angi-zero-2w.img.zst
+```
+
+After flashing, open the SD card's FAT boot partition and copy your OpenSSH
+Ed25519 public key to the partition as `angi-ssh.pub`. If you need a key, run
+`ssh-keygen -t ed25519` and copy the resulting `.pub` file. Keep the private
+key on your computer. The Pi imports the public key on first boot. The boot
+partition includes these instructions in `ANGI-SETUP.txt`. Continue with
+[USB provisioning](#provision-over-usb).
+
 ## Build and flash
 
-From the repository root, using the existing workstation SSH key:
+For a development image, build from the repository root using the existing
+workstation SSH key:
 
 ```sh
 export SSH_PUBLIC_KEY="$HOME/.ssh/id_ed25519.pub"

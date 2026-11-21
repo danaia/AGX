@@ -24,8 +24,9 @@ def digest_region(stream, length):
     return digest.digest()
 
 
-def check(images, board):
+def check(images, board, public=False):
     zero = board == "zero2w"
+    require(zero or not public, "Public provisioning is only supported on Zero 2 W")
     model = "Raspberry Pi Zero 2 W" if zero else "Raspberry Pi 5"
     dtbs = ("bcm2710-rpi-zero-2-w.dtb",) if zero else ("bcm2712-rpi-5-b.dtb", "bcm2712d0-rpi-5-b.dtb")
     firmware = ("bootcode.bin", "start.elf", "fixup.dat", "start_cd.elf", "fixup_cd.dat",
@@ -78,7 +79,8 @@ def check(images, board):
                 require(digest_region(image, size) == digest_region(source, size),
                         f"Partition contents differ: {name}")
     mtype = images.parent / "host/bin/mtype"
-    for name in ("Image", *dtbs, *firmware, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo"):
+    setup_files = ("ANGI-SETUP.txt",) if zero else ()
+    for name in ("Image", *dtbs, *firmware, *setup_files, "config.txt", "cmdline.txt", "overlays/dwc2.dtbo"):
         subprocess.run([str(mtype), "-i", str(images / "boot.vfat"), f"::{name}"],
                        stdout=subprocess.DEVNULL, check=True)
     for name in ("config.txt", "cmdline.txt"):
@@ -130,7 +132,8 @@ def check(images, board):
             require((target / name).is_file(), f"Missing Bluetooth component: {name}")
         require((target / "usr/libexec/agx-bluetooth/run").stat().st_mode & 0o111, "Bluetooth service script is not executable")
     keys = target / "root/.ssh/authorized_keys"
-    require(keys.is_file() and keys.stat().st_size > 0, "Missing authorised SSH public key")
+    require(keys.is_file() and (keys.stat().st_size == 0 if public else keys.stat().st_size > 0),
+            "Public image contains an SSH key" if public else "Missing authorised SSH public key")
     debugfs = images.parent / "host/sbin/debugfs"
     def packed_file(name):
         result = subprocess.run([str(debugfs), "-R", f"cat /{name}", str(images / "rootfs.ext4")],
@@ -158,6 +161,22 @@ def check(images, board):
         wifi_module_options = packed_file("etc/modprobe.d/angi-zero-wifi.conf")
         require(b"options brcmfmac feature_disable=0x2000" in wifi_module_options.splitlines(),
                 "Zero 2 W must handle the WPA2 handshake in wpa_supplicant")
+        owner_setup = "etc/init.d/S41agx-owner-key"
+        require((target / owner_setup).stat().st_mode & 0o111 and
+                packed_file(owner_setup) == (target / owner_setup).read_bytes(),
+                "Missing executable owner-provisioning script")
+        require((target / "usr/bin/ssh-keygen").is_file(), "Missing owner key validator")
+        require("CONFIG_VFAT_FS=y" in kernel_config.splitlines(), "Owner setup requires built-in VFAT")
+    if public:
+        accounts = [record.split(b":") for record in packed_file("etc/passwd").splitlines()]
+        require(not any(1000 <= int(fields[2]) < 60000 for fields in accounts),
+                "Public image contains a named account")
+        shadow = packed_file("etc/shadow").splitlines()
+        require(any(record.startswith(b"root:!:") for record in shadow),
+                "Public image must lock the root password")
+        require(packed_file("etc/agx/network.json").strip() == b'{"country":"US"}' and
+                b"network=" not in packed_file("etc/agx/wpa_supplicant.conf"),
+                "Public image contains a saved network")
     if 'BR2_PACKAGE_E2FSPROGS=y' in (images.parent / '.config').read_text().splitlines():
         require((target / 'sbin/mke2fs').is_file() and not (target / 'sbin/mke2fs').is_symlink(),
                 'Real e2fsprogs mke2fs is required for ext4 data volumes')
@@ -202,9 +221,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("images", nargs="?", type=Path)
     parser.add_argument("--board", choices=("pi5", "zero2w"), default="pi5")
+    parser.add_argument("--public", action="store_true", help="require an unprovisioned public image")
     args = parser.parse_args()
     images = args.images or Path("output/zero2w/images" if args.board == "zero2w" else "output/images")
     try:
-        check(images.resolve(), args.board)
+        check(images.resolve(), args.board, args.public)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         sys.exit(f"FAIL: {error}")

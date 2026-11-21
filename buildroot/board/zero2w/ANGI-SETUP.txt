@@ -1,0 +1,19 @@
+ANGI on the Raspberry Pi Zero 2 W
+
+1. Flash the image to a 16 GB or larger microSD card.
+2. Open the card's FAT boot partition on your computer. Copy an OpenSSH
+   Ed25519 public key there and name the copy angi-ssh.pub. Generate a key
+   with ssh-keygen -t ed25519 if needed. Keep the private key on your computer.
+3. Eject the card, insert it into the Pi, and connect the Pi's micro-USB
+   data port to your computer with a data cable. Power the Pi.
+4. Set your computer's USB Ethernet adapter to 10.79.0.1/24 with no gateway.
+   Connect to root@10.79.0.2 using the private key and run agx tui. Trust the
+   board's new SSH host key using the direct connection.
+5. In Profile, create your ANGI account and set its password. In Network,
+   configure your country and connect to a 2.4 GHz Wi-Fi network.
+6. Open an SSH tunnel to the desktop from your computer:
+
+   ssh -NT -L 127.0.0.1:5943:127.0.0.1:5900 root@10.79.0.2
+
+   Point your VNC viewer at 127.0.0.1:5943 and sign in with the ANGI account
+   you created. You can also tunnel to the Pi's Wi-Fi address once connected.

@@ -1,0 +1,41 @@
+#!/bin/sh
+set -eu
+
+keys=/root/.ssh/authorized_keys
+partition=/dev/mmcblk0p1
+[ "${1:-}" = start ] && [ -b "$partition" ] && [ ! -s "$keys" ] || exit 0
+
+umask 077
+boot=$(mktemp -d /run/angi-boot.XXXXXX)
+staged=
+cleanup() {
+    if [ -n "$staged" ]; then
+        rm -f "$staged"
+    fi
+    umount "$boot" 2>/dev/null || :
+    rmdir "$boot"
+}
+trap cleanup EXIT
+mount -t vfat -o ro,nosuid,nodev,noexec "$partition" "$boot"
+source="$boot/angi-ssh.pub"
+[ -f "$source" ] || exit 0
+
+mkdir -p -m 0700 /root/.ssh
+staged=$(mktemp /root/.ssh/.owner-key.XXXXXX)
+if [ "$(wc -c < "$source")" -gt 4096 ] ||
+    ! awk '
+        { sub(/\r$/, "") }
+        NF {
+            if (++lines > 1 || $1 != "ssh-ed25519" || $2 !~ /^[A-Za-z0-9+\/]+=*$/)
+                exit 1
+            print $1, $2
+        }
+        END { if (lines != 1) exit 1 }
+    ' "$source" > "$staged" ||
+    ! ssh-keygen -lf "$staged" >/dev/null 2>&1; then
+    echo "ANGI: angi-ssh.pub must contain one OpenSSH Ed25519 public key." >&2
+    exit 1
+fi
+mv -f "$staged" "$keys"
+staged=
+echo "ANGI: owner SSH key installed."

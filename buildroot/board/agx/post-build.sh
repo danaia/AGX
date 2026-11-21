@@ -16,6 +16,11 @@ if [ -f "$TARGET_DIR/usr/share/agx/board" ] &&
         rm "$TARGET_DIR/etc/dropbear"
     fi
     install -d -m 0700 "$TARGET_DIR/etc/dropbear"
+    install -m 0644 "$BR2_EXTERNAL_AGX_PATH/board/zero2w/ANGI-SETUP.txt" "$BINARIES_DIR/ANGI-SETUP.txt"
+    if [ "${ANGI_PUBLIC_IMAGE:-0}" = 1 ]; then
+        install -D -m 0600 /dev/null "$TARGET_DIR/root/.ssh/authorized_keys"
+        sed -i 's/^root:[^:]*:/root:!:/' "$TARGET_DIR/etc/shadow"
+    fi
     rm -f "$TARGET_DIR/etc/modules-load.d/agx-display.conf" \
         "$TARGET_DIR/etc/modules-load.d/agx-bluetooth.conf" \
         "$TARGET_DIR/usr/libexec/agx-display-access" \
