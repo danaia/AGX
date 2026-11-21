@@ -1,0 +1,81 @@
+import { Theme } from "data.slint";
+import { Cursor } from "cursor.slint";
+import { FirstBootPanel, GreeterSetup } from "first-boot.slint";
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component LoginWindow inherits Window {
+    title: GreeterSetup.step == 0 ? "ANGI · Sign in" : "Set up ANGI";
+    background: Theme.bg-dark;
+    default-font-family: "JetBrainsMono Nerd Font";
+    default-font-size: 16px;
+    preferred-width: 1280px;
+    preferred-height: 720px;
+    min-width: 640px;
+    min-height: 400px;
+    forward-focus: username;
+    in property <bool> busy: false;
+    in property <bool> draw-cursor: false;
+    in property <string> error-text;
+    callback sign-in(string, string);
+    callback authenticated(string);
+    public function show-login(account: string) {
+        username.text = account;
+        GreeterSetup.step = 0;
+        if (account != "") { password.focus(); } else { username.focus(); }
+    }
+    function submit() {
+        if (!root.busy) {
+            root.sign-in(username.text, password.text);
+            password.text = "";
+        }
+    }
+    tracker := TouchArea {
+        width: parent.width;
+        height: parent.height;
+        if GreeterSetup.step != 0: FirstBootPanel { width: parent.width; height: parent.height; }
+        Rectangle {
+            visible: GreeterSetup.step == 0;
+            width: min(440px, parent.width - 48px);
+            height: 366px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: Theme.bg;
+            border-width: 1px;
+            border-color: Theme.accent;
+            VerticalLayout {
+                padding: 30px;
+                spacing: 14px;
+                Rectangle {
+                    height: 60px;
+                    Image {
+                        x: parent.width - self.width;
+                        width: 104px;
+                        height: 40px;
+                        source: @image-url("../../../brand/brand-mark-text.svg");
+                        image-fit: contain;
+                        accessible-label: "ANGI";
+                    }
+                }
+                Text { text: "Sign in to your desktop"; color: Theme.fg; }
+                username := LineEdit {
+                    placeholder-text: "Username";
+                    enabled: !root.busy;
+                    accepted => { password.focus(); }
+                }
+                password := LineEdit {
+                    placeholder-text: "Password";
+                    input-type: InputType.password;
+                    enabled: !root.busy;
+                    accepted => { root.submit(); }
+                }
+                Button {
+                    text: root.busy ? "Signing in…" : "Sign in";
+                    enabled: !root.busy;
+                    clicked => { root.submit(); }
+                }
+                Text { text: root.error-text; color: Theme.red; wrap: word-wrap; font-size: 12px; min-height: 32px; }
+            }
+        }
+    }
+    if root.draw-cursor: Cursor { x: tracker.mouse-x; y: tracker.mouse-y; shape: 0; }
+}

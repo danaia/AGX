@@ -1,0 +1,78 @@
+// ANGI image manifest: the single place to publish a download.
+//
+// Each install prompt tells the user's coding agent to download
+// `${ANGI_DOWNLOADS}/${file}` and its `.sha256` from the latest GitHub release,
+// so publishing an image means uploading both files to a release and setting
+// `status: 'available'` here. Optionally pin `sha256` so the prompt checks it
+// too, and set `size` and `version` for display.
+window.ANGI_RELEASES = 'https://github.com/danaia/ANGI/releases';
+window.ANGI_DOWNLOADS = 'https://github.com/danaia/ANGI/releases/latest/download';
+window.ANGI_REPO = 'https://github.com/danaia/ANGI.git';
+
+window.ANGI_IMAGES = [
+  {
+    id: 'rpi5',
+    name: 'Raspberry Pi 5',
+    short: 'Pi 5',
+    icon: 't-pi5',
+    blurb: 'The fastest Pi. Full desktop on HDMI, optional NVMe for data.',
+    kind: 'pi',
+    media: 'microSD card',
+    port: "the Pi 5's USB-C port",
+    file: 'angi-rpi5.img',
+    status: 'soon',
+    version: null, sha256: null, size: null,
+  },
+  {
+    id: 'rpi4',
+    name: 'Raspberry Pi 4 / 400',
+    short: 'Pi 4 / 400',
+    icon: 't-pi4',
+    blurb: 'The everyday favourite. Set up in a browser over USB-C.',
+    kind: 'pi',
+    media: 'microSD card',
+    port: "the Pi's USB-C port",
+    file: 'angi-rpi4.iso',
+    status: 'soon',
+    version: null, sha256: null, size: '1.2 GB',
+  },
+  {
+    id: 'rpizero2w',
+    name: 'Raspberry Pi Zero 2 W',
+    short: 'Pi Zero 2 W',
+    icon: 't-zero',
+    blurb: 'Tiny, quiet and always on. Reaches the web over 2.4 GHz Wi-Fi.',
+    kind: 'pi',
+    media: 'microSD card',
+    port: 'the micro-USB port marked USB (not PWR IN)',
+    file: 'angi-rpizero2w.img',
+    status: 'soon',
+    version: null, sha256: null, size: null,
+  },
+  {
+    id: 'arm-desktop',
+    name: 'ARM computer',
+    short: 'ARM',
+    icon: 't-arm',
+    blurb: 'UEFI laptops and desktops on ARM. Starts from a USB drive.',
+    kind: 'desktop',
+    media: 'USB drive',
+    port: null,
+    file: 'angi-arm64.iso',
+    status: 'soon',
+    version: null, sha256: null, size: null,
+  },
+  {
+    id: 'x86-desktop',
+    name: 'Intel / AMD computer',
+    short: 'Intel / AMD',
+    icon: 't-x86',
+    blurb: 'Any x86-64 desktop or laptop. Starts from a USB drive.',
+    kind: 'desktop',
+    media: 'USB drive',
+    port: null,
+    file: 'angi-x86_64.iso',
+    status: 'soon',
+    version: null, sha256: null, size: null,
+  },
+];

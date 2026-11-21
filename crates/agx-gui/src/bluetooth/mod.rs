@@ -7,7 +7,7 @@ pub(crate) mod tests;
 
 use crate::{App, AppWindow, BluetoothSettings, BtApproval, BtDevice, wm::Kind};
 use agx_bluetooth::{Reply, Request, Status};
-use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
+use slint::{ComponentHandle, Global, ModelRc, Timer, TimerMode, VecModel};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -30,8 +30,7 @@ struct Shown {
     prompt: Option<u32>,
 }
 
-fn show(ui: &AppWindow, shown: &mut Shown, outcome: Outcome) {
-    let page = ui.global::<BluetoothSettings>();
+fn show(page: BluetoothSettings<'_>, shown: &mut Shown, outcome: Outcome) {
     let reply = match outcome {
         Ok(reply) => reply,
         Err(message) => {
@@ -105,6 +104,20 @@ fn show(ui: &AppWindow, shown: &mut Shown, outcome: Outcome) {
 }
 
 pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
+    let app = app.clone();
+    watch(ui, move || {
+        app.try_borrow()
+            .is_ok_and(|app| app.desk.is_open(Kind::Settings))
+    })
+}
+
+pub(crate) fn watch<C: ComponentHandle + 'static>(
+    ui: &C,
+    open: impl Fn() -> bool + 'static,
+) -> Timer
+where
+    for<'a> BluetoothSettings<'a>: Global<'a, C>,
+{
     let (jobs, work) = mpsc::channel::<Request>();
     let (results, outcomes) = mpsc::channel::<Outcome>();
     std::thread::spawn(move || {
@@ -204,20 +217,21 @@ pub(super) fn install(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     }
 
     let timer = Timer::default();
-    let (weak, state) = (ui.as_weak(), app.clone());
+    let weak = ui.as_weak();
     let mut last_poll = Instant::now() - QUIET_POLL;
     timer.start(TimerMode::Repeated, Duration::from_millis(150), move || {
         let Some(ui) = weak.upgrade() else { return };
         while let Ok(outcome) = outcomes.try_recv() {
             pending.set(pending.get().saturating_sub(1));
-            show(&ui, &mut shown.borrow_mut(), outcome);
+            show(
+                ui.global::<BluetoothSettings>(),
+                &mut shown.borrow_mut(),
+                outcome,
+            );
         }
         // Poll only while the Bluetooth page is on screen.
-        let open = state
-            .try_borrow()
-            .is_ok_and(|app| app.desk.is_open(Kind::Settings));
         let page = ui.global::<BluetoothSettings>();
-        if !open || !page.get_active() || pending.get() > 0 {
+        if !open() || !page.get_active() || pending.get() > 0 {
             return;
         }
         let lively = page.get_scanning()

@@ -8,11 +8,9 @@
 Writes:
   docs/install-prompts/part2-BOARD.txt  one rendered part 2 per target; part 1 tells the agent to print it
   README.md                 between <!-- prompt1:start/end -->                (generic prompt)
-  website/get-started.html  <pre ... data-prompt="1">                         (generic prompt)
-  website/index.html        <script type="application/json" id="targets-data">  (part 1 per target)
 Run after editing a template or boards.json:  python3 scripts/sync-install-prompt.py
 """
-import html, json, re, sys
+import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -156,26 +154,10 @@ readme = ROOT / "README.md"
 for i, g in ((1, g1),):
     sub_block(readme, rf"(<!-- prompt{i}:start -->\n```text\n).*?(\n```\n<!-- prompt{i}:end -->)",
               lambda m, g=g: m.group(1) + g + m.group(2))
-gs = ROOT / "website/get-started.html"
-for i, g in ((1, g1),):
-    sub_block(gs, rf'(<pre\b[^>]*\bdata-prompt="{i}"[^>]*>).*?(</pre>)',
-              lambda m, g=g: m.group(1) + html.escape(g, quote=True) + m.group(2))
-download_rows = []
-for board in boards:
-    name = html.escape(board["marketing"]["short"])
-    medium = "USB drive" if board["id"].endswith("-desktop") else "microSD card"
-    download_rows.append(f'        <tr><th scope="row">{name}</th><td>{medium}</td><td>Coming soon</td></tr>')
-sub_block(gs, r'(<tbody id="image-targets">).*?(</tbody>)',
-          lambda m: m.group(1) + "\n" + "\n".join(download_rows) + "\n      " + m.group(2))
-
+# The website offers prebuilt images (website/images.js) instead of build prompts,
+# so the build-from-source prompts live only in the README and docs.
 OUT = ROOT / "docs/install-prompts"
-targets = []
 for b in boards:
-    a, c = for_target(b)
+    _, c = for_target(b)
     (OUT / f"part2-{b['id']}.txt").write_text(c + "\n")
-    targets.append({"id": b["id"], **{k: b["marketing"][k] for k in ("short", "tagline", "media", "card", "reader", "connect")},
-                    "prompt1": a})
-payload = json.dumps(targets, indent=1, ensure_ascii=False).replace("</", "<\\/")
-sub_block(ROOT / "website/index.html", r'(<script type="application/json" id="targets-data">).*?(</script>)',
-          lambda m: m.group(1) + payload + m.group(2))
-print("Prompts synced: README.md, website/get-started.html, website/index.html (part 1 per target; part 2 files in docs/install-prompts).")
+print("Prompts synced: README.md and docs/install-prompts/part2-*.txt.")

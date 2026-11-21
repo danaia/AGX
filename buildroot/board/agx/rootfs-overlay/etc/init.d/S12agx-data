@@ -25,6 +25,7 @@ case "$1" in
         echo 'AGX data volume not found' >&2
         exit 1
         ;;
+    prepare) mountpoint -q /var/lib/agx-data && prepare_apps ;;
     stop) mountpoint -q /var/lib/agx-data && umount /var/lib/agx-data || true ;;
     *) exit 0 ;;
 esac

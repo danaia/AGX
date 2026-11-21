@@ -13,6 +13,7 @@ use std::{
 };
 use zeroize::Zeroizing;
 const GROUP: &str = "agx-admin";
+const SETUP_CLAIMED: &str = "/etc/agx/setup-claimed";
 static CRYPT: Mutex<()> = Mutex::new(());
 #[link(name = "crypt")]
 unsafe extern "C" {
@@ -99,6 +100,10 @@ fn ensure_group() -> io::Result<u32> {
     atomic(Path::new("/etc/group"), groups.as_bytes(), 0o644)?;
     Ok(gid)
 }
+pub fn setup_claimed() -> io::Result<bool> {
+    Path::new(SETUP_CLAIMED).try_exists()
+}
+
 pub fn status() -> io::Result<Status> {
     let gid = admin_gid()?;
     let passwd = fs::read_to_string("/etc/passwd")?;
@@ -298,7 +303,7 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
     };
     let changed_on = password_change_day(std::time::SystemTime::now());
     let _lock = Lock::acquire()?;
-    if initial && !status()?.accounts.is_empty() {
+    if initial && (setup_claimed()? || !status()?.accounts.is_empty()) {
         return Err(err("This ANGI system already has an administrator"));
     }
     let passwd = fs::read_to_string("/etc/passwd")?;
@@ -426,6 +431,12 @@ fn save_account(save: Save, initial: bool, public_key: Option<&str>) -> io::Resu
             let _ = fs::remove_dir_all(home);
         }
         return Err(error);
+    }
+    if save.create
+        && let Err(error) = atomic(Path::new(SETUP_CLAIMED), b"", 0o600)
+    {
+        // The saved account itself also closes first-boot setup.
+        eprintln!("ANGI setup could not record the completion marker: {error}");
     }
     let result = apply_hostname(&save.hostname);
     if result.is_err() {

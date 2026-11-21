@@ -2,9 +2,8 @@
 use crate::{Reply, Request, Security, request, validate_credentials};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, File, OpenOptions},
+    fs,
     io::{self, Write},
-    os::unix::fs::OpenOptionsExt,
     path::Path,
     process::{Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -14,7 +13,6 @@ use std::{
 use zeroize::Zeroizing;
 
 pub const ENABLED: &str = "/etc/agx/setup-enabled";
-const CLAIMED: &str = "/etc/agx/setup-claimed";
 const HOST_KEY: &str = "/etc/dropbear/dropbear_ed25519_host_key";
 const KEYGEN: &str = "/usr/bin/dropbearkey";
 
@@ -49,7 +47,7 @@ pub struct NearbyNetwork {
 }
 
 pub fn unclaimed() -> io::Result<bool> {
-    if Path::new(CLAIMED).try_exists()? {
+    if agx_profile::service::setup_claimed()? {
         return Ok(false);
     }
     // Agent-prepared cards and existing administrator accounts already have a login path.
@@ -221,17 +219,6 @@ pub fn submit(body: &[u8], fingerprint: &str, stop: &AtomicBool) -> Result<Strin
     let username = profile.username.clone();
     let account = agx_profile::service::save_initial(profile, key.as_deref())
         .map_err(|error| error.to_string())?;
-    let marker = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .mode(0o600)
-        .open(CLAIMED)
-        .and_then(|file| file.sync_all())
-        .and_then(|()| File::open("/etc/agx")?.sync_all());
-    if let Err(error) = marker {
-        // The saved administrator account independently keeps the listener disabled.
-        eprintln!("ANGI setup could not record the completion marker: {error}");
-    }
     Ok(format!(
         "{account}\nWi-Fi: {}\n{internet}\nUSB-C: ssh {username}@10.77.0.2\nPi SSH host key: {fingerprint}",
         addresses.join(", ")

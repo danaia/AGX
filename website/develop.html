@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Develop — ANGI</title>
+<meta name="description" content="Build on ANGI two ways: on the device itself, or from another computer over USB-C or Ethernet with live updates and automatic rollback.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<script src="assets.js"></script>
+
+<nav id="nav" aria-label="Main">
+  <div class="wrap">
+    <a href="index.html" aria-label="ANGI home"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg></a>
+    <button class="menu" type="button" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
+    <div class="links">
+      <a href="get-started.html">Install</a>
+      <a href="download.html">Images</a>
+      <a href="develop.html" aria-current="page">Develop</a>
+      <a href="https://github.com/danaia/ANGI">GitHub</a>
+      <a class="btn primary sm" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg>Install ANGI</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="hero page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Develop</div>
+    <h1><span class="grad">Two ways to build.</span><br><span class="gradO">Both live.</span></h1>
+    <p class="sub">Code on ANGI itself, or from the computer next to it. Over USB-C or Ethernet, your changes land on the running system without a reflash or a reboot.</p>
+  </div>
+</header>
+
+<section class="tight" aria-label="Choose how you build">
+  <div class="wrap">
+    <div class="ways">
+      <article class="way panel reveal" id="on-device">
+        <div class="ico"><svg class="i"><use href="#i-cpu"/></svg></div>
+        <h3>On the device</h3>
+        <p>Use ANGI's desktop on a monitor, or its dashboard over SSH. The agents run on the board and compile natively.</p>
+        <ul class="checks">
+          <li><svg class="i"><use href="#i-check"/></svg><span><b>Agent Angi</b>: chat, hand it a project folder, or let it change the OS</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span><code>agent angi</code> starts an orchestrator, builder and tester from the terminal</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span>Monaco code editor, native terminal, WebKit browser and files with undo</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span>Changes to the OS install with the same live reload and rollback guard</span></li>
+        </ul>
+      </article>
+      <article class="way panel hot reveal" id="remote">
+        <div class="ico"><svg class="i"><use href="#i-refresh"/></svg></div>
+        <h3>From your computer</h3>
+        <p>Keep your own editor, agents and tools. Your computer talks to ANGI over a direct cable and updates it while it runs.</p>
+        <ul class="checks">
+          <li><svg class="i"><use href="#i-check"/></svg><span>One USB-C cable for power and network, or direct Ethernet</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span><b>Hot reload</b>: a deployed desktop loads into the running session</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span><b>Rollback guard</b>: a watchdog restores the previous release if needed</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span>Control everything with <code>agx</code> commands and <code>--json</code> output</span></li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="connect" aria-labelledby="connect-title">
+  <div class="wrap">
+    <div class="head reveal">
+      <div class="eyebrow">Connect</div>
+      <h2 id="connect-title"><span class="grad">A private cable between two computers.</span></h2>
+      <p class="lead">The cable has no internet gateway, so your computer keeps its own connection and ANGI reaches the web over Wi-Fi.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="table">
+        <thead><tr><th scope="col">Link</th><th scope="col">ANGI address</th><th scope="col">Your computer</th><th scope="col">Good for</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><span style="display:flex;gap:10px;align-items:center"><svg class="i or"><use href="#i-usb"/></svg>USB-C</span></th><td><code>10.77.0.2</code> or <code>angi.local</code></td><td>Gets <code>10.77.0.1</code> automatically</td><td>First setup, laptops, the Pi Zero's USB port</td></tr>
+          <tr><th scope="row"><span style="display:flex;gap:10px;align-items:center"><svg class="i or"><use href="#i-eth"/></svg>Ethernet</span></th><td><code>10.78.0.2</code></td><td>Set the port to <code>10.78.0.1/24</code>, no gateway</td><td>Pi 4 and Pi 5 on their own power supply, long sessions</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="code reveal">
+      <span class="cap">Check the link from your computer</span>
+      <button class="cp" type="button" data-copy="c-check"><svg class="i"><use href="#i-copy"/></svg>Copy</button>
+<pre id="c-check">ssh YOUR-NAME@10.77.0.2 agx status --json</pre>
+    </div>
+  </div>
+</section>
+
+<hr class="sep">
+
+<section id="hot-reload" aria-labelledby="hot-title">
+  <div class="wrap">
+    <div class="head reveal">
+      <div class="eyebrow">Hot reload</div>
+      <h2 id="hot-title"><span class="grad">Edit here. Running there.</span></h2>
+      <p class="lead">You only build the part you changed, on your computer. The OS stays as it is and keeps running.</p>
+    </div>
+    <div class="qsteps" style="grid-template-columns:repeat(3,1fr)">
+      <div class="qstep panel reveal"><div class="n">01</div><h3>Change the code</h3><p>Edit in your own editor, with your own agent, in a checkout of the ANGI repository.</p></div>
+      <div class="qstep panel reveal"><div class="n">02</div><h3>Deploy over the cable</h3><p>One command builds the component and copies it to ANGI over SSH.</p></div>
+      <div class="qstep panel reveal"><div class="n">03</div><h3>See it live</h3><p>The desktop reloads in place. If the new release does not stay up, the previous one comes back.</p></div>
+    </div>
+    <div class="code reveal">
+      <span class="cap">From your checkout of the repository</span>
+      <button class="cp" type="button" data-copy="c-deploy"><svg class="i"><use href="#i-copy"/></svg>Copy</button>
+<pre id="c-deploy"><span class="c"># Point the deploy at ANGI: USB-C 10.77.0.2 or Ethernet 10.78.0.2</span>
+export AGX_SSH_HOST=root@10.77.0.2
+export AGX_SSH_KEY=~/.ssh/id_ed25519
+
+make deploy-gui       <span class="c"># desktop, reloads in the running session</span>
+make deploy-tui       <span class="c"># terminal dashboard</span>
+make deploy-network   <span class="c"># network services</span></pre>
+    </div>
+    <p class="soft reveal">Deploys sign in with an SSH key. See the <a href="https://github.com/danaia/ANGI">repository docs</a> for the toolchain and every deploy target.</p>
+  </div>
+</section>
+
+<hr class="sep">
+
+<section aria-labelledby="models-title">
+  <div class="wrap">
+    <div class="head reveal">
+      <div class="eyebrow">Models</div>
+      <h2 id="models-title"><span class="grad">The agents run on ANGI.<br>The thinking happens elsewhere.</span></h2>
+      <p class="lead">That is what keeps ANGI light enough for a small board. Connect a model provider once, from Agent Angi's settings.</p>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="feat panel reveal"><div class="ico"><svg class="i"><use href="#i-chat"/></svg></div><h3>OpenAI</h3><p>Sign in from the provider settings.</p></div>
+      <div class="feat panel reveal"><div class="ico"><svg class="i"><use href="#i-chat"/></svg></div><h3>Claude</h3><p>Sign in from the provider settings.</p></div>
+      <div class="feat panel reveal"><div class="ico"><svg class="i"><use href="#i-laptop"/></svg></div><h3>LM Studio</h3><p>Run models on your own computer and reach them privately over Tailscale.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap reveal">
+    <h2><span class="grad">Not set up yet?</span></h2>
+    <p class="lead">Copy the install prompt for your system and let your agent write the card.</p>
+    <div class="cta">
+      <a class="btn primary" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a>
+    </div>
+  </div>
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+    <div class="flinks"><a href="get-started.html">Install</a><a href="download.html">Images</a><a href="develop.html">Develop</a><a href="https://github.com/danaia/ANGI">GitHub</a></div>
+    <span>Pronounced “AN-jee”. Early development; figures are development measurements.</span>
+  </div>
+</footer>
+<script src="site.js"></script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+import { Theme } from "data.slint";
+import { BluetoothPage, BluetoothSettings } from "bluetooth.slint";
+import { Button, ComboBox, LineEdit, ScrollView } from "std-widgets.slint";
+
+export struct WifiChoice { id: string, security: int }
+
+export global GreeterSetup {
+    in-out property <int> step: 0;
+    in-out property <bool> busy;
+    in-out property <bool> ready;
+    in-out property <string> status;
+    in-out property <string> error;
+    in-out property <[string]> networks;
+    in-out property <[WifiChoice]> wifi-choices;
+    in-out property <string> hostname: "angi";
+    callback scan(string);
+    callback connect(string, int, string, int, string, bool);
+    callback create-account(string, string, string, string);
+}
+
+component WifiStep inherits VerticalLayout {
+    property <string> country;
+    property <int> selected: -1;
+    property <bool> manual;
+    property <string> manual-ssid;
+    property <int> manual-security: 1;
+    property <string> wifi-password;
+    property <bool> password-needed: root.security-index == 1 || root.security-index == 2;
+    property <int> security-index: root.manual || root.selected < 0 || root.selected >= GreeterSetup.wifi-choices.length
+        ? root.manual-security : GreeterSetup.wifi-choices[root.selected].security;
+    spacing: 8px;
+    HorizontalLayout {
+        spacing: 8px;
+        region := LineEdit {
+            text <=> root.country;
+            placeholder-text: "Two-letter Wi-Fi country code";
+            accessible-label: "Wi-Fi country code";
+            init => { self.focus(); }
+            enabled: !GreeterSetup.busy;
+            accepted => { if (!GreeterSetup.busy) { GreeterSetup.scan(root.country); } }
+        }
+        Button {
+            text: "Scan networks";
+            enabled: !GreeterSetup.busy;
+            clicked => { GreeterSetup.scan(root.country); }
+        }
+    }
+    if !root.manual: ComboBox {
+        accessible-label: "Nearby Wi-Fi networks";
+        model: GreeterSetup.networks;
+        current-index <=> root.selected;
+        enabled: !GreeterSetup.busy && GreeterSetup.networks.length > 0;
+        selected => { root.wifi-password = ""; }
+    }
+    Button {
+        text: root.manual ? "Choose a nearby network" : "Enter network name manually";
+        enabled: !GreeterSetup.busy;
+        clicked => { root.manual = !root.manual; root.wifi-password = ""; }
+    }
+    if root.manual: LineEdit {
+        text <=> root.manual-ssid;
+        placeholder-text: "Network name (SSID)";
+        enabled: !GreeterSetup.busy;
+        init => { self.focus(); }
+    }
+    if root.manual: ComboBox {
+        accessible-label: "Wi-Fi security";
+        model: ["Open", "WPA / WPA2", "WPA3", "Enhanced open"];
+        current-index <=> root.manual-security;
+        enabled: !GreeterSetup.busy;
+    }
+    if root.password-needed && (root.manual || root.selected >= 0): LineEdit {
+        text <=> root.wifi-password;
+        placeholder-text: "Wi-Fi password";
+        input-type: InputType.password;
+        enabled: !GreeterSetup.busy;
+    }
+    Button {
+        text: "Connect and save";
+        enabled: !GreeterSetup.busy && (root.manual ? root.manual-ssid != "" : root.selected >= 0 && root.selected < GreeterSetup.networks.length);
+        clicked => {
+            GreeterSetup.connect(root.country, root.manual ? -1 : root.selected, root.manual-ssid,
+                root.security-index, root.password-needed ? root.wifi-password : "", root.manual);
+            root.wifi-password = "";
+        }
+    }
+}
+
+component AccountStep inherits VerticalLayout {
+    spacing: 8px;
+    name := LineEdit { placeholder-text: "Your name"; enabled: !GreeterSetup.busy; init => { self.focus(); } }
+    username := LineEdit { placeholder-text: "Username"; enabled: !GreeterSetup.busy; }
+    LineEdit { accessible-label: "Hostname"; placeholder-text: "Hostname"; text <=> GreeterSetup.hostname; enabled: !GreeterSetup.busy; }
+    password := LineEdit { placeholder-text: "Password"; input-type: InputType.password; enabled: !GreeterSetup.busy; }
+    confirm := LineEdit { placeholder-text: "Confirm password"; input-type: InputType.password; enabled: !GreeterSetup.busy; }
+    Text {
+        text: "Passwords do not match.";
+        visible: confirm.text != "" && confirm.text != password.text;
+        color: Theme.red;
+        wrap: word-wrap;
+    }
+    Button {
+        text: "Create administrator";
+        enabled: !GreeterSetup.busy && name.text != "" && username.text != ""
+            && password.text != "" && password.text == confirm.text;
+        clicked => {
+            GreeterSetup.create-account(name.text, GreeterSetup.hostname, username.text, password.text);
+            password.text = "";
+            confirm.text = "";
+        }
+    }
+}
+
+export component FirstBootPanel inherits Rectangle {
+    changed step => { BluetoothSettings.active = self.step == 2; }
+    property <int> step: GreeterSetup.step;
+    Rectangle {
+        width: min(660px, parent.width - 32px);
+        height: min(600px, parent.height - 32px);
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Theme.bg;
+        border-width: 1px;
+        border-color: Theme.bg-light;
+        border-radius: 12px;
+        VerticalLayout {
+            padding: 20px;
+            spacing: 10px;
+            HorizontalLayout {
+                alignment: space-between;
+                Text {
+                    text: GreeterSetup.step == 1 ? "Connect to Wi-Fi" : GreeterSetup.step == 2 ? "Pair Bluetooth devices"
+                        : GreeterSetup.step == 3 ? "Create your administrator account" : "Checking this installation";
+                    color: Theme.fg-bright;
+                    font-size: 21px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+                Image {
+                    width: 90px;
+                    height: 32px;
+                    source: @image-url("../../../brand/brand-mark-text.svg");
+                    image-fit: contain;
+                    accessible-label: "ANGI";
+                }
+            }
+            if GreeterSetup.step == 2: BluetoothPage {
+                compact: true;
+                vertical-stretch: 1;
+                init => { self.focus-power(); }
+            }
+            if GreeterSetup.step != 2: ScrollView {
+                vertical-stretch: 1;
+                content-width: self.width;
+                VerticalLayout {
+                    alignment: start;
+                    spacing: 8px;
+                    if GreeterSetup.step == 1: WifiStep {}
+                    if GreeterSetup.step == 3: AccountStep {}
+                    if GreeterSetup.status != "": Text {
+                        text: GreeterSetup.status; color: Theme.fg; wrap: word-wrap;
+                    }
+                    if GreeterSetup.error != "": Text {
+                        text: GreeterSetup.error; color: Theme.red; wrap: word-wrap;
+                    }
+                }
+            }
+            if GreeterSetup.step >= 1: HorizontalLayout {
+                alignment: end;
+                spacing: 8px;
+                if GreeterSetup.step > 1: Button {
+                    text: "Back";
+                    enabled: !GreeterSetup.busy && BluetoothSettings.prompt-kind == 0;
+                    clicked => { GreeterSetup.error = ""; GreeterSetup.step -= 1; }
+                }
+                if GreeterSetup.step == 1 || GreeterSetup.step == 2: Button {
+                    text: GreeterSetup.step == 1 && !GreeterSetup.ready ? "Set up Wi-Fi later" : "Continue";
+                    enabled: !GreeterSetup.busy && BluetoothSettings.prompt-kind == 0;
+                    clicked => {
+                        if (BluetoothSettings.scanning) { BluetoothSettings.search(false); }
+                        GreeterSetup.error = "";
+                        GreeterSetup.step += 1;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -151,6 +151,10 @@ impl Session {
     pub fn program(size: Size, path: &str, title: &str) -> io::Result<Self> {
         Self::start(size, Some((path, vec![], title)), None)
     }
+    pub fn tui(size: Size) -> io::Result<Self> {
+        Self::start(size, Some(("/usr/bin/agx", vec!["tui".into()], "ANGI TUI")), None)
+    }
+
     pub fn opencode(size: Size) -> io::Result<Self> {
         Self::start(size, Some(("/usr/bin/opencode", vec![], "OpenCode")), None)
     }

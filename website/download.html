@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANGI images</title>
+<meta name="description" content="Ready-made ANGI images for Raspberry Pi 5, Pi 4 / 400, Pi Zero 2 W, ARM and Intel / AMD computers.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23050505'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="site.css">
+<script src="images.js"></script>
+</head>
+<body>
+<script src="assets.js"></script>
+
+<nav id="nav" aria-label="Main">
+  <div class="wrap">
+    <a href="index.html" aria-label="ANGI home"><svg class="mark" aria-hidden="true"><use href="#mark"/></svg></a>
+    <button class="menu" type="button" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
+    <div class="links">
+      <a href="get-started.html">Install</a>
+      <a href="download.html" aria-current="page">Images</a>
+      <a href="develop.html">Develop</a>
+      <a href="https://github.com/danaia/ANGI">GitHub</a>
+      <a class="btn primary sm" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg>Install ANGI</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="hero page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Images</div>
+    <h1><span class="grad">One ready-made image</span><br><span class="gradO">per system.</span></h1>
+    <p class="sub">You don't need to download these yourself. Each system's install prompt has your coding agent download its image, check its SHA-256 and write it for you.</p>
+    <div class="cta">
+      <a class="btn primary" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a>
+      <a class="btn ghost" data-releases href="https://github.com/danaia/ANGI/releases"><svg class="i"><use href="#i-gh"/></svg> All releases</a>
+    </div>
+  </div>
+</header>
+
+<section class="tight" aria-label="Images">
+  <div class="wrap">
+    <div class="dl" id="dl-list"></div>
+  </div>
+</section>
+
+<section class="tight" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="head reveal"><h2 id="faq-title"><span class="grad">Questions</span></h2></div>
+    <div class="reveal">
+      <details class="faq"><summary>Do I need to build anything?</summary><p>No. Your agent downloads a ready-made image and writes it. Building ANGI from source is only for people changing the operating system itself; the steps live in the <a href="https://github.com/danaia/ANGI">repository</a>.</p></details>
+      <details class="faq"><summary>Which image do I pick for a Pi 400?</summary><p>The Pi 4 / 400 image. Both use the same board support.</p></details>
+      <details class="faq"><summary>Does the image include my passwords or keys?</summary><p>No. Images are generic. You create your own administrator account and join Wi-Fi in your browser on first start.</p></details>
+      <details class="faq"><summary>Will writing the image erase my card?</summary><p>Yes. Your agent shows you the card first and erases nothing until you type <code>erase</code> followed by the card's exact device path.</p></details>
+      <details class="faq"><summary>How does the agent know the image is genuine?</summary><p>Each image is published with a <code>.sha256</code> file next to it. The agent compares the download against it and stops if they differ.</p></details>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap reveal">
+    <h2><span class="grad">Let your agent do it.</span></h2>
+    <p class="lead">Copy the prompt for your system and see what to expect at each step.</p>
+    <div class="cta"><a class="btn primary" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a></div>
+  </div>
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+    <div class="flinks"><a href="get-started.html">Install</a><a href="download.html">Images</a><a href="develop.html">Develop</a><a href="https://github.com/danaia/ANGI">GitHub</a></div>
+    <span>Pronounced “AN-jee”. Early development; figures are development measurements.</span>
+  </div>
+</footer>
+<script src="site.js"></script>
+</body>
+</html>

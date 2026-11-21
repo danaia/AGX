@@ -1,7 +1,7 @@
 //! Desktop state, layout synchronization, commands and session actions.
 use crate::input::Drag;
 use crate::{
-    AppWindow, BOTTOM, EXIT_TUI, Sys, TOP, Terminal, browser, input,
+    AppWindow, BOTTOM, Sys, TOP, Terminal, browser, input,
     keymap::{Cmd, ModKey, Mods},
     quit,
     scene_model::SceneModel,
@@ -215,7 +215,7 @@ impl App {
                 // launcher open so more apps can be chosen. Opening an app refreshes through the terminal.
                 return;
             }
-            Cmd::Tui => quit(EXIT_TUI),
+            Cmd::Tui => self.terminal_open_tui(ui),
             Cmd::Logout => quit(0),
             Cmd::Reboot | Cmd::Shutdown | Cmd::RefreshDesktop => {
                 ui.set_confirm_text(

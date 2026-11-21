@@ -2,7 +2,7 @@
 //! Omarchy/Hyprland-style window management (see wm.rs and keymap.rs).
 //!
 //! Exit codes let a launcher script react to the user's choice:
-//! 0 = quit, 10 = the user asked for the TUI instead.
+//! 0 = quit.
 mod bluetooth;
 mod browser;
 mod files;
@@ -52,7 +52,6 @@ use {
     wm::Kind,
 };
 slint::include_modules!();
-const EXIT_TUI: i32 = 10;
 const TOP: f32 = 34.0;
 const BOTTOM: f32 = 26.0;
 static EXIT_CODE: AtomicI32 = AtomicI32::new(0);

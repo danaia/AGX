@@ -213,7 +213,11 @@ impl App {
         }
         self.terminal_launch(ui, |size| Session::agent(size, prompt, run));
     }
-    /// Opens the Terminal window and adds a tab running an Agent Angi command.
+    pub(crate) fn terminal_open_tui(&mut self, ui: &AppWindow) {
+        self.terminal_launch(ui, Session::tui);
+    }
+
+    /// Opens the Terminal window and adds a tab running the selected program.
     fn terminal_launch(&mut self, ui: &AppWindow, start: impl FnOnce(Size) -> std::io::Result<Session>) {
         self.terminal_select(ui, crate::wm::Kind::Terminal);
         self.desk.open(self.terminal_kind);

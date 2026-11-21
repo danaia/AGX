@@ -122,14 +122,13 @@ def main():
     if action == "connect":
         os.execvp("opencode", ["opencode", "/var/lib/agx-data/angi-dev"])
     elif action == "resume":
-        # The most recent run decides: a chat or an OS update run is one agent, a project run is a Herdr swarm.
+        # The most recent run decides: resume Chat, a legacy solo OS run, or a Herdr work session.
         (chat.resume if chat.newest(state) else solo.resume if solo.newest(state) else resume)(state)
     elif action == "start":
-        # Chat and OS updates are single agents (OS installs through angi-update); only projects use Herdr.
         if talk:
             chat.launch(state, brief)
         else:
-            solo.launch(state, brief) if project is None else launch(state, brief, project)
+            launch(state, brief, project)
 
 
 if __name__ == "__main__":

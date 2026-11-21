@@ -33,7 +33,10 @@ import { HoverTip } from "hover-tip.slint";
 import { Cursor } from "cursor.slint";
 import { CursorPreviewWindow } from "cursor-preview.slint";
 export { CursorPreviewWindow }
-import { LineEdit, Button } from "std-widgets.slint";
+import { Button } from "std-widgets.slint";
+import { LoginWindow } from "login.slint";
+import { GreeterSetup, WifiChoice } from "first-boot.slint";
+export { LoginWindow, GreeterSetup, WifiChoice }
 export { Theme, Sys, NetRow, HwRow, MenuRow, Win }
 
 // Frame metrics mirror wm.rs: header 28px, buttons 26px wide, border 2px.
@@ -181,76 +184,6 @@ component WorkspaceButton inherits Rectangle {
         moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
         clicked => { root.picked(); }
     }
-}
-
-export component LoginWindow inherits Window {
-    title: "ANGI · Sign in";
-    background: Theme.bg-dark;
-    default-font-family: "JetBrainsMono Nerd Font";
-    default-font-size: 16px;
-    preferred-width: 1280px;
-    preferred-height: 720px;
-    min-width: 640px;
-    min-height: 400px;
-    forward-focus: username;
-    in property <bool> busy: false;
-    in property <bool> draw-cursor: false;
-    in property <string> error-text;
-    callback sign-in(string, string);
-    callback authenticated(string);
-    function submit() {
-        if (!root.busy) {
-            root.sign-in(username.text, password.text);
-            password.text = "";
-        }
-    }
-    tracker := TouchArea {
-        width: parent.width;
-        height: parent.height;
-        Rectangle {
-            width: min(440px, parent.width - 48px);
-            height: 366px;
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-            background: Theme.bg;
-            border-width: 1px;
-            border-color: Theme.accent;
-            VerticalLayout {
-                padding: 30px;
-                spacing: 14px;
-                Rectangle {
-                    height: 60px;
-                    Image {
-                        x: parent.width - self.width;
-                        width: 104px;
-                        height: 40px;
-                        source: @image-url("../../../brand/brand-mark-text.svg");
-                        image-fit: contain;
-                        accessible-label: "ANGI";
-                    }
-                }
-                Text { text: "Sign in to your desktop"; color: Theme.fg; }
-                username := LineEdit {
-                    placeholder-text: "Username";
-                    enabled: !root.busy;
-                    accepted => { password.focus(); }
-                }
-                password := LineEdit {
-                    placeholder-text: "Password";
-                    input-type: InputType.password;
-                    enabled: !root.busy;
-                    accepted => { root.submit(); }
-                }
-                Button {
-                    text: root.busy ? "Signing in…" : "Sign in";
-                    enabled: !root.busy;
-                    clicked => { root.submit(); }
-                }
-                Text { text: root.error-text; color: Theme.red; wrap: word-wrap; font-size: 12px; min-height: 32px; }
-            }
-        }
-    }
-    if root.draw-cursor: Cursor { x: tracker.mouse-x; y: tracker.mouse-y; shape: 0; }
 }
 
 export component AppWindow inherits Window {
@@ -577,7 +510,7 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     padding: 8px;
                     spacing: 2px;
-                    for label[i] in ["Settings", "Log out", "Enter TUI", "Reboot…", "Shut down…"]: Rectangle {
+                    for label[i] in ["Settings", "Log out", "Open Terminal UI (TUI)", "Reboot…", "Shut down…"]: Rectangle {
                         background: row-touch.has-hover || root.session-index == i ? Theme.bg-light : transparent;
                         border-radius: 4px;
                         accessible-role: button;

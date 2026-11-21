@@ -1,5 +1,7 @@
 //! Root greeter only. A successful login execs a fresh, unprivileged session.
-use crate::{ComponentHandle, LoginWindow, graphics, remote};
+mod setup;
+
+use crate::{ComponentHandle, GreeterSetup, LoginWindow, graphics, remote};
 use slint::Timer;
 use std::{
     cell::RefCell, ffi::CString, io, os::unix::process::CommandExt, process::Command, rc::Rc,
@@ -14,13 +16,15 @@ pub fn run(preview: bool) -> Result<(), Box<dyn std::error::Error>> {
     let ui = LoginWindow::new()?;
     graphics::attach_input(&ui);
     ui.set_draw_cursor(graphics::draw_cursor());
+    let _setup = (!preview).then(|| setup::install(&ui));
+    let _bluetooth = (!preview).then(|| crate::bluetooth::watch(&ui, || true));
     let remote = remote::start(&ui);
     let authenticated = Rc::new(RefCell::new(None::<String>));
     let result = authenticated.clone();
     let weak = ui.as_weak();
     ui.on_sign_in(move |username, password| {
         let Some(ui) = weak.upgrade() else { return };
-        if ui.get_busy() {
+        if ui.get_busy() || ui.global::<GreeterSetup>().get_step() != 0 {
             return;
         }
         ui.set_busy(true);
