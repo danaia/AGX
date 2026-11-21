@@ -1,6 +1,7 @@
 import { Theme } from "data.slint";
 import { DesktopInput } from "desktop-input.slint";
-import { ScrollView } from "std-widgets.slint";
+import { DriveMount } from "drive-mount.slint";
+import { Button, ScrollView } from "std-widgets.slint";
 import { HoverDwell } from "hover-tip.slint";
 
 export struct StorageCell { tint: color, path: string, detail: string }
@@ -101,6 +102,13 @@ export component StorageMap inherits Rectangle {
                     if root.window-gesture || k == 2 || k == 3 { root.pointer(k, b, x, y, c, a, s, m); }
                 }
                 pointer-moved(x, y) => { root.pointer-moved(x, y); }
+            }
+        }
+        if root.drive == 1 && root.summary == "Not mounted": HorizontalLayout {
+            alignment: end;
+            Button {
+                text: "Mount External Drive";
+                clicked => { DriveMount.show-picker(); }
             }
         }
         Text { height: 16px; text: root.status; color: Theme.fg-dim; font-size: 10px; overflow: elide; }

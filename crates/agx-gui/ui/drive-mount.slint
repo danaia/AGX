@@ -1,0 +1,70 @@
+import { Theme } from "data.slint";
+import { Button, ComboBox } from "std-widgets.slint";
+
+export global DriveMount {
+    in-out property <bool> open;
+    in property <bool> busy;
+    in property <string> message;
+    in property <[string]> choices;
+    callback show-picker();
+    callback mount(int);
+}
+
+export component DriveMountDialog inherits Rectangle {
+    callback dismissed();
+    callback pointer-moved(length, length);
+    background: #0008;
+    TouchArea {
+        moved => { root.pointer-moved(self.mouse-x, self.mouse-y); }
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: min(540px, parent.width - 32px);
+        height: layout.preferred-height;
+        background: Theme.bg;
+        border-width: 1px;
+        border-color: Theme.muted;
+        border-radius: 8px;
+        layout := VerticalLayout {
+            padding: 18px;
+            spacing: 12px;
+            Text {
+                text: "Mount External Drive";
+                font-size: 18px;
+                font-weight: 700;
+                color: Theme.fg-bright;
+            }
+            Text {
+                text: "Choose an existing ext4 NVMe partition to use for ANGI storage. It will also mount on startup.";
+                wrap: word-wrap;
+                color: Theme.fg;
+            }
+            partition := ComboBox {
+                accessible-label: "NVMe partition";
+                model: DriveMount.choices;
+                enabled: !DriveMount.busy && DriveMount.choices.length > 0;
+                init => { self.focus(); }
+            }
+            if DriveMount.message != "": Text {
+                text: DriveMount.message;
+                wrap: word-wrap;
+                color: Theme.fg-bright;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: end;
+                Button {
+                    text: "Cancel";
+                    enabled: !DriveMount.busy;
+                    clicked => { DriveMount.open = false; root.dismissed(); }
+                }
+                Button {
+                    text: "Mount";
+                    enabled: !DriveMount.busy && partition.current-index >= 0 && partition.current-index < DriveMount.choices.length;
+                    clicked => { DriveMount.mount(partition.current-index); }
+                }
+            }
+        }
+    }
+}

@@ -14,6 +14,8 @@ import { BrowserPopup } from "browser-popup.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { StorageView, StorageCell, StorageTrashRow } from "storage.slint";
 import { EmptyTrashDialog } from "storage-trash.slint";
+import { DriveMount, DriveMountDialog } from "drive-mount.slint";
+export { DriveMount }
 import { StorageDialog } from "storage-dialog.slint";
 import { CacheDialog } from "cache-dialog.slint";
 import { MemoryProcesses, ProcessRow, MemoryProcessDialog } from "memory-processes.slint";
@@ -231,7 +233,7 @@ export component AppWindow inherits Window {
     in-out property <bool> session-open: false;
     in-out property <int> session-index: 0;
     property <bool> custom-resize-cursor: root.resize-cursor-overlay
-        && !Services.progress-open && !Services.review-open && !StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
+        && !DriveMount.open && !Services.progress-open && !Services.review-open && !StorageView.selected-open && !MemoryProcesses.open && !Files.chooser-open && root.cursor >= 1 && root.cursor <= 5 && !root.menu-open && !root.session-open && root.confirm-text == "";
 
     callback key(string, bool, bool, bool, bool) -> bool;
     callback browser-key(string, bool, bool, bool, bool, bool) -> bool;
@@ -268,7 +270,7 @@ export component AppWindow inherits Window {
 
     root-keys := FocusScope {
         key-pressed(e) => {
-            if Services.progress-open || Services.review-open || StorageView.empty-confirming || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
+            if DriveMount.open || Services.progress-open || Services.review-open || StorageView.empty-confirming || StorageView.selected-open || MemoryProcesses.open || Files.chooser-open { return accept; }
             if (root.session-open) {
                 if (e.text == Key.Escape) { root.session-open = false; }
                 if (e.text == Key.DownArrow) { root.session-index = mod(root.session-index + 1, 5); }
@@ -528,6 +530,11 @@ export component AppWindow inherits Window {
         }
 
         if Files.chooser-open: FolderPicker {
+            pointer-moved(x, y) => { root.track-cursor(x, y); }
+            dismissed => { root-keys.focus(); }
+        }
+
+        if DriveMount.open: DriveMountDialog {
             pointer-moved(x, y) => { root.track-cursor(x, y); }
             dismissed => { root-keys.focus(); }
         }
