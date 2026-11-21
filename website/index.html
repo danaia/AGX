@@ -43,24 +43,59 @@
     </div>
     </div>
     <div class="hero-art">
-      <!-- Pebble cover composition: one graphite slab bled off the top, a soft
-           pill of discs, an ink disc holding the ANGI mark, a rule pill. -->
-      <svg viewBox="0 0 480 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="ANGI">
-        <rect class="graphite" x="40" y="-40" width="160" height="384" rx="40"/>
-        <circle class="cut" cx="96" cy="304" r="6"/><circle class="cut" cx="120" cy="304" r="6"/><circle class="cut" cx="144" cy="304" r="6"/>
-        <rect class="soft-fill" x="216" y="120" width="112" height="224" rx="56"/>
-        <g class="dot">
-          <circle cx="248" cy="160" r="6"/><circle cx="272" cy="160" r="6"/><circle cx="296" cy="160" r="6"/>
-          <circle cx="248" cy="184" r="6"/><circle cx="272" cy="184" r="6"/><circle cx="296" cy="184" r="6"/>
-          <circle cx="248" cy="208" r="6"/><circle cx="272" cy="208" r="6"/><circle cx="296" cy="208" r="6"/>
-          <circle cx="248" cy="232" r="6"/><circle cx="272" cy="232" r="6"/><circle cx="296" cy="232" r="6"/>
-          <circle cx="248" cy="256" r="6"/><circle cx="272" cy="256" r="6"/><circle cx="296" cy="256" r="6"/>
-          <circle cx="248" cy="280" r="6"/><circle cx="272" cy="280" r="6"/><circle cx="296" cy="280" r="6"/>
-          <circle cx="248" cy="304" r="6"/><circle cx="272" cy="304" r="6"/><circle cx="296" cy="304" r="6"/>
+      <!-- The self-building loop: the orchestrator hands work to the builder,
+           the builder updates the Pi, the tester checks it and reports back. -->
+      <svg viewBox="0 0 480 480" role="img" aria-label="A swarm of agents building and testing ANGI on a Raspberry Pi, in a loop">
+        <defs>
+          <filter id="raise" x="-60%" y="-60%" width="220%" height="220%">
+            <feDropShadow dx="4" dy="4" stdDeviation="4" flood-color="#c6c6c6"/>
+            <feDropShadow dx="-4" dy="-4" stdDeviation="4" flood-color="#ffffff"/>
+          </filter>
+        </defs>
+
+        <!-- loop: one circle through the agents and the Pi -->
+        <g class="track"><path d="M199.9 85.5 A150 150 0 0 0 93.6 197.5"/><path d="M93.6 262.5 A150 150 0 0 0 151.8 351.4"/><path d="M332.3 348.2 A150 150 0 0 0 386.4 262.5"/><path d="M386.4 197.5 A150 150 0 0 0 280.1 85.5"/></g>
+        <g class="flow"><path d="M199.9 85.5 A150 150 0 0 0 93.6 197.5"/><path d="M93.6 262.5 A150 150 0 0 0 151.8 351.4"/><path d="M332.3 348.2 A150 150 0 0 0 386.4 262.5"/><path d="M386.4 197.5 A150 150 0 0 0 280.1 85.5"/></g>
+
+        <!-- the swarm: small helpers around the orchestrator -->
+        <g class="faint"><path d="M214 68 L150 40"/><path d="M266 68 L330 40"/><path d="M240 112 V140"/></g>
+        <circle class="mote" cx="144" cy="38" r="7"/><circle class="mote" cx="336" cy="38" r="7"/><circle class="mote" cx="240" cy="146" r="6"/>
+
+        <!-- Raspberry Pi, contour drawing -->
+        <g transform="translate(0 74)">
+        <g class="board">
+          <rect x="156" y="256" width="168" height="100" rx="10"/>
+          <circle cx="167" cy="267" r="3.5"/><circle cx="313" cy="267" r="3.5"/>
+          <circle cx="167" cy="345" r="3.5"/><circle cx="289" cy="345" r="3.5"/>
+          <path class="pins" d="M184 265 H292 M184 272 H292"/>
+          <rect x="258" y="294" width="22" height="26" rx="3"/>
+          <rect x="300" y="282" width="30" height="18" rx="2"/>
+          <rect x="300" y="304" width="30" height="18" rx="2"/>
+          <rect x="300" y="326" width="30" height="20" rx="2"/>
+          <path d="M176 356 v-8 h16 v8 M200 356 v-7 h13 v7 M219 356 v-7 h13 v7"/>
+          <rect x="172" y="294" width="14" height="22" rx="2"/>
         </g>
-        <circle class="ink" cx="400" cy="160" r="64"/>
-        <use class="bug-on-ink" href="#bug" x="368" y="130" width="64" height="60"/>
-        <rect class="rule" x="344" y="304" width="112" height="40" rx="20"/>
+        <g class="soc">
+          <rect x="208" y="288" width="40" height="40" rx="5"/>
+          <rect x="217" y="297" width="22" height="22" rx="3"/>
+        </g>
+        <circle class="pulse" cx="228" cy="308" r="4"/>
+        </g>
+
+        <!-- agents -->
+        <circle class="node graphite" cx="240" cy="80" r="32" filter="url(#raise)"/>
+        <use class="bug-on-ink" href="#bug" x="224" y="65" width="32" height="30"/>
+        <circle class="node" cx="90" cy="230" r="24" filter="url(#raise)"/>
+        <use class="glyph" href="#i-hammer" x="80" y="220" width="20" height="20"/>
+        <circle class="node" cx="390" cy="230" r="24" filter="url(#raise)"/>
+        <use class="glyph" href="#i-check" x="380" y="220" width="20" height="20"/>
+
+        <g class="cap">
+          <text x="240" y="22">ORCHESTRATOR</text>
+          <text x="56" y="234" class="end">BUILDER</text>
+          <text x="424" y="234" class="start">TESTER</text>
+          <text x="240" y="462">RASPBERRY PI</text>
+        </g>
       </svg>
     </div>
   </div>
