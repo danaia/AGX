@@ -125,7 +125,7 @@ impl Kind {
     pub fn title(self) -> &'static str {
         match self {
             Kind::Overview => "ANGI",
-            Kind::Cpu => "CPU",
+            Kind::Cpu => "CPU & Safety",
             Kind::Memory => "Memory and storage",
             Kind::Network => "Network",
             Kind::Hardware => "Hardware",

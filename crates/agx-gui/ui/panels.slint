@@ -165,12 +165,49 @@ export component OverviewPanel inherits Rectangle {
     }
 }
 
-export component CpuPanel inherits VerticalLayout {
-    padding: 12px;
-    spacing: 10px;
-    alignment: start;
-    Meter { label: "usage"; percent: Sys.cpu-percent; detail: Sys.cpu-detail; tint: Theme.cyan; }
-    Row { label: "load"; value: Sys.load-text; }
+export component CpuPanel inherits ScrollView {
+    in property <int> cursor;
+    in property <bool> hide-cursor;
+    callback pointer(int, int, length, length, bool, bool, bool, bool);
+    callback pointer-moved(length, length);
+    private property <color> risk-tint: Sys.network-risk-score < 0 ? Theme.fg-dim
+        : Sys.network-risk-score >= 70 ? Theme.red
+        : Sys.network-risk-score >= 30 ? Theme.yellow : Theme.green;
+    horizontal-scrollbar-policy: always-off;
+    content-width: self.visible-width;
+    content-height: max(self.visible-height, layout.preferred-height);
+    DesktopInput {
+        width: root.content-width;
+        height: root.content-height;
+        cursor: root.cursor;
+        hide-cursor: root.hide-cursor;
+        forward-scroll: false;
+        pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    layout := VerticalLayout {
+        width: root.content-width;
+        padding: 12px;
+        padding-right: 16px;
+        spacing: 8px;
+        alignment: start;
+        Meter { label: "usage"; percent: Sys.cpu-percent; detail: Sys.cpu-detail; tint: Theme.cyan; }
+        Row { label: "load"; value: Sys.load-text; }
+        Row { label: "temperature"; value: Sys.cpu-temperature; }
+        Rectangle { height: 1px; background: Theme.muted; }
+        HorizontalLayout {
+            spacing: 8px;
+            Text { text: "Network exposure"; font-weight: 700; color: Theme.fg-bright; }
+            Text {
+                text: Sys.network-risk-score < 0 ? "Unavailable" : Sys.network-risk-score + "/100 · " +
+                    (Sys.network-risk-score >= 70 ? "High" : Sys.network-risk-score >= 30 ? "Moderate" : "Low");
+                color: root.risk-tint;
+                font-weight: 700;
+                horizontal-alignment: right;
+            }
+        }
+        Text { text: Sys.network-risk-reason; wrap: word-wrap; color: Theme.fg; }
+    }
 }
 
 export component MemoryPanel inherits VerticalLayout {

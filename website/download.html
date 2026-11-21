@@ -31,7 +31,7 @@
 <header class="hero page-hero">
   <div class="wrap">
     <div class="eyebrow">Images</div>
-    <h1><span class="grad">One ready-made image</span><br><span class="gradO">per system.</span></h1>
+    <h1><span class="grad">One ready-made image</span><br><span class="grad">per system.</span></h1>
     <p class="sub">You don't need to download these yourself. Each system's install prompt has your coding agent download its image, check its SHA-256 and write it for you.</p>
     <div class="cta">
       <a class="btn primary" href="get-started.html"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a>
@@ -52,7 +52,7 @@
     <div class="reveal">
       <details class="faq"><summary>Do I need to build anything?</summary><p>No. Your agent downloads a ready-made image and writes it. Building ANGI from source is only for people changing the operating system itself; the steps live in the <a href="https://github.com/danaia/ANGI">repository</a>.</p></details>
       <details class="faq"><summary>Which image do I pick for a Pi 400?</summary><p>The Pi 4 / 400 image. Both use the same board support.</p></details>
-      <details class="faq"><summary>Does the image include my passwords or keys?</summary><p>No. Images are generic. You create your own administrator account and join Wi-Fi in your browser on first start.</p></details>
+      <details class="faq"><summary>Does the image include my passwords or keys?</summary><p>No. Images are generic. You create your own administrator account and join Wi-Fi in your browser on first start, and paste the SSH public key your agent prepared. Only the public half leaves your computer.</p></details>
       <details class="faq"><summary>Will writing the image erase my card?</summary><p>Yes. Your agent shows you the card first and erases nothing until you type <code>erase</code> followed by the card's exact device path.</p></details>
       <details class="faq"><summary>How does the agent know the image is genuine?</summary><p>Each image is published with a <code>.sha256</code> file next to it. The agent compares the download against it and stops if they differ.</p></details>
     </div>

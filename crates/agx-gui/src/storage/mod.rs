@@ -20,7 +20,6 @@ use std::{cell::RefCell, rc::Rc, sync::mpsc, time::Duration};
 pub(super) struct Watch {
     worker: worker::Worker,
     _timer: slint::Timer,
-    _mount: slint::Timer,
 }
 impl Drop for Watch {
     fn drop(&mut self) {
@@ -32,7 +31,7 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
     let policy = policy::Policy::current();
     let (publish, updates) = mpsc::channel();
     let worker = worker::Worker::start(policy, publish);
-    let mount = mount::install(ui, worker.clone());
+    mount::install(ui, worker.clone());
     let catalog = Rc::new(RefCell::new(view::State::default()));
     catalog.borrow().bind(ui);
     let selected = Rc::new(RefCell::new(None::<(scan::File, bool)>));
@@ -226,7 +225,6 @@ pub(super) fn install(ui: &AppWindow) -> Watch {
     Watch {
         worker,
         _timer: timer,
-        _mount: mount,
     }
 }
 

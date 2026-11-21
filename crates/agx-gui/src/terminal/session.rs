@@ -152,7 +152,7 @@ impl Session {
         Self::start(size, Some((path, vec![], title)), None)
     }
     pub fn tui(size: Size) -> io::Result<Self> {
-        Self::start(size, Some(("/usr/bin/agx", vec!["tui".into()], "ANGI TUI")), None)
+        Self::start(size, Some(("/usr/bin/agx", vec!["tui".into(), "--embedded".into()], "ANGI TUI")), None)
     }
 
     pub fn opencode(size: Size) -> io::Result<Self> {

@@ -4,6 +4,7 @@
 #   scripts/flash-sd.sh --list
 #   scripts/flash-sd.sh --board rpi5 --device /dev/sdX         # asks you to type the path
 #   scripts/flash-sd.sh --board rpi5 --device /dev/sdX --confirm-erase /dev/sdX
+#   scripts/flash-sd.sh --board rpi5 --device /dev/sdX --image PRIVATE_DIR/sdcard.img --personalized
 #
 # --confirm-erase is for a coding agent acting AFTER the person has seen the card's
 # identity and approved erasing it. It must repeat the --device path exactly.
@@ -18,6 +19,7 @@ BOARD=""
 DEVICE=""
 CONFIRM=""
 LIST=0
+PERSONALIZED=0
 
 die() { echo "flash-sd: $*" >&2; exit 1; }
 usage() { sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
@@ -25,6 +27,7 @@ usage() { sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 while (( $# )); do
     case $1 in
         --list) LIST=1 ;;
+        --personalized) PERSONALIZED=1 ;;
         --device) DEVICE=${2:?--device needs a path}; shift ;;
         --confirm-erase) CONFIRM=${2:?--confirm-erase needs the device path}; shift ;;
         --board) BOARD=${2:?--board needs a target id (see scripts/detect-board.py --list)}; shift ;;
@@ -184,6 +187,9 @@ BEFORE=$(identity "$DEVICE") || die "cannot read the card's identity"
 
 python3 "$ROOT/scripts/detect-board.py" --require "$BOARD" >/dev/null || { python3 "$ROOT/scripts/detect-board.py" --require "$BOARD" >&2 || true; die "no image for $BOARD; refusing"; }
 IMAGE_DIR=$(dirname -- "$IMAGE")
+if (( PERSONALIZED )); then
+    [[ $BOARD == rpi5 && ${IMAGE##*/} == sdcard.img ]] || die "select a private Pi 5 sdcard.img"
+fi
 if [[ $IMAGE == *.iso ]]; then
     [[ $BOARD == rpi4 ]] || die "the hybrid ISO requires Pi 4 / 400"
 else
@@ -207,7 +213,10 @@ IMG_BYTES=$(stat -c %s "$IMAGE")
 (( BYTES >= IMG_BYTES )) || die "card is smaller than the image ($(human "$BYTES") < $(human "$IMG_BYTES"))"
 (( BYTES <= MAX_GIB * 1024 * 1024 * 1024 )) \
     || die "$DEVICE is $(human "$BYTES"), larger than ${MAX_GIB} GiB. That is unusual for a microSD card; pass --max-gib to override"
-if [[ $IMAGE == *.iso ]]; then
+if (( PERSONALIZED )); then
+    python3 "$ROOT/scripts/provision-sd.py" --verify "$IMAGE_DIR" \
+        || die "the private SD image failed verification; refusing to write it"
+elif [[ $IMAGE == *.iso ]]; then
     python3 "$ROOT/scripts/iso_media.py" "$IMAGE" \
         || die "the ISO failed validation; refusing to write it"
 else

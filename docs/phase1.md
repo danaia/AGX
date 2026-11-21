@@ -41,6 +41,25 @@ Follow the [Pi 4 / 400 provisioning guide](pi4-provisioning.md) to build and ver
 
 Run the same build and provisioning sequence with `BOARD=rpi5`. `make check-image BOARD=rpi5` produces `output/images/sdcard.img.sha256`. Verify it before writing the card. The image includes the desktop, loopback VNC, and ANGI Web. After booting it, use [the Pi 5 SSH setup prompt](install-prompts/part2-rpi5.txt).
 
+For a private Pi 5 card with SSH trust ready before boot, install
+`dropbearkey` on the workstation and run:
+
+```sh
+python3 scripts/provision-sd.py --output-dir .cache
+```
+
+The command prepares a workstation login key if one is missing, embeds its
+public half, and creates a fresh host key for this card. It prints the private
+install directory and the local SSH identity to use. Pass `--public-key` to
+select a specific existing identity. Flash the private `sdcard.img`
+with `scripts/flash-sd.sh --board rpi5 --personalized --image PATH_TO_SD_IMAGE --device DEVICE`
+after identifying the microSD card. Keep the image private because it contains
+the Pi's host private key. The matching `known_hosts` file pins the public
+key for both direct connections. With the workstation's `agx-ethernet`
+profile active, the Pi configures `eth0` as `10.78.0.2/24` at boot.
+Connect with strict SSH verification using the private install directory's
+`known_hosts` file. [Pi Ethernet guide](pi-ethernet.md#connect-and-verify)
+
 The Pi 5 boots from microSD and can mount a separate NVMe data partition. Its firmware enables external PCIe for NVMe adapters. Identify the ext4 partition you intend to use with `blkid` on the Pi. Save its filesystem UUID in `/etc/agx/data-volume.uuid` as root and reboot. Verify with `mountpoint /var/lib/agx-data` and `df /var/lib/agx-data`. ANGI mounts only a configured UUID and uses the volume for browser and agent data. On a microSD-only system, Web keeps its data in the signed-in account’s home. [Raspberry Pi PCIe documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html)
 
 ### Pi 4 / 400 hybrid ISO alternative

@@ -55,7 +55,7 @@ impl App {
             terminal: terminal::State::default(),
             terminal_kind: Kind::Terminal,
             terminal_windows: Default::default(),
-            next_terminal: 3,
+            next_terminal: 0,
             terminal_views: Default::default(),
             browser: browser::Browser::default(),
             desk,

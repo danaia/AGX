@@ -356,16 +356,16 @@ class SoloTests(unittest.TestCase):
         self.assertTrue((self.state / "os-current").exists())
         self.assertEqual((Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/skills/angi-gui/SKILL.md").read_text(), "gui skill")
 
-    def test_launch_routes_os_runs_to_the_solo_agent_and_projects_to_the_swarm(self):
+    def test_launch_routes_os_and_project_runs_to_the_swarm(self):
         with patch.object(main.sys, "argv", ["agent", "angi", "--prompt", "x"]), patch.object(main.os, "getuid", return_value=1000), \
                 patch.object(main, "solo") as os_run, patch.object(main, "launch") as swarm:
             main.main()
-            os_run.launch.assert_called_once()
-            swarm.assert_not_called()
+            swarm.assert_called_once_with(self.state / "angi-swarm", "x", None)
+            os_run.launch.assert_not_called()
         with patch.object(main.sys, "argv", ["agent", "angi", "--prompt", "x", "--project", "/home/dana/shop"]), patch.object(main.os, "getuid", return_value=1000), \
                 patch.object(main, "solo") as os_run, patch.object(main, "launch") as swarm:
             main.main()
-            swarm.assert_called_once()
+            swarm.assert_called_once_with(self.state / "angi-swarm", "x", "/home/dana/shop")
             os_run.launch.assert_not_called()
 
     def test_resume_follows_whichever_run_is_newest(self):

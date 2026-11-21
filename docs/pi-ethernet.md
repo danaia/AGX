@@ -59,11 +59,39 @@ pi_ssh 'hostname; uname -m; ip -4 addr show dev eth0; mountpoint /var/lib/agx-da
 ```
 
 Expect hostname `agx`, architecture `aarch64`, `eth0` at `10.78.0.2/24` and a
-mounted data volume. A host-key mismatch is a stop condition: do not delete
-known-host entries, use `StrictHostKeyChecking=no`, or trust a fresh `ssh-keyscan`
-result as identity proof. Resolve identity through the existing trusted recovery
-connection or local console. Do not substitute passwords or generate new keys
-because batch authentication failed.
+mounted data volume. On a host-key mismatch, pause remote work and verify the
+replacement key before resuming. If batch authentication fails after host
+verification, diagnose the existing login key and device account.
+
+### Verify a replacement host key
+
+For a card prepared with `scripts/provision-sd.py`, use its private
+`known_hosts` file for the first strict SSH connection. If provisioning
+reported a different workstation identity, set `AGX_SSH_KEY` to that path
+before connecting:
+
+```bash
+pi_ssh -o UserKnownHostsFile=/path/to/private-install/known_hosts hostname
+```
+
+Use the Pi's local ANGI Terminal to read the replacement Ed25519 fingerprint:
+
+```sh
+angi-root /usr/bin/dropbearkey -y -f /etc/dropbear/dropbear_ed25519_host_key | grep '^Fingerprint:'
+```
+
+An existing independently trusted recovery session can read the same key. A
+private provisioning record can also supply the fingerprint when it belongs to
+the exact installed image for this Pi. A key presented by the Ethernet peer or
+returned by `ssh-keyscan` needs one of those independent sources to establish
+identity.
+
+When the fingerprint matches, pin the verified public key for the existing
+`10.77.0.2` host-key alias and the `10.78.0.2` entry some deployment scripts
+use directly. Scope the replacement to those two entries and keep the
+workstation's other host keys. Repeat the strict connection and device checks
+above before deploying. Standing administrator authorization covers this
+verified trust update and the subsequent deployment.
 
 ## Commands and file transfer
 

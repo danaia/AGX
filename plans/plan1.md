@@ -88,7 +88,8 @@ In priority order. Items 1–3 are small and protect what already exists; 4–6 
 8. **Wire GUI controls to the shared service interfaces** (services, network, profile, agent).
 9. **Open hardware follow-ups:** HDMI/UART recovery login, wired Ethernet, radio audit (`txcap_blob` messages, region 99), NVMe read speed, a physical power-off cycle.
 10. **Code-structure backlog:** `agx-tui/wifi.rs` (1,166 lines), `agx-net/service.rs` (1,128), `agx-gui/wm.rs` (1,092) and `agx-gui/main.rs` (903) are over the 750-line threshold; `profile.rs`, `supervisor.rs`, `agx-cli/main.rs` and `system.rs` are in the review band. Segment each when it is next changed.
-11. **On hold by the user's decision:** on-device update download/installation, rollback, and card migration.
+11. [ ] **Improve first-run Wi-Fi feedback.** After one scan request, show an indeterminate progress bar and keep listening for results through temporary scan errors. Show the network list when results arrive. Allow cancellation and surface persistent failures with a way to retry. After **Connect and save** succeeds and the connection is confirmed, show a brief animated green checkmark, wait about one second, then advance to the next setup step. Keep the user on the Wi-Fi step if connection or saving fails.
+12. **On hold by the user's decision:** on-device update download/installation, rollback, and card migration.
 
 ### Phase 1 — Bootloader and boot image
 

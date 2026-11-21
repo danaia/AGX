@@ -1,5 +1,5 @@
 //! Window creation, callback wiring, timers and background system sampling.
-use crate::system_ui::{apply, apply_omarchy_theme, local_time};
+use crate::system_ui::{apply, apply_network_safety, apply_omarchy_theme, local_time};
 use crate::{
     App, AppWindow, Sys, browser, graphics, keymap::Cmd, mods, remote, session_action, terminal,
 };
@@ -187,11 +187,14 @@ pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let mut sampler = Sampler::default();
         loop {
             let result = sampler.collect();
+            let temperature = crate::cpu_temperature::temperature();
+            let exposure = crate::network_safety::collect();
             let weak = weak.clone();
             if slint::invoke_from_event_loop(move || {
                 if let Some(ui) = weak.upgrade() {
+                    apply_network_safety(&ui.global::<Sys>(), exposure);
                     match result {
-                        Ok(snapshot) => apply(&ui, &snapshot),
+                        Ok(snapshot) => apply(&ui, &snapshot, temperature),
                         Err(error) => ui
                             .global::<Sys>()
                             .set_warnings(format!("sampling failed: {error}").into()),

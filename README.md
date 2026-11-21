@@ -168,12 +168,16 @@ and use the Linux distribution's package manager to install missing tools with a
 Use the host's network settings for the direct link in part 2.
 
 STEP 2 - GET AND BUILD ANGI
-Clone the repository (or reuse a checkout without overwriting my changes). Use
-~/.ssh/id_ed25519.pub as SSH_PUBLIC_KEY, or create an Ed25519 key without
-overwriting any key. As my normal user run make configure, make dependencies,
+Clone the repository (or reuse a checkout without overwriting my changes).
+Run python3 scripts/ssh_provisioning.py as my normal user to select or generate
+the workstation's Ed25519 key pair. Record the matching private key's path for
+part 2. Keep that private key on the workstation. As my normal user run make configure, make dependencies,
 make build and make check-image, each with BOARD=<my board>. Fix errors and
 resume. Go on only when the image passes the check. For Pi 4 or Pi 5, also verify
-sdcard.img.sha256 in the selected build's images directory.
+sdcard.img.sha256 in the selected build's images directory. On Pi 5, ensure the
+workstation has dropbearkey, then run python3 scripts/provision-sd.py to create
+the private image with a fresh Pi host key and matching known_hosts file.
+Record the private install directory for part 2.
 
 WATCH THE BUILD. THIS IS REQUIRED.
 - Before you start make build, say: "The build takes a long time, about <your
@@ -198,7 +202,8 @@ computer for this step. If it is not attached here, stop and ask me to attach it
    approval in the form "erase DEVICE", using the exact whole-device path reported
    by the Linux card writer. Anything else means no.
 3. Then run scripts/flash-sd.sh --board BOARD --image IMAGE --device PATH --confirm-erase PATH.
-   IMAGE is the sdcard.img from the build that passed the check.
+   For Pi 5, use the private sdcard.img and add --personalized. Otherwise use the
+   sdcard.img from the build that passed the check.
    It wipes the old partitions, writes the image, checks every byte, and ejects.
    Wait for the command to finish successfully before saying the SD card or USB drive is ready.
    If it refuses, verification fails, or ejection fails, tell me. Do not try
@@ -217,8 +222,9 @@ Remind me to have my Wi-Fi network name, its password and my two-letter country
 code ready, because the second part joins ANGI to Wi-Fi, which is the most important
 step.
 Right after the list, print the SECOND PROMPT for me: read the file docs/install-prompts/part2-BOARD.txt
-from the checkout (BOARD is my board), and show its full text exactly as it is, in one
-code block I can copy. Tell me to open a NEW chat with my agent and paste it there. Say
+from the checkout (BOARD is my board), and show its full text in one code block
+I can copy. Append the checkout, private key path, and any prepared known_hosts file
+path to that block for the next agent. Tell me to open a NEW chat and paste it there. Say
 clearly that the first part is finished. Do not run the second part yourself and do not
 continue past this step.
 ```

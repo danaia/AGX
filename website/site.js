@@ -80,6 +80,7 @@
         </div>
         ${who('Your agent', [
           'Checks your computer and finds the card reader',
+          'Finds this computer\'s SSH key, or creates one',
           `Downloads the ${esc(img.short)} image and verifies its SHA-256`,
           `Shows you the ${m}: path, size, model, contents`,
           'Writes it, checks every byte, and ejects it',
@@ -99,12 +100,14 @@
           `Move the card into the ${esc(img.short)}`,
           `Connect ${esc(img.port)} to your computer with a <b>USB data cable</b>. It powers the Pi too.`,
           'At <b>angi.local</b>, create your account and join Wi-Fi. Passwords stay in your browser.',
+          'Paste the <b>SSH public key</b> your agent gives you. It is what lets you connect over USB-C or Ethernet.',
           'Say <b>Continue</b> when the page shows Setup complete',
         ])}
         ${who('Your agent', [
           'Waits for the USB link to come up',
           'Opens <b>angi.local</b> in your browser',
-          'Confirms Wi-Fi and internet, and gives you the SSH command',
+          'Confirms Wi-Fi and internet',
+          'Pins the Pi\'s identity, tests SSH, and gives you the command',
         ])}
       </div>` : `
       <div class="phase panel hot">
@@ -115,10 +118,12 @@
         ${who('You', [
           `Move the drive into the ${esc(img.short)} computer`,
           'Start it from the drive using its boot menu',
+          'Paste the <b>SSH public key</b> your agent gives you when setup asks',
         ])}
         ${who('Your agent', [
           'Helps you find the boot menu key',
           'Walks you through the setup steps for this image',
+          'Pins the computer\'s identity for SSH over Ethernet',
         ])}
       </div>`;
     return `<div class="phases">${one}<div class="move" aria-hidden="true">${icon('i-arrow')}<span>Move the ${pi ? 'card' : 'drive'}</span></div>${two}</div>`;

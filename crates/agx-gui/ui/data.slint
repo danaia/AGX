@@ -56,6 +56,9 @@ export global Sys {
     in property <string> primary-ip: "no network";
     in property <float> cpu-percent;
     in property <string> cpu-detail;
+    in property <string> cpu-temperature: "Unavailable";
+    in property <int> network-risk-score: -1;
+    in property <string> network-risk-reason: "Waiting for local socket data.";
     in property <string> load-text;
     in property <float> mem-percent;
     in property <string> mem-detail;

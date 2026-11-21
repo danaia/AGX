@@ -101,6 +101,7 @@ agent-test:
 	python3 scripts/test-agent-models.py
 	python3 scripts/test-agent-providers.py
 	python3 scripts/test-agent-scope.py
+	python3 scripts/test-data-volume.py
 	python3 scripts/test-agent-history.py
 	python3 scripts/test-agent-chat-files.py
 	python3 scripts/test-agent-update.py

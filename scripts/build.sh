@@ -42,11 +42,7 @@ if [[ ${AGX_GENERIC_ISO:-0} == 1 || -f "$OUTPUT/.generic-iso" ]]; then
     build_options+=("BR2_ROOTFS_OVERLAY=$ROOT/buildroot/board/agx/rootfs-overlay $FIRMWARE_DIR/rootfs-overlay")
 else
     # Keep workstation-specific public keys out of the tracked board overlay.
-    PUBLIC_KEY=${SSH_PUBLIC_KEY:-"${HOME}/.ssh/id_ed25519.pub"}
-    if [[ ! -f "$PUBLIC_KEY" ]]; then
-        echo "Set SSH_PUBLIC_KEY to an SSH public key file before configuring/building." >&2
-        exit 1
-    fi
+    PUBLIC_KEY=${SSH_PUBLIC_KEY:-$(python3 "$ROOT/scripts/ssh_provisioning.py")}
     ssh-keygen -lf "$PUBLIC_KEY" >/dev/null
     if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)[^ ]* ' "$PUBLIC_KEY"; then
         echo "Expected an OpenSSH public key, not a private key or certificate." >&2
@@ -80,6 +76,9 @@ case "$ACTION" in
             if ((${#stage_options[@]})); then
                 brmake "BR2_JLEVEL=${JOBS:-8}" agx-gui-rebuild
             fi
+        fi
+        if grep -q '^BR2_PACKAGE_AGX_AGENT=y$' "$OUTPUT/.config"; then
+            brmake "BR2_JLEVEL=${JOBS:-8}" agx-agent-rebuild
         fi
         if grep -q '^BR2_PACKAGE_AGX_WEB=y$' "$OUTPUT/.config"; then
             brmake "BR2_JLEVEL=${JOBS:-8}" agx-web-rebuild

@@ -22,7 +22,7 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
-    /// Open the desktop directly; its Open TUI action switches to the console
+    /// Open the desktop directly
     Desktop,
     /// Ask whether to open the desktop (GUI) or the console (TUI)
     Start {
@@ -35,6 +35,8 @@ enum Commands {
     },
     /// Open the interactive console (use ssh -t)
     Tui {
+        #[arg(long, hide = true)]
+        embedded: bool,
         #[arg(long)]
         ascii: bool,
         #[arg(long)]
@@ -377,6 +379,7 @@ fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Commands::Tui {
+            embedded,
             ascii,
             no_color,
             no_mouse,
@@ -393,14 +396,16 @@ fn run(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
                     Color::Never => ColorMode::Never,
                 }
             };
-            run_interfaces(
-                start::Choice::Tui,
-                Options {
-                    ascii,
-                    mouse: !no_mouse,
-                    color,
-                },
-            )?;
+            let options = Options {
+                ascii,
+                mouse: !no_mouse,
+                color,
+            };
+            if embedded {
+                agx_tui::run(options)?;
+            } else {
+                run_interfaces(start::Choice::Tui, options)?;
+            }
         }
         Commands::Status { json } => {
             let mut sampler = Sampler::default();

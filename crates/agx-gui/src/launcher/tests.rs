@@ -38,7 +38,7 @@ fn apps_include_running_and_closed_tools_and_open_them_from_any_workspace() {
             .any(|entry| entry.command == Cmd::Open(Kind::Services) && !entry.running)
     );
     desktop.goto(3);
-    assert_eq!(desktop.focused(), Some(Kind::Web), "Web is seeded on workspace 4");
+    assert_eq!(desktop.focused(), None, "Workspace 4 starts empty");
     desktop.goto(0);
     assert_eq!(
         results(&desktop, "Super", "webkit", SETTINGS, &available)[0].command,
@@ -85,10 +85,12 @@ fn search_finds_app_aliases_and_secondary_commands() {
 }
 
 #[test]
-fn apps_tab_lists_only_installable_apps_in_order_with_an_install_action() {
+fn apps_tab_lists_built_ins_then_installable_apps() {
     let desktop = desktop();
     let listed = results(&desktop, "Super", "", APPS, &available);
-    assert_eq!(listed.len(), apps::index().len());
+    assert_eq!(listed.len(), apps::index().len() + 3);
+    assert_eq!(listed[..3].iter().map(|entry| entry.label.as_str()).collect::<Vec<_>>(), ["Web", "Files", "Terminal"]);
+    let listed = &listed[3..];
     assert!(listed.iter().all(|entry| entry.section == APPS));
     assert!(
         listed
@@ -200,7 +202,9 @@ fn installed_apps_come_first_under_their_own_heading_and_the_rest_follow() {
     let desktop = desktop();
     let state = with_installed(&["jq", "btop"]);
     let listed = results(&desktop, "Super", "", APPS, &state);
-    assert_eq!(listed.len(), apps::index().len(), "every app is still listed once");
+    assert_eq!(listed.len(), apps::index().len() + 3, "built-in and installable apps are listed");
+    assert_eq!(listed[..3].iter().map(|entry| entry.label.as_str()).collect::<Vec<_>>(), ["Web", "Files", "Terminal"]);
+    let listed = &listed[3..];
     let labels: Vec<_> = listed.iter().map(|entry| entry.label.as_str()).collect();
     assert_eq!(&labels[..2], ["jq", "btop"], "installed first, in catalogue order");
     assert!(listed[..2].iter().all(packages::is_installed));
@@ -215,7 +219,7 @@ fn installed_apps_come_first_under_their_own_heading_and_the_rest_follow() {
 fn with_nothing_installed_there_is_one_heading_and_no_empty_installed_section() {
     let desktop = desktop();
     let listed = results(&desktop, "Super", "", APPS, &available);
-    assert_eq!(listed[0].heading, format!("ALL APPS  ·  {}", apps::index().len()));
+    assert_eq!(listed[3].heading, format!("ALL APPS  ·  {}", apps::index().len()));
     assert_eq!(listed.iter().filter(|entry| !entry.heading.is_empty()).count(), 1);
 }
 
@@ -230,7 +234,7 @@ fn installing_apps_stay_put_and_headings_only_appear_without_a_search() {
         }
     };
     let listed = results(&desktop, "Super", "", APPS, &state);
-    assert_eq!(listed[0].label, "GitHub CLI", "an app mid-install does not jump to the top");
+    assert_eq!(listed[3].label, "GitHub CLI", "an app mid-install does not jump to the top");
     let searched = results(&desktop, "Super", "find", APPS, &with_installed(&["fd"]));
     assert!(searched.iter().all(|entry| entry.heading.is_empty()), "search results are one flat list");
     assert_eq!(searched[0].label, "fd", "a match you already have is listed first");

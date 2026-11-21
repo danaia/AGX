@@ -66,6 +66,8 @@ BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_AGX_PATH)/board/agx/bu
 
 # Filesystem tools for AGX data volumes.
 BR2_PACKAGE_E2FSPROGS=y
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
 
 # Desktop graphics, input, typography and the embedded WPE browser.
 BR2_PACKAGE_LIBUDEV_ZERO=y

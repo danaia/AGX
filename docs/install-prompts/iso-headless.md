@@ -20,10 +20,10 @@ release, and verify the downloaded file before proceeding. For browser setup, us
 the generic ISO directly. For SSH setup, check for xorriso, bsdtar, debugfs,
 dropbearkey, OpenSSH, Python 3.11 or later, and util-linux. Install missing tools
 with my approval if needed.
-For SSH setup, use my existing SSH public key or create an Ed25519 pair without
-overwriting any key, then run:
-python3 scripts/provision-iso.py --image ISO --sha256 SHA256 --public-key KEY.pub.
-Keep the resulting install directory private. Report its Pi host-key fingerprint.
+For SSH setup, run python3 scripts/provision-iso.py --image ISO --sha256 SHA256.
+It reuses or creates the workstation key pair and creates the Pi's per-card host
+key. Keep the resulting install directory private. Record the workstation identity
+path and report the Pi host-key fingerprint.
 Use the private angi-rpi4-install.iso and its known_hosts file for the rest of setup.
 
 3. WRITE THE CARD

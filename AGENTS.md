@@ -24,7 +24,7 @@ Use the Agent Angi OS and Project tooltip pattern throughout the ANGI desktop. R
 
 ## Development device deployment
 
-The user authorizes deploying requested changes to the established development Pi, refreshing the authenticated desktop or rebooting when needed, and verifying the result as part of the task. Use the repository's documented deployment and recovery procedures, preserve user data, and report the checks performed.
+The user grants Codex standing administrator authorization on the established ANGI development Pi 5. For requested changes, use the documented root SSH connection to install live component and operating-system updates, refresh the authenticated desktop or reboot when needed, and verify the running version and requested behavior. Carry deployment through verification without asking again for permission to perform those steps. Preserve user data and the previous release for rollback. An erase or reflash requires separate explicit authorization.
 
 ## Pi access and control (Claude and Codex)
 
@@ -34,4 +34,4 @@ For Pi access, remote commands, file transfer, desktop control, deployment or re
 - Use the existing Ed25519 key and strict host-key checking. Set the documented `AGX_SSH_*` variables before deployment; older scripts otherwise default to USB.
 - Control the desktop through the existing OpenSSH VNC tunnel at `127.0.0.1:5941`. Keep Pi VNC bound to loopback and Remmina's built-in SSH tunnel disabled.
 - Distinguish workstation commands from Pi commands. The Pi runs Buildroot with Rust init, not systemd; workstation tunnel services use `systemctl --user` only on the workstation.
-- Verify the route and SSH identity before mutation. Follow the guide's bounded recovery sequence on failure; do not silently change transports, credentials, host-key trust or network configuration.
+- Verify the route and SSH identity before mutation. After a reflash or host-key rotation, follow the guide to verify the replacement key against the device console or a trusted per-device provisioning record. Once verified, update the development Pi's known-host entries and continue the authorized work. Follow the guide's bounded recovery sequence on failure.

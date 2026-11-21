@@ -26,6 +26,8 @@ mod agent_project;
 mod agent_providers;
 mod agent_swarm;
 mod app;
+mod cpu_temperature;
+mod network_safety;
 #[cfg(test)]
 mod pointer_tests;
 mod runtime;

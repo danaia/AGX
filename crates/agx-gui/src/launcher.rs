@@ -63,9 +63,9 @@ fn catalogue(
             "angi dashboard home status",
         ),
         (
-            "CPU Monitor",
-            "Processor activity, load, and temperature",
-            "performance processor usage cpu",
+            "CPU & Safety",
+            "Processor activity and network exposure",
+            "performance processor usage cpu monitor load network security ports",
         ),
         (
             "Memory & Storage",
@@ -293,7 +293,16 @@ fn results(
     availability: &dyn Fn(&str) -> Availability,
 ) -> Vec<Entry> {
     let query = query.trim().to_lowercase();
-    let mut entries: Vec<_> = catalogue(desktop, modifier, availability)
+    let mut catalogue = catalogue(desktop, modifier, availability);
+    let mut featured = Vec::new();
+    if query.is_empty() && section == APPS {
+        for kind in [Kind::Web, Kind::Files, Kind::Terminal] {
+            if let Some(index) = catalogue.iter().position(|entry| entry.command == Cmd::Open(kind)) {
+                featured.push(catalogue.remove(index));
+            }
+        }
+    }
+    let mut entries: Vec<_> = catalogue
         .into_iter()
         .filter(|entry| {
             if query.is_empty() {
@@ -323,6 +332,7 @@ fn results(
         });
     } else if section == APPS {
         entries = packages::arrange(entries);
+        entries.splice(0..0, featured);
     }
     entries
 }

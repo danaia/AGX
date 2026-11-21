@@ -3,7 +3,7 @@ use crate::{AppWindow, HwRow, NetRow, Sys, Theme};
 use agx_core::Snapshot;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::fs;
-pub(super) fn apply(ui: &AppWindow, s: &Snapshot) {
+pub(super) fn apply(ui: &AppWindow, s: &Snapshot, temperature: Option<f64>) {
     let sys = ui.global::<Sys>();
     sys.set_hostname(s.hostname.clone().into());
     sys.set_board(s.board.clone().into());
@@ -11,6 +11,10 @@ pub(super) fn apply(ui: &AppWindow, s: &Snapshot) {
     sys.set_uptime(duration(s.uptime_secs).into());
     sys.set_cpu_percent(s.cpu_usage_percent.unwrap_or(0.0) as f32);
     sys.set_cpu_detail(format!("{} cores", s.cpu_count).into());
+    let temperature = temperature
+        .map(|value| format!("{value:.1} °C"))
+        .unwrap_or_else(|| "Unavailable".into());
+    sys.set_cpu_temperature(temperature.into());
     sys.set_load_text(
         s.load_average
             .iter()
@@ -67,6 +71,11 @@ pub(super) fn apply(ui: &AppWindow, s: &Snapshot) {
         .collect();
     sys.set_hardware(ModelRc::new(VecModel::from(hw)));
     sys.set_warnings(s.warnings.join("; ").into());
+}
+
+pub(super) fn apply_network_safety(sys: &Sys, profile: crate::network_safety::Profile) {
+    sys.set_network_risk_score(profile.score);
+    sys.set_network_risk_reason(profile.reason.into());
 }
 
 fn percent(part: u64, whole: u64) -> f32 {

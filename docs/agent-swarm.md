@@ -112,12 +112,9 @@ and the [Herdr CLI reference](https://herdr.dev/tui/docs/cli-reference/).
 
 A three-way switch under the prompt chooses the scope of a run; hovering a side explains it.
 
-* **OS** (the default) changes the operating system, mostly its desktop. It is **one agent, not a
-  swarm, and does not use Herdr**: OpenCode starts in the terminal with a single `angi-os` agent, its
-  own model (see below), the `angi-gui` skill and ANGI's update script, `angi-update`. A change goes
-  edit, `angi-update gui`, `angi-update refresh`, with no peer messaging in between. Its source is
-  `/var/lib/agx-data/angi-dev`; it may use `angi-build`, and `angi-root` for installations that need
-  root, but desktop releases go in only through `angi-update`.
+* **OS** (the default) uses Herdr's orchestrator, builder and tester on the operating system.
+  Install the native SDK and source in `/var/lib/agx-data/angi-dev` before starting OS work.
+  OS builds use `angi-build`, and desktop releases are installed through `angi-update`.
 * **Project** builds the user's own software with Herdr's orchestrator, builder and tester. A
   **Select folder…** button appears for the project folder. **Build** stays disabled until one is
   chosen. All three Herdr panes start in that folder, and the agents are told to work only inside
@@ -126,8 +123,7 @@ A three-way switch under the prompt chooses the scope of a run; hovering a side 
 * **Chat** is a conversation with Angi in the panel. Your messages sit on the right, with
   selectable replies on the left and a status while Angi works. Starter prompts fill the
   composer for review. Press **Enter** to send or **Shift+Enter** for a new line.
-  **New chat** clears the conversation. Like OS it is
-  **one agent and does not use Herdr**: each message runs `agent chat-turn [--new | --session ID] [--folder PATH] MESSAGE`
+  **New chat** clears the conversation. Chat uses one agent: each message runs `agent chat-turn [--new | --session ID] [--folder PATH] MESSAGE`
   (`apps/agent/chat.py`), which calls `opencode run --agent angi-chat --format json` and prints one
   JSON line with `text` or `error`, plus `session_id` when available. Chat can list directories, read UTF-8
   text, create folders, and save text in the user's home folder. For example, ask Angi
@@ -137,7 +133,7 @@ A three-way switch under the prompt chooses the scope of a run; hovering a side 
   requires an explicit overwrite request. The conversation works in a private `chat` folder
   in the swarm state directory; the first message of a conversation passes `--new`, later ones
   continue that session by ID. `agent angi --prompt BRIEF --chat` still runs the same agent in a terminal.
-  Chat shares the OS updates model. In OpenAI setup, it is labeled **OS updates / Chat**. With Apple Intelligence
+  The provider drawer has a **Chat** model and three role models shared by OS and Project. With Apple Intelligence
   active, Chat starts the local request guard and uses the server's first model if no model
   was chosen. For other providers, OpenCode supplies its default when no model was chosen.
   The AI button in the upper-right corner opens provider setup from any mode.
@@ -148,7 +144,7 @@ the drawer uses a short title based on the first prompt. Selecting a Chat entry 
 transcript and file workspace. Selecting an OS or Project entry opens the original request, the recorded outcome, and
 links to relevant folders in ANGI Files. Right-click an entry to rename it or remove it from the drawer.
 These changes stay in Agent Angi history and preserve the original chat, run and project files.
-The OS agent and project orchestrator save results with `agent report SUMMARY [PATH ...]`.
+The OS and Project orchestrators save results with `agent report SUMMARY [PATH ...]`.
 Older entries show the last recorded reply when the run can be matched to its OpenCode session.
 
 Provider setup lists the shared model next to the project roles. It is saved like the others

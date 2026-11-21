@@ -138,14 +138,8 @@ export component ProviderPanel inherits FocusScope {
                         && (!AgentProviders.busy || AgentProviders.models.length > 0): VerticalLayout {
                         alignment: start; spacing: 18px;
                         AgentText { text: "Models"; color: Theme.fg-bright; font-size: 17px; font-weight: 600; }
-                        RoleModel { role: "os"; label: AgentProviders.provider == "openai" ? "OS updates / Chat" : "OS updates"; selected: AgentProviders.os-updates; index: AgentProviders.role-index[3]; }
-                        AgentText {
-                            text: AgentProviders.provider == "openai"
-                                ? "This model handles Chat and changes to the desktop and system."
-                                : "Changes to the desktop and system. One agent, no swarm, installs through angi-update.";
-                            color: Theme.fg; font-size: 11px; wrap: word-wrap;
-                        }
-                        AgentText { text: "Projects"; color: Theme.fg-bright; font-size: 14px; font-weight: 600; }
+                        RoleModel { role: "os"; label: "Chat"; selected: AgentProviders.os-updates; index: AgentProviders.role-index[3]; }
+                        AgentText { text: "OS and Project builds"; color: Theme.fg-bright; font-size: 14px; font-weight: 600; }
                         RoleModel { role: "orchestrator"; selected: AgentProviders.orchestrator; index: AgentProviders.role-index[0]; }
                         RoleModel { role: "builder"; selected: AgentProviders.builder; index: AgentProviders.role-index[1]; }
                         RoleModel { role: "tester"; selected: AgentProviders.tester; index: AgentProviders.role-index[2]; }

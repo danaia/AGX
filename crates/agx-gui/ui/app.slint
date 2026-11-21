@@ -83,7 +83,6 @@ component WindowFrame inherits Rectangle {
             if !win.collapsed: Rectangle {
                 vertical-stretch: 1;
                 clip: true;
-                if win.kind == 1: CpuPanel { }
                 if win.kind == 3: NetworkPanel { }
                 if win.kind == 4: HardwarePanel { }
                 if win.kind == 6: SystemPanel { }
@@ -121,6 +120,14 @@ component WindowFrame inherits Rectangle {
         x: 2px; y: 28px;
         width: max(0px, parent.width - 4px);
         height: max(0px, parent.height - 30px);
+        pointer-moved(x, y) => { root.pointer-moved(x, y); }
+    }
+    if win.kind == 1 && !win.collapsed: CpuPanel {
+        x: 6px; y: 28px;
+        width: max(0px, parent.width - 12px);
+        height: max(0px, parent.height - 34px);
+        cursor: root.cursor; hide-cursor: root.hide-cursor;
+        pointer(k, b, x, y, c, a, s, m) => { root.pointer(k, b, x, y, c, a, s, m); }
         pointer-moved(x, y) => { root.pointer-moved(x, y); }
     }
     if win.kind == 0 && !win.collapsed: OverviewPanel {

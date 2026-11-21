@@ -24,6 +24,14 @@ Detect the operating system (Linux, macOS or Windows) and check for 4 GB of free
 Ask me to put my ${media} into ${pi ? 'a card reader on' : 'a USB port of'} THIS computer${pi ? ', with the ' + img.short + ' powered off' : ''}.
 Wait until it is attached before you continue.
 
+SSH KEY (REQUIRED)
+ANGI accepts SSH only with a key, so ${pi ? (img.id === 'rpizero2w' ? 'USB' : 'USB-C') + ' and Ethernet' : 'Ethernet'} access need one from
+this computer. Look in my .ssh folder for an Ed25519 key pair (id_ed25519 and
+id_ed25519.pub) and reuse it. If there is none, create one with
+ssh-keygen -t ed25519 -f <.ssh>/angi_ed25519. Never overwrite, move or print a
+private key. Record the private key's path and show me the one-line public key
+(.pub). I will give it to ANGI in phase 2.
+
 2. DOWNLOAD AND VERIFY THE IMAGE
 Download ${url}
 and ${url}.sha256 into a new folder. Compute the image's SHA-256 and compare it
@@ -69,11 +77,23 @@ port, the power and that the card is seated.
 Open http://angi.local in my browser (use http://10.77.0.2 if it does not load).
 Tell me to create my administrator account there, choose my Wi-Fi country, scan,
 and join my network${img.id === 'rpizero2w' ? ' (the Zero 2 W only sees 2.4 GHz networks)' : ''}. I type passwords on that page, not here.
+Give me the public key from the SSH key step again and tell me to paste it into
+the page's "SSH public key" field. The page marks it optional; for this install it
+is required. Without it I cannot connect over SSH, USB or Ethernet.
 When the page shows "Setup complete" I will say "Continue". Ask me to paste the
 result lines from the page (they contain no passwords). Confirm that Wi-Fi and the
-internet check passed, note the Pi's SSH host key fingerprint, and tell me how to
-connect: ssh MY-NAME@10.77.0.2. The USB cable stays a private link to this
-computer for development; the ${img.short} reaches the web over Wi-Fi.`;
+internet check passed.
+
+7. PIN THE PI'S IDENTITY AND CHECK SSH
+The result lines include "Pi SSH host key: SHA256:...". Write a known_hosts file
+just for this Pi. Fill it only with an Ed25519 host key whose fingerprint equals
+that line, under the names 10.77.0.2 and 10.78.0.2. Then run, with my private key and
+strict host key checking: ssh MY-NAME@10.77.0.2 agx status --json. If the
+fingerprint differs, stop and tell me; never turn host key checking off. Finally
+show me the ssh command and its options, and tell me the same key and pinned
+identity work over Ethernet: the Pi is 10.78.0.2, this computer 10.78.0.1/24 with no
+gateway. The USB cable stays a private link to this computer for development;
+the ${img.short} reaches the web over Wi-Fi.`;
 
   const phase2desktop = `PHASE 2 - MOVE THE DRIVE TO THE ${img.short.toUpperCase()} COMPUTER AND FINISH
 
@@ -86,7 +106,12 @@ Help me find the boot menu key or the firmware setting for USB boot if needed.
 
 6. FINISH SETUP
 Read the setup steps in the release notes for this image at
-${window.ANGI_RELEASES}/latest and walk me through them, one step at a time.`;
+${window.ANGI_RELEASES}/latest and walk me through them, one step at a time.
+When setup asks for an SSH public key, give me the one from the SSH key step to
+paste. It is required for this install: without it I cannot connect from this
+computer over Ethernet. Pin the ${img.short} computer's host key only after
+checking its fingerprint against the one setup shows, and keep strict host key
+checking on.`;
 
   return [head, phase1, pi ? phase2pi : phase2desktop].join('\n\n');
 };

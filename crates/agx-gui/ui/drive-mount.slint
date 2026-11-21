@@ -5,15 +5,23 @@ export global DriveMount {
     in-out property <bool> open;
     in property <bool> busy;
     in property <string> message;
-    in property <[string]> choices;
+    in property <[string]> partitions;
+    in property <[string]> partition-ids;
+    in property <[string]> drives;
+    in property <[string]> drive-ids;
     callback show-picker();
-    callback mount(int);
+    callback apply(int, bool);
 }
 
 export component DriveMountDialog inherits Rectangle {
     callback dismissed();
     callback pointer-moved(length, length);
+    property <bool> formatting;
+    property <int> confirmed-index: -1;
+    property <string> confirmed-drive;
+    property <bool> confirming: root.confirmed-index >= 0;
     background: #0008;
+
     TouchArea {
         moved => { root.pointer-moved(self.mouse-x, self.mouse-y); }
     }
@@ -24,29 +32,35 @@ export component DriveMountDialog inherits Rectangle {
         height: layout.preferred-height;
         background: Theme.bg;
         border-width: 1px;
-        border-color: Theme.muted;
+        border-color: root.confirming ? Theme.red : Theme.muted;
         border-radius: 8px;
         layout := VerticalLayout {
             padding: 18px;
             spacing: 12px;
             Text {
-                text: "Mount External Drive";
+                text: root.confirming ? "Erase and Mount NVMe Drive" :
+                      root.formatting ? "Quick Format NVMe Drive" : "Mount External Drive";
                 font-size: 18px;
                 font-weight: 700;
                 color: Theme.fg-bright;
             }
             Text {
-                text: "Choose an existing ext4 NVMe partition to use for ANGI storage. It will also mount on startup.";
+                text: root.confirming ?
+                    "All partitions and files on " + root.confirmed-drive + " will be lost. ANGI will create a new ext4 partition and mount it now and at startup." :
+                    root.formatting ?
+                    "Choose the NVMe drive to erase and prepare for ANGI storage." :
+                    "Choose an existing ext4 NVMe partition. ANGI will also mount it at startup.";
                 wrap: word-wrap;
                 color: Theme.fg;
             }
-            partition := ComboBox {
-                accessible-label: "NVMe partition";
-                model: DriveMount.choices;
-                enabled: !DriveMount.busy && DriveMount.choices.length > 0;
+            selection := ComboBox {
+                visible: !root.confirming;
+                accessible-label: root.formatting ? "NVMe drive" : "NVMe partition";
+                model: root.formatting ? DriveMount.drives : DriveMount.partitions;
+                enabled: !DriveMount.busy && self.model.length > 0;
                 init => { self.focus(); }
             }
-            if DriveMount.message != "": Text {
+            if DriveMount.message != "" && (!root.formatting || root.confirming): Text {
                 text: DriveMount.message;
                 wrap: word-wrap;
                 color: Theme.fg-bright;
@@ -54,15 +68,51 @@ export component DriveMountDialog inherits Rectangle {
             HorizontalLayout {
                 spacing: 8px;
                 alignment: end;
-                Button {
-                    text: "Cancel";
+                if root.confirming: Button {
+                    text: "Erase and Mount";
+                    enabled: !DriveMount.busy && root.confirmed-index < DriveMount.drives.length;
+                    clicked => { DriveMount.apply(root.confirmed-index, true); }
+                }
+                close-button := Button {
+                    text: root.confirming && DriveMount.drives.length == 0 ? "Close" : "Cancel";
                     enabled: !DriveMount.busy;
                     clicked => { DriveMount.open = false; root.dismissed(); }
                 }
-                Button {
-                    text: "Mount";
-                    enabled: !DriveMount.busy && partition.current-index >= 0 && partition.current-index < DriveMount.choices.length;
-                    clicked => { DriveMount.mount(partition.current-index); }
+                back-button := Button {
+                    text: "Back";
+                    visible: root.formatting;
+                    enabled: !DriveMount.busy && DriveMount.drives.length > 0;
+                    clicked => {
+                        if root.confirming {
+                            root.confirmed-index = -1;
+                        } else {
+                            root.formatting = false;
+                            selection.current-index = 0;
+                        }
+                        selection.focus();
+                    }
+                }
+                if !root.formatting && DriveMount.drives.length > 0: Button {
+                    text: "Quick Format…";
+                    enabled: !DriveMount.busy;
+                    clicked => {
+                        root.formatting = true;
+                        selection.current-index = 0;
+                        selection.focus();
+                    }
+                }
+                if !root.confirming: Button {
+                    text: root.formatting ? "Continue" : "Mount";
+                    enabled: !DriveMount.busy && selection.current-index >= 0 && selection.current-index < selection.model.length;
+                    clicked => {
+                        if root.formatting {
+                            root.confirmed-drive = selection.model[selection.current-index];
+                            root.confirmed-index = selection.current-index;
+                            back-button.focus();
+                        } else {
+                            DriveMount.apply(selection.current-index, false);
+                        }
+                    }
                 }
             }
         }

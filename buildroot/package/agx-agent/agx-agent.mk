@@ -10,10 +10,10 @@ AGX_AGENT_ASSETS = $(BR2_EXTERNAL_AGX_PATH)/../apps/agent
 define AGX_AGENT_EXTRACT_CMDS
 	cp $(AGX_AGENT_DL_DIR)/$(AGX_AGENT_SOURCE) $(@D)/herdr
 	cp $(AGX_AGENT_ASSETS)/LICENSE.herdr $(@D)/LICENSE
-	bash $(AGX_AGENT_ASSETS)/../../scripts/stage-monaco.sh $(@D)/monaco $(AGX_AGENT_DL_DIR)/monaco-editor-0.52.2.tgz
 endef
 
 define AGX_AGENT_BUILD_CMDS
+	bash $(AGX_AGENT_ASSETS)/../../scripts/stage-monaco.sh $(@D)/monaco $(AGX_AGENT_DL_DIR)/monaco-editor-0.52.2.tgz
 	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) -Os -Wall -Wextra -Werror $(AGX_AGENT_ASSETS)/angi-root.c -o $(@D)/angi-root
 endef
 

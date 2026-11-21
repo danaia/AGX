@@ -37,40 +37,12 @@ impl Desktop {
         });
         desktop.ws[0].z = vec![Kind::Settings, Kind::Overview, Kind::Cpu, Kind::Memory];
         desktop.ws[0].focus = Some(Kind::Memory);
-        for (i, kind) in [
-            Kind::AgentAngi,
-            Kind::TerminalWindow(0),
-            Kind::Web,
-            Kind::System,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            desktop.cur = i + 1;
-            desktop.open(kind);
-        }
-        desktop.ws[2].tree = Some(Node::Split {
-            id: desktop.next_split,
-            axis: Axis::Horizontal,
-            ratio: 0.5,
-            a: Box::new(Node::Leaf(Kind::TerminalWindow(0))),
-            b: Box::new(Node::Split {
-                id: desktop.next_split + 1,
-                axis: Axis::Vertical,
-                ratio: 0.5,
-                a: Box::new(Node::Leaf(Kind::TerminalWindow(1))),
-                b: Box::new(Node::Leaf(Kind::TerminalWindow(2))),
-            }),
-        });
-        desktop.next_split += 2;
-        desktop.ws[2].z = (0..3).map(Kind::TerminalWindow).collect();
-        desktop.ws[2].focus = Some(Kind::TerminalWindow(0));
-        // Seed each workspace from its tree before switching to windowed mode.
+        desktop.cur = 1;
+        desktop.open(Kind::AgentAngi);
+        // Workspaces 3–5 are available for windows the user opens.
         for i in 0..WORKSPACES {
             desktop.cur = i;
-            if i != 2 {
-                desktop.cycle_layout();
-            }
+            desktop.cycle_layout();
         }
         desktop.cur = 0;
         desktop

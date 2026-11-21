@@ -1,7 +1,7 @@
 import { Theme } from "data.slint";
 import { DesktopInput } from "desktop-input.slint";
 import { DriveMount } from "drive-mount.slint";
-import { Button, ScrollView } from "std-widgets.slint";
+import { ScrollView } from "std-widgets.slint";
 import { HoverDwell } from "hover-tip.slint";
 
 export struct StorageCell { tint: color, path: string, detail: string }
@@ -54,6 +54,7 @@ export component StorageMap inherits Rectangle {
     in property <bool> hide-cursor;
     callback pointer(int, int, length, length, bool, bool, bool, bool);
     callback pointer-moved(length, length);
+    private property <bool> mount-available: root.drive == 1 && root.summary == "Not mounted";
     private property <bool> window-gesture: false;
     private property <int> columns: max(8, min(64, floor(self.width / 14px)));
     private property <length> cell-size: self.width / root.columns;
@@ -85,7 +86,7 @@ export component StorageMap inherits Rectangle {
                 accessible-role: button;
                 accessible-label: cell.path + " · " + cell.detail;
             }
-            if root.cells.length == 0: Text {
+            if root.cells.length == 0 && !root.mount-available: Text {
                 text: root.summary == "Scanning…" ? "Reading file sizes…" : root.summary == "Not mounted" ? "Not mounted" : "No removable files in this category";
                 color: #947a6d; font-size: 11px;
                 vertical-alignment: center; horizontal-alignment: center;
@@ -103,12 +104,36 @@ export component StorageMap inherits Rectangle {
                 }
                 pointer-moved(x, y) => { root.pointer-moved(x, y); }
             }
-        }
-        if root.drive == 1 && root.summary == "Not mounted": HorizontalLayout {
-            alignment: end;
-            Button {
-                text: "Mount External Drive";
-                clicked => { DriveMount.show-picker(); }
+            if root.mount-available: link := FocusScope {
+                x: (parent.width - self.width) / 2;
+                width: min(200px, parent.width);
+                height: parent.height;
+                accessible-role: button;
+                accessible-label: "Mount External Drive";
+                accessible-action-default => { DriveMount.show-picker(); }
+                key-pressed(event) => {
+                    if (event.text == Key.Return || event.text == " ") {
+                        DriveMount.show-picker();
+                        return accept;
+                    }
+                    reject
+                }
+                Rectangle {
+                    border-width: link.has-focus ? 1px : 0px;
+                    border-color: Theme.accent;
+                    Text {
+                        text: "Mount External Drive";
+                        color: mount-link.has-hover ? Theme.fg-bright : Theme.accent;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        font-size: 11px;
+                    }
+                }
+                mount-link := TouchArea {
+                    mouse-cursor: MouseCursor.pointer;
+                    moved => { root.pointer-moved(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                    clicked => { link.focus(); DriveMount.show-picker(); }
+                }
             }
         }
         Text { height: 16px; text: root.status; color: Theme.fg-dim; font-size: 10px; overflow: elide; }

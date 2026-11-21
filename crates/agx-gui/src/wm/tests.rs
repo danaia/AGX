@@ -160,7 +160,7 @@ fn default_desktop_opens_the_reference_layout_in_windowed_mode() {
         assert!((m.right() - (width - GAP_OUT)).abs() < 0.01);
         for i in 0..WORKSPACES {
             d.goto(i);
-            assert_eq!(d.mode(), if i == 2 { Mode::Tiled } else { Mode::Floating });
+            assert_eq!(d.mode(), Mode::Floating);
         }
         d.goto(0);
         d.cycle_layout();
@@ -353,7 +353,7 @@ fn move_window_between_workspaces() {
     assert_eq!(d.current(), 0);
     d.goto(2);
     assert!(d.rect_of(Kind::Cpu).is_some());
-    assert!(d.rect_of(Kind::TerminalWindow(0)).is_some());
+    assert_eq!(d.scene().windows.len(), 1);
     d.goto(0);
     assert!(d.rect_of(Kind::Cpu).is_none());
     d.focus(Kind::Overview);
@@ -459,18 +459,16 @@ fn settings_tiles_floats_moves_workspaces_and_reopens_once() {
 }
 
 #[test]
-fn third_workspace_has_three_independent_terminal_tiles() {
-    let mut d = desk();
-    d.goto(2);
-    assert_eq!(d.mode(), Mode::Tiled);
-    assert!(!d.is_open(Kind::Hardware));
-    let left = rect(&d, Kind::TerminalWindow(0));
-    let top = rect(&d, Kind::TerminalWindow(1));
-    let bottom = rect(&d, Kind::TerminalWindow(2));
-    assert!(left.right() <= top.x && top.bottom() <= bottom.y);
-    assert_eq!(top.x, bottom.x);
-    assert_eq!(left.y, top.y);
-    assert!((left.bottom() - bottom.bottom()).abs() < 0.01);
-    d.close(Kind::TerminalWindow(1));
-    assert!(d.is_open(Kind::TerminalWindow(0)) && d.is_open(Kind::TerminalWindow(2)));
+fn fresh_desktop_keeps_three_workspaces_empty() {
+    let screen = Rect::new(0.0, 0.0, 1200.0, 800.0);
+    let mut desktop = Desktop::new(screen, Rect::new(0.0, 34.0, 1200.0, 740.0));
+    assert!(desktop.occupied(0));
+    desktop.goto(1);
+    assert_eq!(desktop.focused(), Some(Kind::AgentAngi));
+    for workspace in 2..WORKSPACES {
+        desktop.goto(workspace);
+        assert!(!desktop.occupied(workspace));
+        assert!(desktop.scene().windows.is_empty());
+        assert_eq!(desktop.focused(), None);
+    }
 }

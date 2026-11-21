@@ -20,10 +20,11 @@ check the cable, power, activity LED and card seating with me.
 
 STEP 2 - VERIFY SSH AND OPEN THE TUI
 Use root@PI_ADDRESS with the private key matching the public key used in part 1.
-Use a separate per-device SSH host alias or known_hosts file. On a new install,
-show me the fingerprint observed over the direct cable and ask me to approve it.
-Use strict SSH host-key checking for subsequent connections. If a trusted key
-changed unexpectedly, stop and resolve the device identity with me.
+If part 1 prepared a known_hosts file, use it as UserKnownHostsFile and enable
+StrictHostKeyChecking from the first connection. Otherwise, verify the Pi's
+fingerprint through its local console or an independent trusted source before
+connecting. If the key differs from the verified key, stop and resolve the
+device identity with me.
 Read /proc/device-tree/model and run agx status --json over that trusted connection.
 Confirm the hardware matches Pi 5, then open a workstation terminal with
 ssh -t ... agx tui.
