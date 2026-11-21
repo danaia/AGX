@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ANGI — The operating system that builds itself</title>
+<title>ANGI — The OS that builds itself</title>
 <meta name="description" content="ANGI is a tiny, from-source operating system for AI coding agents. Paste one prompt and your coding agent downloads the image and writes your card. Code on the device or from your computer over USB-C or Ethernet.">
 <meta name="theme-color" content="#ebebeb">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23ebebeb'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%236e6e6e'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;800&display=swap">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
 <script src="images.js"></script>
@@ -35,8 +35,8 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-    <h1><span class="grad">The operating system</span><br><span>that builds itself.</span><br></h1>
-    <p class="sub">ANGI is a tiny operating system built from source, with no distro underneath. Paste one prompt and your coding agent downloads the ready-made image and writes to your card. Plug in a USB-C. That's it.</p>
+    <h1><span class="grad">The OS</span><br><span>that builds itself.</span></h1>
+    <p class="sub">ANGI is a tiny operating system built from source, with <b>no distro underneath</b>. Paste one prompt and your coding agent downloads the ready-made image and writes to your card. Plug in a USB-C. That's it.</p>
     <div class="cta">
       <a class="btn primary" href="#images"><svg class="i"><use href="#i-chat"/></svg> Get the install prompt</a>
       <a class="btn ghost" href="get-started.html">What to expect <svg class="i"><use href="#i-arrow"/></svg></a>
@@ -45,7 +45,7 @@
     <div class="hero-art">
       <!-- The self-building loop: the orchestrator hands work to the builder,
            the builder updates the Pi, the tester checks it and reports back. -->
-      <svg viewBox="0 0 480 480" role="img" aria-label="A swarm of agents building and testing ANGI on a Raspberry Pi, in a loop">
+      <svg viewBox="-30 0 540 480" role="img" aria-label="A swarm of agents building and testing ANGI in a loop on a Raspberry Pi or a computer">
         <defs>
           <filter id="raise" x="-60%" y="-60%" width="220%" height="220%">
             <feDropShadow dx="4" dy="4" stdDeviation="4" flood-color="#c6c6c6"/>
@@ -61,25 +61,49 @@
         <g class="faint"><path d="M214 68 L150 40"/><path d="M266 68 L330 40"/><path d="M240 112 V140"/></g>
         <circle class="mote" cx="144" cy="38" r="7"/><circle class="mote" cx="336" cy="38" r="7"/><circle class="mote" cx="240" cy="146" r="6"/>
 
-        <!-- Raspberry Pi, contour drawing -->
-        <g transform="translate(0 74)">
-        <g class="board">
-          <rect x="156" y="256" width="168" height="100" rx="10"/>
-          <circle cx="167" cy="267" r="3.5"/><circle cx="313" cy="267" r="3.5"/>
-          <circle cx="167" cy="345" r="3.5"/><circle cx="289" cy="345" r="3.5"/>
-          <path class="pins" d="M184 265 H292 M184 272 H292"/>
-          <rect x="258" y="294" width="22" height="26" rx="3"/>
-          <rect x="300" y="282" width="30" height="18" rx="2"/>
-          <rect x="300" y="304" width="30" height="18" rx="2"/>
-          <rect x="300" y="326" width="30" height="20" rx="2"/>
-          <path d="M176 356 v-8 h16 v8 M200 356 v-7 h13 v7 M219 356 v-7 h13 v7"/>
-          <rect x="172" y="294" width="14" height="22" rx="2"/>
-        </g>
-        <g class="soc">
-          <rect x="208" y="288" width="40" height="40" rx="5"/>
-          <rect x="217" y="297" width="22" height="22" rx="3"/>
-        </g>
-        <circle class="pulse" cx="228" cy="308" r="4"/>
+        <!-- the target: ANGI's devices in turn, as contour drawings -->
+        <g class="devices">
+          <g class="dev d0" transform="translate(156 324) scale(1.4)">
+            <rect x="6" y="8" width="108" height="64" rx="6"/>
+            <path d="M26 12h40" stroke-dasharray="2 4"/>
+            <rect x="40" y="26" width="30" height="28" rx="3" class="hi"/><path d="M47 33h16v14H47z" class="hi"/>
+            <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
+            <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5"/>
+            <circle cx="62" cy="67" r="3"/><circle cx="82" cy="20" r="3"/>
+            <rect x="14" y="30" width="14" height="14" rx="2"/>
+            <circle cx="14" cy="14" r="2"/><circle cx="90" cy="14" r="2"/><circle cx="14" cy="64" r="2"/><circle cx="90" cy="64" r="2"/>
+          </g>
+          <g class="dev d1" transform="translate(156 324) scale(1.4)">
+            <rect x="6" y="8" width="108" height="64" rx="6"/>
+            <path d="M26 12h40" stroke-dasharray="2 4"/>
+            <rect x="44" y="28" width="24" height="24" rx="2" class="hi"/>
+            <rect x="96" y="14" width="18" height="20"/><rect x="96" y="38" width="18" height="14"/><rect x="96" y="56" width="18" height="14"/>
+            <path d="M14 72v-5h9v5M28 72v-5h9v5M42 72v-5h9v5M56 72v-5h8v5"/>
+            <rect x="14" y="30" width="14" height="14" rx="2"/>
+            <circle cx="14" cy="14" r="2"/><circle cx="90" cy="14" r="2"/><circle cx="14" cy="64" r="2"/><circle cx="90" cy="64" r="2"/>
+          </g>
+          <g class="dev d2" transform="translate(156 324) scale(1.4)">
+            <rect x="8" y="22" width="104" height="40" rx="6"/>
+            <circle cx="16" cy="30" r="2"/><circle cx="104" cy="30" r="2"/><circle cx="16" cy="54" r="2"/><circle cx="104" cy="54" r="2"/>
+            <rect x="46" y="32" width="22" height="20" rx="2" class="hi"/>
+            <path d="M24 40h12M24 46h12"/>
+            <path d="M30 62v6h14v-6M62 62v5h9v-5M80 62v5h9v-5"/>
+            <path d="M112 36h4v16h-4"/>
+            <path d="M40 22v-6h22v6"/>
+          </g>
+          <g class="dev d3" transform="translate(156 324) scale(1.4)">
+            <rect x="22" y="10" width="76" height="48" rx="4"/>
+            <path d="M10 66h100l-6 6H16z"/>
+            <rect x="50" y="24" width="20" height="20" rx="2" class="hi"/>
+            <path d="M55 20v4M60 20v4M65 20v4M55 44v4M60 44v4M65 44v4M46 29h4M46 34h4M46 39h4M70 29h4M70 34h4M70 39h4" class="hi"/>
+          </g>
+          <g class="dev d4" transform="translate(156 324) scale(1.4)">
+            <rect x="8" y="8" width="38" height="64" rx="4"/>
+            <path d="M16 18h22M16 26h22"/><circle cx="27" cy="58" r="4" class="hi"/>
+            <rect x="58" y="14" width="54" height="36" rx="3"/>
+            <path d="M85 50v10M72 62h26"/>
+            <path d="M70 26l8 8m0-8l-8 8M84 34h14" class="hi"/>
+          </g>
         </g>
 
         <!-- agents -->
@@ -94,7 +118,11 @@
           <text x="240" y="22">ORCHESTRATOR</text>
           <text x="56" y="234" class="end">BUILDER</text>
           <text x="424" y="234" class="start">TESTER</text>
-          <text x="240" y="462">RASPBERRY PI</text>
+          <text class="dev d0" x="240" y="462">RASPBERRY PI 5</text>
+          <text class="dev d1" x="240" y="462">RASPBERRY PI 4 / 400</text>
+          <text class="dev d2" x="240" y="462">PI ZERO 2 W</text>
+          <text class="dev d3" x="240" y="462">ARM COMPUTER</text>
+          <text class="dev d4" x="240" y="462">INTEL / AMD PC</text>
         </g>
       </svg>
     </div>
@@ -104,7 +132,6 @@
 <section class="tight" aria-labelledby="steps-title">
   <div class="wrap">
     <div class="head center reveal">
-      <div class="eyebrow">Get started</div>
       <h2 id="steps-title"><span class="grad">Up and running in four steps.</span></h2>
     </div>
     <div class="qsteps">
@@ -120,7 +147,6 @@
   <div class="wrap">
     <div class="head row reveal">
       <div>
-        <div class="eyebrow">Images</div>
         <h2 id="images-title"><span class="grad">Pick your system.</span></h2>
         <p class="lead">One ready-made image and one install prompt per system.</p>
       </div>
@@ -135,9 +161,8 @@
 <section aria-labelledby="ways-title">
   <div class="wrap">
     <div class="head center reveal">
-      <div class="eyebrow">Two ways to build</div>
       <h2 id="ways-title"><span class="grad">Code on the device,<br>or from your computer.</span></h2>
-      <p class="lead">Use ANGI's own desktop and agents, or keep your editor and tools and update ANGI from your computer while it runs.</p>
+      <p class="lead">ANGI is an operating system you code with your agents. That's why there is <b>no distro underneath</b>: nothing to inherit, nothing to work around. <b>You are in full control.</b> Build on the device itself, or from your own computer while it runs.</p>
     </div>
     <div class="ways">
       <article class="way panel reveal">
@@ -161,11 +186,42 @@
         </ul>
       </article>
     </div>
-    <div class="link-diagram panel reveal" aria-label="Your computer connects to ANGI over USB-C or Ethernet">
-      <div class="node"><div class="ico"><svg class="i"><use href="#i-laptop"/></svg></div><div><b>Your computer</b><span>your editor, your tools</span></div></div>
-      <div class="wire" aria-hidden="true"><div>USB-C</div><div>Ethernet</div></div>
-      <div class="node"><div><b>ANGI</b><span>updated live</span></div><div class="ico"><svg class="i"><use href="#i-cpu"/></svg></div></div>
-    </div>
+    <figure class="loop panel reveal" aria-labelledby="loop-cap">
+      <figcaption id="loop-cap" class="sr">How a change travels from your computer to the running ANGI system and back</figcaption>
+      <div class="loop-top">
+        <div class="end">
+          <div class="end-head"><div class="ico"><svg class="i"><use href="#i-laptop"/></svg></div><div><b>Your computer</b><span>Linux, macOS or Windows</span></div></div>
+          <ul class="well">
+            <li><svg class="i"><use href="#i-code"/></svg>Your editor</li>
+            <li><svg class="i"><use href="#i-chat"/></svg>Your coding agent</li>
+            <li><svg class="i"><use href="#i-folder"/></svg>The ANGI checkout</li>
+          </ul>
+        </div>
+
+        <div class="wires" aria-hidden="true">
+          <div class="lane"><span>USB-C · 10.77.0.2</span></div>
+          <div class="lane"><span>Ethernet · 10.78.0.2</span></div>
+          <div class="seal"><svg class="i"><use href="#i-shield"/></svg>SSH with your key<br>and a pinned host key</div>
+          <div class="lane back"><span>agx status --json</span></div>
+        </div>
+
+        <div class="end">
+          <div class="end-head"><div class="ico"><svg class="i"><use href="#i-cpu"/></svg></div><div><b>ANGI</b><span>keeps running the whole time</span></div></div>
+          <ul class="well releases">
+            <li class="new"><span class="dot"></span>New release<em>loading</em></li>
+            <li><span class="dot"></span>Current release<em>running</em></li>
+            <li class="kept"><span class="dot"></span>Previous release<em>kept for rollback</em></li>
+          </ul>
+        </div>
+      </div>
+
+      <ol class="loop-steps">
+        <li><b>Build</b><span>Only the part you changed, compiled for ARM on your computer.</span></li>
+        <li><b>Ship</b><span>Copied over the cable with SSH. The previous version stays on the device.</span></li>
+        <li><b>Reload</b><span>The desktop loads the new release in place. No reflash, no reboot.</span></li>
+        <li><b>Guard</b><span>A watchdog checks it stays up, and restores the previous release if not.</span></li>
+      </ol>
+    </figure>
     <div class="cta reveal" style="justify-content:center;margin-top:32px"><a class="btn ghost" href="develop.html">How remote development works <svg class="i"><use href="#i-arrow"/></svg></a></div>
   </div>
 </section>
@@ -175,8 +231,7 @@
 <section aria-labelledby="inside-title">
   <div class="wrap">
     <div class="head reveal">
-      <div class="eyebrow">What's inside</div>
-      <h2 id="inside-title"><span class="grad">Small enough for a Pi Zero.<br>Complete enough to ship from.</span></h2>
+      <h2 id="inside-title"><span class="grad">Small enough for a Pi Zero.<br>Smart enough for the enterprise.</span></h2>
       <p class="lead">No Debian, Ubuntu, Arch or Fedora underneath, and no package manager to inherit. ANGI is assembled from source and written in Rust from init to desktop.</p>
     </div>
     <div class="stats">

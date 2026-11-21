@@ -10,7 +10,6 @@
   const releases = window.ANGI_RELEASES || 'https://github.com/danaia/ANGI/releases';
   const published = (img) => img.status === 'available';
   const imageUrl = (img) => img.url || `${window.ANGI_DOWNLOADS}/${img.file}`;
-  const statusTag = (img) => `<span class="tag${published(img) ? ' ok' : ''}">${published(img) ? esc(img.version || 'Image published') : 'Image coming soon'}</span>`;
 
   /* navigation */
   const nav = $('#nav');
@@ -34,7 +33,6 @@
         <div class="txt">
           <h3>${esc(img.short)}</h3>
           <p>${esc(img.blurb)}</p>
-          <div class="meta">${statusTag(img)}</div>
         </div>
         <div class="acts">
           <a class="btn sm" href="get-started.html#${img.id}">${icon('i-chat')} Install prompt</a>
@@ -49,7 +47,7 @@
       <article class="dl-row panel reveal" id="dl-${img.id}">
         <svg class="board" role="img" aria-label="${esc(img.name)}"><use href="#${img.icon}"/></svg>
         <div>
-          <h3>${esc(img.name)} ${statusTag(img)}</h3>
+          <h3>${esc(img.name)}</h3>
           <p>${esc(img.blurb)}</p>
           <dl>
             <dt>File</dt><dd>${esc(img.file)}${img.size ? ' · ' + esc(img.size) : ''}</dd>
@@ -99,13 +97,13 @@
         ${who('You', [
           `Move the card into the ${esc(img.short)}`,
           `Connect ${esc(img.port)} to your computer with a <b>USB data cable</b>. It powers the Pi too.`,
-          'At <b>angi.local</b>, create your account and join Wi-Fi. Passwords stay in your browser.',
+          'At <b>10.77.0.2</b>, create your account and join Wi-Fi. Passwords stay in your browser.',
           'Paste the <b>SSH public key</b> your agent gives you. It is what lets you connect over USB-C or Ethernet.',
           'Say <b>Continue</b> when the page shows Setup complete',
         ])}
         ${who('Your agent', [
           'Waits for the USB link to come up',
-          'Opens <b>angi.local</b> in your browser',
+          'Opens the setup page at <b>10.77.0.2</b> in your browser',
           'Confirms Wi-Fi and internet',
           'Pins the Pi\'s identity, tests SSH, and gives you the command',
         ])}
@@ -141,13 +139,14 @@
     guide.setAttribute('aria-labelledby', 'tab-' + img.id);
     guide.innerHTML = `
       <div class="need">
-        <div class="panel">${icon('i-term2')}<span>A coding agent that can run commands: Claude Code, Codex, Cursor, OpenCode or similar</span></div>
-        <div class="panel">${icon('i-card')}<span>A ${esc(img.media)} you can erase${pi ? ', and a card reader' : ''}</span></div>
-        <div class="panel">${icon(pi ? 'i-usb' : 'i-wifi')}<span>${pi ? 'A USB data cable for ' + esc(img.port) + ', and your Wi-Fi details' : 'Your Wi-Fi details'}</span></div>
+        <div class="panel">${icon('i-download')}<p><b>Your agent does the work</b>Downloads the image, checks it and writes your ${esc(img.media)}.</p></div>
+        <div class="panel">${icon('i-chat')}<p><b>It tells you what to do</b>Every physical step, the moment you need to take it.</p></div>
+        <div class="panel">${icon('i-check')}<p><b>It sees it through</b>Step by step until ANGI is running${pi ? ' and online' : ''}.</p></div>
       </div>
+      <p class="bring"><b>You bring</b> a coding agent that can run commands (Claude Code, Codex, Cursor, OpenCode or similar), a ${esc(img.media)} you can erase${pi ? ', a USB data cable' : ''} and your Wi-Fi details.</p>
       <div class="prompt panel">
         <div class="prompt-bar">
-          <div><h3>Install prompt for ${esc(img.name)}</h3><p>Paste it into your agent's chat. ${statusTag(img)}</p></div>
+          <div><h3>Install prompt for ${esc(img.name)}</h3><p>Paste it into your agent's chat.</p></div>
           <button class="btn primary" type="button" data-copy="prompt-text">${icon('i-copy')} Copy prompt</button>
         </div>
         <pre id="prompt-text" tabindex="0"></pre>

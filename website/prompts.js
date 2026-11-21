@@ -74,7 +74,7 @@ Then wait for a new USB network adapter on this computer with the address
 port, the power and that the card is seated.
 
 6. FINISH SETUP IN MY BROWSER
-Open http://angi.local in my browser (use http://10.77.0.2 if it does not load).
+Open http://10.77.0.2 in my browser.
 Tell me to create my administrator account there, choose my Wi-Fi country, scan,
 and join my network${img.id === 'rpizero2w' ? ' (the Zero 2 W only sees 2.4 GHz networks)' : ''}. I type passwords on that page, not here.
 Give me the public key from the SSH key step again and tell me to paste it into

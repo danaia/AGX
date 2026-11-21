@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23ebebeb'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%236e6e6e'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;800&display=swap">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
 </head>
@@ -32,9 +32,24 @@
 
 <main>
 <header class="hero page-hero">
-  <div class="wrap">
-    <h1><span class="grad">Two ways to build.</span><br><span>Both live.</span></h1>
-    <p class="sub">Code on ANGI itself, or from the computer next to it. Over USB-C or Ethernet, your changes land on the running system without a reflash or a reboot.</p>
+  <div class="wrap hero-grid">
+    <div>
+      <h1><span class="grad">Two ways to build.</span><br><span>Both live.</span></h1>
+      <p class="sub">ANGI ships with the <b>bare minimum</b>. The rest is yours to craft, on ANGI itself or from the computer next to it. Over USB-C or Ethernet, your changes land on the running system without a reflash or a reboot.</p>
+    </div>
+    <figure class="kit panel" aria-label="ANGI ships with a kernel, a Rust init, networking with SSH, and your agents. Everything else is yours to build.">
+      <figcaption>Ships with</figcaption>
+      <ul class="kit-base">
+        <li><svg class="i"><use href="#i-cpu"/></svg>Linux kernel</li>
+        <li><svg class="i"><use href="#i-rust"/></svg>Rust init</li>
+        <li><svg class="i"><use href="#i-wifi"/></svg>Network + SSH</li>
+        <li><svg class="i"><use href="#i-chat"/></svg>Your agents</li>
+      </ul>
+      <figcaption>Yours to craft</figcaption>
+      <ul class="kit-open">
+        <li>+</li><li>+</li><li>+</li><li>+</li><li>+</li><li>+</li>
+      </ul>
+    </figure>
   </div>
 </header>
 
@@ -70,7 +85,6 @@
 <section id="connect" aria-labelledby="connect-title">
   <div class="wrap">
     <div class="head reveal">
-      <div class="eyebrow">Connect</div>
       <h2 id="connect-title"><span class="grad">A private cable between two computers.</span></h2>
       <p class="lead">The cable has no internet gateway, so your computer keeps its own connection and ANGI reaches the web over Wi-Fi.</p>
     </div>
@@ -78,7 +92,7 @@
       <table class="table">
         <thead><tr><th scope="col">Link</th><th scope="col">ANGI address</th><th scope="col">Your computer</th><th scope="col">Good for</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><span style="display:flex;gap:10px;align-items:center"><svg class="i or"><use href="#i-usb"/></svg>USB-C</span></th><td><code>10.77.0.2</code> or <code>angi.local</code></td><td>Gets <code>10.77.0.1</code> automatically</td><td>First setup, laptops, the Pi Zero's USB port</td></tr>
+          <tr><th scope="row"><span style="display:flex;gap:10px;align-items:center"><svg class="i or"><use href="#i-usb"/></svg>USB-C</span></th><td><code>10.77.0.2</code></td><td>Gets <code>10.77.0.1</code> automatically</td><td>First setup, laptops, the Pi Zero's USB port</td></tr>
           <tr><th scope="row"><span style="display:flex;gap:10px;align-items:center"><svg class="i or"><use href="#i-eth"/></svg>Ethernet</span></th><td><code>10.78.0.2</code></td><td>Set the port to <code>10.78.0.1/24</code>, no gateway</td><td>Pi 4 and Pi 5 on their own power supply, long sessions</td></tr>
         </tbody>
       </table>
@@ -96,7 +110,6 @@
 <section id="hot-reload" aria-labelledby="hot-title">
   <div class="wrap">
     <div class="head reveal">
-      <div class="eyebrow">Hot reload</div>
       <h2 id="hot-title"><span class="grad">Edit here. Running there.</span></h2>
       <p class="lead">You only build the part you changed, on your computer. The OS stays as it is and keeps running.</p>
     </div>
@@ -125,7 +138,6 @@ make deploy-network   <span class="c"># network services</span></pre>
 <section aria-labelledby="models-title">
   <div class="wrap">
     <div class="head reveal">
-      <div class="eyebrow">Models</div>
       <h2 id="models-title"><span class="grad">The agents run on ANGI.<br>The thinking happens elsewhere.</span></h2>
       <p class="lead">That is what keeps ANGI light enough for a small board. Connect a model provider once, from Agent Angi's settings.</p>
     </div>
